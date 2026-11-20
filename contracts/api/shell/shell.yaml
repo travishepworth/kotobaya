@@ -48,6 +48,7 @@ info:
     | 415 | `shell_unsupported` | The bridge cannot carry the request or the response (size, content type). |
     | 409 | `shell_pending_ops` | `unpairShell` without `force` while ops are waiting to be pushed. |
     | 503 | `shell_offline` | The operation needs the server and the device is offline or the server did not answer. |
+    | 503 | `shell_uncached` | C-31. An operation of class `cached` in `ops.json` whose answer is not in the device's response cache yet (`SHELL.md` rule K-3). Only for `/api/v1` operations, never for an operation of this file; listed here because the shell generates it. No `Retry-After`; the `cache.updated` event says when to ask again. |
     | 503 | `shell_dict_missing` | Dictionary data that is neither in the installed package nor in the sidecar cache is needed and the server cannot be asked. |
     | 503 | `shell_rebuilding` | The local replica is being rebuilt; `Retry-After: 2`. |
 
@@ -642,7 +643,7 @@ components:
         local_api_version:
           type: integer
           minimum: 1
-          description: '`LOCAL_API_VERSION` of this shell (SHELL.md section 7; `2` since ADR-037: `getReviewQueue` answers with `loop`). The SPA refuses to run when its own `min_local_api` is higher.'
+          description: '`LOCAL_API_VERSION` of this shell (SHELL.md section 7; `3` since C-31: local-first classes, `keep_going_new_target`, `first_sync`; `2` since ADR-037). The SPA refuses to run when its own `min_local_api` is higher.'
           examples: [2]
         paired:
           type: boolean
@@ -685,8 +686,10 @@ components:
             `offline_storage` (getStorage, updateStorage), `notifications`, `push`, `ankiconnect`,
             `takoboto` (the native AnkiProvider is present; informational), `haptics` (the
             `haptic` bridge message does something), `ota` (web bundle updates, SHELL-Z2),
-            `display` (getDisplayPrefs, updateDisplayPrefs; added with LOCAL_API_VERSION 2).
-          examples: [[sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display]]
+            `display` (getDisplayPrefs, updateDisplayPrefs; added with LOCAL_API_VERSION 2),
+            `response_cache` (C-31, added with LOCAL_API_VERSION 3: operations of class `cached`
+            are answered by `SHELL.md` rules K-1 … K-4 and `cache.updated` events are sent).
+          examples: [[sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display, response_cache]]
         web_version:
           type: string
           minLength: 1
@@ -743,7 +746,7 @@ components:
     ShellSyncStatus:
       type: object
       description: Sync state of this device. Also the payload of the `shell.sync` event.
-      required: [phase, paired, online, pending_ops, rejected_ops, last_sync_at, stale, pull_seq, clock_warning, minting_blocked, progress, last_error, consecutive_failures]
+      required: [phase, paired, online, pending_ops, rejected_ops, last_sync_at, stale, pull_seq, clock_warning, minting_blocked, progress, last_error, consecutive_failures, first_sync]
       properties:
         phase:
           type: string
@@ -824,8 +827,37 @@ components:
         consecutive_failures:
           type: integer
           minimum: 0
-          description: Failed cycles in a row (the backoff count); 0 after a success.
+          description: Failed cycles in a row (the backoff count); 0 after a success. C-31 - informational only; no local operation, and in particular not materialization in `getReviewQueue`, depends on it (`SHELL.md` rule L-9).
           examples: [0]
+        first_sync:
+          type: object
+          description: |
+            C-31 (ADR-050). The first complete pull of this pairing: the one time the SPA shows a
+            full-screen "Setting up" state and the user waits for the network (`SHELL.md` 10.18).
+            Always present (LOCAL_API_VERSION 3). While `done` is false, `getReviewQueue` does
+            not materialize deck entries and the background work that follows the first sync
+            (response-cache warm pass, dictionary auto-install, audio prefetch) has not started.
+            Example before the first response: `{done: false, applied: 0, total: null}`; midway:
+            `{done: false, applied: 12000, total: 48213}`; afterwards:
+            `{done: true, applied: 48213, total: 48213}`.
+          required: [done, applied, total]
+          properties:
+            done:
+              type: boolean
+              description: True iff `sync_state.last_sync_at` is set - a sync cycle of this replica has pulled until `has_more` was false at least once. Never goes back to false (not on a failed cycle, a rebuild, a log reset or an unpair followed by a new pairing of the same install, which all keep the replica); false only on a replica that has never completed a pull. Equivalent to `last_sync_at != null`; given as its own member so that the SPA's gate does not depend on how `last_sync_at` is used elsewhere.
+              examples: [true]
+            applied:
+              type: integer
+              format: int64
+              minimum: 0
+              description: How far the first pull has come - the stored pull cursor (`pull_seq`), so it survives an interrupted first sync and an app restart and never decreases. 0 before the first sub-page committed. When `done` is true it equals `pull_seq` and clients ignore it.
+              examples: [12000]
+            total:
+              type: [integer, 'null']
+              format: int64
+              minimum: 0
+              description: The server's head (`high_water_seq` of the latest pull response of the first sync), or null while no pull response has arrived (offline right after pairing) - show an indeterminate bar then. Never below `applied`; it may grow while the pull runs (other devices push). `seq` has gaps, so `applied / total` is a progress fraction, not an op count. When `done` is true it equals `applied`.
+              examples: [48213]
     ShellDictInstallRequest:
       type: object
       description: Options of `startDictInstall`.
@@ -1176,13 +1208,13 @@ components:
         with the shell's type set. `data` by `type`: `hello` - `ShellEventHello`; `sync.changed` -
         `ShellEventSyncChanged`; `note.created` - `ShellEventNoteCreated`; `shell.connectivity` -
         `ShellEventConnectivity`; `shell.sync` - `ShellSyncStatus`; `shell.dict` -
-        `ShellDictInstall`. `job.updated`, `device.paired` and `device.revoked` are never sent
+        `ShellDictInstall`; `cache.updated` (C-31) - `ShellEventCacheUpdated`. `job.updated`, `device.paired` and `device.revoked` are never sent
         in shell mode (SHELL.md 2.6).
       required: [type, at, data]
       properties:
         type:
           type: string
-          enum: [hello, sync.changed, note.created, shell.connectivity, shell.sync, shell.dict]
+          enum: [hello, sync.changed, note.created, shell.connectivity, shell.sync, shell.dict, cache.updated]
           description: Event type. Receivers ignore types they do not know.
           examples: [sync.changed]
         at:
@@ -1255,33 +1287,69 @@ components:
           type: boolean
           description: As `ShellInfo.online`, new value.
           examples: [false]
+    ShellEventCacheUpdated:
+      type: object
+      description: |
+        C-31. Payload of `cache.updated`: a background fetch of one operation of class `cached`
+        changed what the next request of the same cache key will get (`SHELL.md` rules K-2, K-3).
+        Sent only when the stored body changed (a first body counts), when a stored entry was
+        deleted because the server answered `404` / `410`, or when a miss ended in a final
+        refusal. Never for a revalidation that found the same bytes. The SPA requests the
+        operation again if it shows it; a duplicate or unmatched event is ignored. At most one
+        per key per second. Example: `{operation_id: getDeckCoverage, path:
+        /api/v1/decks/01931f40-2000-7000-8000-000000000d01/coverage, query: '', status: 200}`.
+      required: [operation_id, path, query, status]
+      properties:
+        operation_id:
+          type: string
+          pattern: ^[a-z][A-Za-z0-9]+$
+          maxLength: 64
+          description: operationId of `../openapi.yaml`; always one whose class in `ops.json` is `cached`. Clients ignore an event whose `operation_id` they do not know.
+          examples: [getDeckCoverage]
+        path:
+          type: string
+          maxLength: 2048
+          pattern: ^/api/v1/
+          description: The `req.path` of the request the entry belongs to, exactly as the SPA sent it.
+          examples: [/api/v1/decks/01931f40-2000-7000-8000-000000000d01/coverage]
+        query:
+          type: string
+          maxLength: 8192
+          description: The **canonical** query of the cache key (`SHELL.md` rule K-1 - pairs percent-decoded, sorted by name then value, re-encoded), `""` when none. To match, the SPA canonicalises its own query the same way (`@kotobaya/core` exports the function); it need not equal the query string the SPA sent.
+          examples: ['cursor=&limit=20']
+        status:
+          type: integer
+          minimum: 200
+          maximum: 499
+          description: Status of the background fetch that caused the event. `200`-`299` - a body was stored and the next request is a hit. `404` / `410` - the entry was deleted or never existed; `400` / `403` / `422` - a miss the server refuses for good; in these cases nothing is stored, the next request is `503 shell_uncached` again and the SPA shows "not found" / hides the surface instead of waiting.
+          examples: [200]
   examples:
     ShellInfoPaired:
       value:
         shell_version: 0.2.0
         shell_version_code: 29
-        local_api_version: 2
+        local_api_version: 3
         paired: true
         auth_required: false
         server_url: https://kotobaya.example.net/api/v1
         device_id: 01931f3e-0000-7000-8000-0000000000d4
         device_name: Pixel 9
         online: true
-        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display]
+        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display, response_cache]
         web_version: 0.1.26
         web_source: bundled
     ShellInfoUnpaired:
       value:
         shell_version: 0.2.0
         shell_version_code: 29
-        local_api_version: 2
+        local_api_version: 3
         paired: false
         auth_required: false
         server_url: null
         device_id: null
         device_name: null
         online: false
-        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display]
+        capabilities: [sync, pairing, dict_install, offline_storage, notifications, push, ankiconnect, takoboto, haptics, display, response_cache]
         web_version: 0.1.26
         web_source: bundled
     ShellSyncStatusIdle:
@@ -1299,6 +1367,7 @@ components:
         progress: null
         last_error: null
         consecutive_failures: 0
+        first_sync: {done: true, applied: 48213, total: 48213}
     ShellSyncStatusOfflinePending:
       value:
         phase: offline
@@ -1314,6 +1383,7 @@ components:
         progress: null
         last_error: null
         consecutive_failures: 0
+        first_sync: {done: true, applied: 48213, total: 48213}
     ShellSyncStatusSyncing:
       value:
         phase: syncing
@@ -1327,6 +1397,7 @@ components:
         clock_warning: false
         minting_blocked: false
         progress: {done: 1200, total: 5000}
+        first_sync: {done: true, applied: 48213, total: 48213}
         last_error: null
         consecutive_failures: 0
     ShellDictInstallInstalled:

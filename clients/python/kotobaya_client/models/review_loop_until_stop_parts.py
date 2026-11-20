@@ -30,7 +30,7 @@ class ReviewLoopUntilStopParts(BaseModel):
     """ # noqa: E501
     later: Annotated[int, Field(strict=True, ge=0)] = Field(description="Learning/relearning cards on their timer that come back before `day_ends_at`. Always equal to `later_today.count`.")
     learning: Annotated[int, Field(strict=True, ge=0)] = Field(description="Learning/relearning cards that can be answered now. Always equal to `ready.learning`.")
-    new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce in this mode. `keep_going=false`: left to today's goal (the smaller of the goal's remainder and what the decks can supply under their limits; kanji cards and deck entries not yet materialized included; not bounded by `limit`); 0 once the goal is reached. `keep_going=true`: the new cards this response drew (about `limit`).")
+    new: Annotated[int, Field(strict=True, ge=0)] = Field(description="New cards still to introduce in this mode. `keep_going=false`: left to today's goal (the smaller of the goal's remainder and what the decks can supply under their limits; kanji cards and deck entries not yet materialized included; not bounded by `limit`); 0 once the goal is reached, also after a keep-going batch that was left unfinished (ADR-052). `keep_going=true` without `keep_going_new_target`: the new cards this response drew (about `limit`). `keep_going=true` with it (C-31): the new cards left to the target (not bounded by `limit`).")
     review: Annotated[int, Field(strict=True, ge=0)] = Field(description="Reviews still to answer in this mode: `ready.review` for `keep_going=false`, `backlog.reviews` for `keep_going=true`.")
     __properties: ClassVar[List[str]] = ["later", "learning", "new", "review"]
 

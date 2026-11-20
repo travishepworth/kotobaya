@@ -16,6 +16,7 @@ docs/ShellDictInstallRequest.md
 docs/ShellDisplay.md
 docs/ShellDisplayPatch.md
 docs/ShellEvent.md
+docs/ShellEventCacheUpdated.md
 docs/ShellEventConnectivity.md
 docs/ShellEventHello.md
 docs/ShellEventNoteCreated.md
@@ -29,6 +30,7 @@ docs/ShellPushState.md
 docs/ShellStorage.md
 docs/ShellStoragePatch.md
 docs/ShellSyncStatus.md
+docs/ShellSyncStatusFirstSync.md
 docs/ShellSyncStatusProgress.md
 docs/ShellUnpairRequest.md
 package.json
@@ -48,6 +50,7 @@ src/models/ShellDictInstallRequest.ts
 src/models/ShellDisplay.ts
 src/models/ShellDisplayPatch.ts
 src/models/ShellEvent.ts
+src/models/ShellEventCacheUpdated.ts
 src/models/ShellEventConnectivity.ts
 src/models/ShellEventHello.ts
 src/models/ShellEventNoteCreated.ts
@@ -61,6 +64,7 @@ src/models/ShellPushState.ts
 src/models/ShellStorage.ts
 src/models/ShellStoragePatch.ts
 src/models/ShellSyncStatus.ts
+src/models/ShellSyncStatusFirstSync.ts
 src/models/ShellSyncStatusProgress.ts
 src/models/ShellUnpairRequest.ts
 src/models/index.ts

@@ -661,6 +661,42 @@ rebuild (10.3); otherwise pull until `has_more` is false; then delete the `acked
 5.4 and set `last_sync_at`. Run on app open, after a review session, and in the background while the
 server is reachable.
 
+**Device scheduling (C-31 note, ADR-050; normative for the Android shell, nothing changes on the
+wire or in what a replica converges to).** The rules above say what a cycle does; these say how
+a device keeps a cycle from ever standing between the user and a local operation.
+
+- **Sub-pages of at most 50 ops.** A device applies every pulled page as sub-pages (above) of at
+  most **50** ops each, and between two sub-pages it releases the database's write connection
+  and yields (the coroutine yields; a local writer that is waiting goes first). A local change
+  (section 4) therefore waits for at most one sub-page. Local writers wait up to 5 s for the
+  write connection (`busy_timeout`) and then fail without having changed anything. The sub-page
+  size is the client's choice by the rule above; 50 is the bound, not a wire constant. Example:
+  the page of the example above (500 ops) is 10 transactions; an answer given during
+  transaction 3 commits before transaction 4 starts, with an HLC above every op of
+  transactions 1–3 (`observe`), and transactions 4–10 apply after it by the normal rules of
+  sections 7–9 (an op pulled later that is older than the local one loses or wins exactly as
+  it would have in one transaction: the outcome depends on HLCs, never on apply order,
+  section 11).
+- **Local-change trigger, debounced.** A committed local change does not start a cycle at once:
+  it (re)starts a timer of **2 s**; the cycle starts when 2 s have passed without a further
+  local change, and in any case no later than **10 s** after the first local change that no
+  cycle has started for (trailing edge 2 s, maximum wait 10 s). Changes made while a cycle runs
+  are pushed by the cycle the timer starts after it. The other triggers are not debounced: app
+  open, connectivity regained, a push message, the periodic background run, `syncNow`, and the
+  "remote change" trigger of a proxied write (SHELL.md P-3). Example: answers at 0 s, 1.5 s,
+  3 s, 4 s, then a pause → one cycle at 6 s; an unbroken stream of answers every 1.5 s → a
+  cycle at 10 s, 20 s, …
+- **Nothing waits for a cycle.** No local read or write waits for, joins or is refused because
+  of a running, failed or pending cycle, with the two exceptions this document already has:
+  `rebuild_pending` (10.3) and the clock guards (3.4). In particular a failed cycle changes
+  nothing for local operations: the ops stay `pending` and are pushed by the next one.
+- **First sync.** `last_sync_at` is absent until the first cycle of a replica has pulled to
+  `has_more = false`. An interrupted first pull keeps its committed sub-pages and resumes at the
+  stored `pull_seq` (crash rule above). Until `last_sync_at` is set the device does not
+  materialize deck entries (8.1, C-31 note) — the only local behaviour that depends on sync
+  state besides the two exceptions above — and reports progress as `pull_seq` of the server's
+  `high_water_seq` (shell: `ShellSyncStatus.first_sync {done, applied, total}`).
+
 ### 6.2 Log identity: backups and restores
 
 A server restored from a backup has lost the tail of its log, and its `seq` restarts below values
@@ -1024,6 +1060,20 @@ For cards, "live" means the card's own `deleted_at IS NULL` (the note may be tom
   `review_log`, subject to the arrival-order trade-offs of 8.4: a concurrent delete of the
   survivor hides the merged cards (8.4 items 2–3), and a loser deleted before its push still
   forwards its values (8.4 item 4).
+  **When a device materializes (C-31 note, ADR-050).** A paired device materializes deck entries
+  iff `sync_state.last_sync_at` is set (its first complete pull has finished) **and**
+  `rebuild_pending` is not set. It MUST NOT make this depend on whether a sync cycle is running,
+  has just failed, or how many failed in a row, nor on being online. Reason for the first
+  condition: before the first complete pull the replica lacks the notes the other replicas
+  already hold, so it would mint a `note.created` for **every** drawn deck entry and each would
+  collide here; after it, a duplicate can only come from two replicas working at the same time
+  without having synced, which is the case this rule is for. Reason for the prohibition: the
+  duplicate this rule resolves is rare and harmless (one live note per entry, every review
+  kept), while refusing to materialize during a cycle left the review queue empty for the
+  length of every cycle. Example: phone offline all day, draws `e:1358280` and mints note N1;
+  the web materialized the same entry an hour earlier as N0 → at the phone's push the server
+  emits `note.merged {loser_id: N1, survivor_id: N0}` and the `card.merged` ops; the phone's
+  reviews on N1's cards replay on N0's (8.3).
 
 ### 8.2 Applying `note.merged` / `card.merged` (every replica)
 

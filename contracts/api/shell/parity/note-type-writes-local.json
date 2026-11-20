@@ -1,0 +1,252 @@
+{
+  "id": "note-type-writes-local",
+  "title": "createNoteType, updateNoteType and deleteNoteType are answered on the device (C-31, rule L-10)",
+  "covers": [
+    "note_types.writes_local"
+  ],
+  "narrative": [
+    "An empty replica. Before C-31 the shell forwarded these three operations.",
+    "Step 0: a custom vocab type with the three mandatory field keys.",
+    "Step 1: a vocab type without meaning is 422 invalid_value at /fields (the check the server makes at the op as well, so the device never mints an op the server rejects).",
+    "Steps 2-3: updateNoteType css; getNoteType shows it at once.",
+    "Steps 4-5: a note of the type (no entry_seq, so no dictionary data is involved); deleting the type is then 409 in_use.",
+    "Steps 6-9: after the note is deleted the type can be deleted (204, twice) and answers 410.",
+    "Step 10: a built-in type is 409 builtin_immutable."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": []
+  },
+  "operations": [
+    "createNote",
+    "createNoteType",
+    "deleteNote",
+    "deleteNoteType",
+    "getNoteType",
+    "updateNoteType"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/note-types",
+        "query": "",
+        "body": {
+          "id": "0193b000-0007-7000-8000-000000000001",
+          "name": "Custom vocab",
+          "base_type": "vocab",
+          "fields": [
+            {
+              "key": "expression",
+              "label": "Expression",
+              "kind": "text"
+            },
+            {
+              "key": "reading",
+              "label": "Reading",
+              "kind": "text"
+            },
+            {
+              "key": "meaning",
+              "label": "Meaning",
+              "kind": "text"
+            }
+          ],
+          "templates": {
+            "meaning": {
+              "default": true,
+              "front": null,
+              "back": null
+            }
+          }
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0007-7000-8000-000000000001",
+          "/name": "Custom vocab",
+          "/base_type": "vocab",
+          "/builtin": false,
+          "/css": ""
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/note-types",
+        "query": "",
+        "body": {
+          "name": "Broken",
+          "base_type": "vocab",
+          "fields": [
+            {
+              "key": "expression",
+              "label": "Expression",
+              "kind": "text"
+            },
+            {
+              "key": "reading",
+              "label": "Reading",
+              "kind": "text"
+            }
+          ],
+          "templates": {
+            "meaning": {
+              "default": true,
+              "front": null,
+              "back": null
+            }
+          }
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/fields",
+          "code": "invalid_value"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+        "query": "",
+        "body": {
+          "css": ".expr { font-size: 3rem; }"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/css": ".expr { font-size: 3rem; }",
+          "/name": "Custom vocab"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/css": ".expr { font-size: 3rem; }"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/notes",
+        "query": "",
+        "body": {
+          "id": "0193b000-0001-7000-8000-000000000001",
+          "note_type_id": "0193b000-0007-7000-8000-000000000001",
+          "fields": {
+            "expression": "うっかり",
+            "reading": "うっかり",
+            "meaning": "carelessly"
+          }
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0001-7000-8000-000000000001",
+          "/note_type_id": "0193b000-0007-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 409,
+        "problem_code": "in_use"
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/notes/0193b000-0001-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168811000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/note-types/00000000-0000-7000-8000-000000000101",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 409,
+        "problem_code": "builtin_immutable"
+      }
+    }
+  ]
+}

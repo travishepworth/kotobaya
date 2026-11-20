@@ -76,3 +76,30 @@ CREATE TABLE tts_audio (
   checked_at INTEGER NOT NULL,        -- epoch ms of the resolveSpeech answer this row came from
   PRIMARY KEY (voice, text)
 );
+
+-- C-31 (ADR-050): answers of the API operations of class `cached` (contracts/api/shell/ops.json),
+-- kept so that the shell can answer them at once and revalidate in the background
+-- (contracts/api/shell/SHELL.md 4.4, rules K-1 .. K-4). Device-local and NOT learning data:
+-- never synced, never written by an op, no pending_op row; deleting every row is always safe
+-- (the next request is `503 shell_uncached` and refills it). Deleted entirely by unpairShell and
+-- by pairing with another server; a rebuild or log reset sets stale = 1 on every row.
+-- Contract: contracts/db/SCHEMA.md 5.3.
+CREATE TABLE response_cache (
+  -- operationId || char(10) || path || char(10) || canonical query (SHELL.md rule K-1), e.g.
+  -- 'listSentences' || char(10) || '/api/v1/sentences' || char(10) || 'cursor=&limit=20'
+  key TEXT NOT NULL PRIMARY KEY,
+  op TEXT NOT NULL,                   -- operationId, e.g. 'getDeckCoverage' (invalidation is per operation)
+  path TEXT NOT NULL,                 -- req.path as received, e.g. '/api/v1/decks/<id>/coverage'
+  query TEXT NOT NULL,                -- canonical query, '' for none
+  status INTEGER NOT NULL CHECK (status BETWEEN 200 AND 299),  -- only 2xx answers are stored
+  content_type TEXT NOT NULL,         -- as the server sent it, e.g. 'application/json'
+  body TEXT NOT NULL,                 -- exact response text
+  size_bytes INTEGER NOT NULL CHECK (size_bytes BETWEEN 0 AND 4194304),  -- UTF-8 length of body; 16 MiB in total (K-4)
+  etag TEXT,                          -- the server's ETag for If-None-Match, or NULL
+  fetched_at INTEGER NOT NULL,        -- epoch ms, device clock: fetched or last confirmed unchanged (kotobaya-cached-at)
+  last_used_at INTEGER NOT NULL,      -- epoch ms, device clock: last hit or store; eviction order (LRU)
+  stale INTEGER NOT NULL DEFAULT 0 CHECK (stale IN (0, 1))  -- 1: a table this answer depends on changed since the fetch
+);
+
+CREATE INDEX response_cache_op_idx ON response_cache (op);
+CREATE INDEX response_cache_lru_idx ON response_cache (last_used_at);

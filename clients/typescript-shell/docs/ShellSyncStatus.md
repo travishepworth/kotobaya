@@ -20,6 +20,7 @@ Name | Type
 `progress` | [ShellSyncStatusProgress](ShellSyncStatusProgress.md)
 `lastError` | string
 `consecutiveFailures` | number
+`firstSync` | [ShellSyncStatusFirstSync](ShellSyncStatusFirstSync.md)
 
 ## Example
 
@@ -41,6 +42,7 @@ const example = {
   "progress": null,
   "lastError": null,
   "consecutiveFailures": null,
+  "firstSync": null,
 } satisfies ShellSyncStatus
 
 console.log(example)

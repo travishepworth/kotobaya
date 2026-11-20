@@ -1,0 +1,320 @@
+{
+  "id": "card-writes-local",
+  "title": "updateCard, createCard and deleteCard are answered on the device (C-31, rule L-10)",
+  "covers": [
+    "cards.single_writes_local"
+  ],
+  "narrative": [
+    "One kana-only word with its meaning card, and one extra preset. These three operations emit the ops bulkCards emits; before C-31 the shell forwarded them.",
+    "Steps 0-3: updateCard mints one op per property present: suspend; flag and preset in one call; unsuspend and bury; unbury. Each answer is the card after the change.",
+    "Step 4: an empty body is 422.",
+    "Steps 5-7: createCard for the listening kind is 201; the same id again, and the same (note, kind) without an id, are 200 with the same card and mint nothing.",
+    "Steps 8-9: a kind the note type does not have, and the retired reading kind (cards.reading_enabled is not set), are 422 at /kind.",
+    "Steps 10-12: deleteCard is 204, the card then answers 410, a second delete is 204 and mints nothing.",
+    "Step 13: the card list holds the listening card only."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000360
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f900-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000360
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f900-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000003",
+        "op_type": "fsrs_params.created",
+        "op_version": 1,
+        "entity_type": "fsrs_params",
+        "entity_id": "0193a1b2-0006-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ee195500-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0006-7000-8000-000000000001",
+          "name": "Slow",
+          "desired_retention": 0.85,
+          "learning_steps_s": [
+            60,
+            600
+          ]
+        }
+      }
+    ]
+  },
+  "operations": [
+    "createCard",
+    "deleteCard",
+    "getCard",
+    "listCards",
+    "updateCard"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": {
+          "suspended": true
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": {
+          "flags": 2,
+          "preset_id": "0193a1b2-0006-7000-8000-000000000001"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/flags": 2,
+          "/preset_id": "0193a1b2-0006-7000-8000-000000000001",
+          "/suspended": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": {
+          "suspended": false,
+          "buried_until": "2026-11-21T19:00:00.000Z"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/suspended": false,
+          "/buried_until": "2026-11-21T19:00:00.000Z"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": {
+          "buried_until": null
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/buried_until": null,
+          "/flags": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": {}
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": {
+          "id": "0193b000-0002-7000-8000-000000000001",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "listening"
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0002-7000-8000-000000000001",
+          "/kind": "listening",
+          "/state": "new"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": {
+          "id": "0193b000-0002-7000-8000-000000000001",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "listening"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/id": "0193b000-0002-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": {
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "listening"
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/id": "0193b000-0002-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": {
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "nope"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/kind"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": {
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "reading"
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/kind"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168811000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168812000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168813000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168814000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/cards",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/items": 1
+        },
+        "body": {
+          "/items/0/id": "0193b000-0002-7000-8000-000000000001"
+        }
+      }
+    }
+  ]
+}

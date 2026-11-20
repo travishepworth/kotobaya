@@ -943,3 +943,108 @@ Three choices most worth a second look:
 3. An older web bundle on a new server shows its existing waiting screen without a Keep going
    button during a wait (the button appears at the stop screen as before). Accepted for the
    minutes until the bundle is updated; server and web deploy from one pin.
+
+## C-31 changes: local-first shell, non-blocking proxy, keep-going target, loop presenter (ADR-050, 051, 052, 053)
+
+What was decided:
+- **On the phone nothing on a normal screen waits for the network.** Every operation the app's
+  screens call is now one of: `local` (answered from the phone's own data: 66 operations, 28
+  more than before), `local_or_proxy` (dictionary reads: the name is kept, but they never go to
+  the server on a request any more), or the new class `cached` (11 read operations whose data
+  only the server has: shown at once from a copy kept on the phone and refreshed in the
+  background). 15 operations stay `proxy`; the app only calls those from explicit actions that
+  say "needs connection".
+- **Every change you can make is saved on the phone first** (new rule L-10). Besides reviews,
+  notes and decks this now covers single cards (suspend, flag, bury, preset, add, delete),
+  presets, note types, confusable pairs, grammar points and their highlighted spans, and media
+  titles / deletion: 17 operations that used to need the server. They work offline, return at
+  once and are pushed in the background like a review. The screens that list those things read
+  from the phone too, so a change shows immediately. The rule is mechanical — "if a phone is
+  allowed to create this kind of change record and applies it itself, the operation is local" —
+  and `check_shell.py` enforces it (`ops_map_local_writes`), so a future write cannot be left
+  behind the network by oversight. What stays online-only, with the reason next to each:
+  parse overrides (the phone keeps no copy of them and the server must re-parse), creating a
+  deck from a vocabulary list (server-built), text parsing, rule testing, audio generation,
+  jobs, exports.
+- **`cached` in one paragraph** (SHELL.md 4.4, rules K-1 … K-4): the copy is keyed by operation,
+  path and sorted query; a hit answers at once with `kotobaya-cached-at`; when online and the copy
+  is older than 60 s (or marked stale because related data changed) it is fetched again in the
+  background, and the event `cache.updated` is sent only if the answer changed; with no copy the
+  answer is an immediate `503 shell_uncached` plus one background fetch; after every successful
+  sync a fixed list is fetched ahead of time; the cache holds at most 16 MiB, least recently used
+  out first. New device table `response_cache` (not learning data, no op).
+- **No sync before or after a proxied call** (rules P-2, P-3 rewritten): the 5 s push before and
+  the up-to-10 s hold after are gone. A proxied write returns as soon as the server answers,
+  flagged `kotobaya-shell-stale: 1` when its effect has not been pulled yet.
+- **New rule L-9**: a local or cached operation never starts-and-waits, joins or depends on
+  network I/O or a sync cycle. This includes creating cards from deck entries during review,
+  which now depends only on "the first sync has finished and no rebuild is pending".
+- **Sync runs behind the user**: a review session causes a sync a couple of seconds after the last
+  answer (at most every 10 s) instead of one per answer, and pulled changes are applied in slices
+  of 50 so a tap never queues behind them. New `ShellSyncStatus.first_sync {done, applied,
+  total}` drives the one remaining wait: the "Setting up" screen after pairing.
+- **Keep going** (ADR-052): new query `keep_going_new_target` on `getReviewQueue`; the stop screens
+  can now also follow a keep-going request; `loop.keep_going_available` redefined as "pressing it
+  would serve a card now" (core summary, C-31).
+- **Client rules**: C2 amended (the target; it is computed after the answers still on their way
+  are counted, so a batch is never short), C5 amended (no "pending" screen), new C7 (render the
+  core presenter's output only), new C8 (browser: answers go to a persisted outbox, grading never
+  locks). In C8 a refusal because of the browser's clock (`422` at `/reviewed_at`) does **not**
+  drop the answer: it is sent again without its timestamp and the server uses its own time.
+  Only other refusals are final.
+- `LOCAL_API_VERSION` 3 and `min_local_api` 3; 11 new parity scenarios (stats, bulk, reschedule,
+  speech, keep-going target, and one each for the card, preset, note-type, confusable and
+  grammar writes), hand-written, goldens to be recorded; `check_shell.py` accepts
+  `cached`, checks the class counts in SHELL.md against `ops.json`, and enforces that no `local` /
+  `cached` operation needs a scope a device token lacks and that `cached` operations are GETs.
+- No op, no learning-data table, no `SCHEDULER_VERSION` change. The cross-check tables keep every
+  row (SHELL.md 11: operations moved between columns; SYNC.md 14 and the table above in this file
+  list API operations per table and are unchanged, since no operation was added or removed).
+
+Alternatives rejected:
+- **A full replica in the browser (service worker + local database) for desktop web.** It would
+  make desktop equal to the phone, but it is a second sync client to build and keep correct;
+  ADR-050 scopes desktop to "grading never blocks, outbox persisted, cards prefetched".
+- **Returning `loop` in the answer response** so the header updates from each answer. Each tap
+  would wait for a queue evaluation, and offline answers have no response; the presenter projects
+  the header locally instead.
+- **A loopback HTTP cache proxy on the phone** (a local server in front of the API with standard
+  HTTP caching). It needs a socket and a port (the shell has neither by design), cannot say
+  "not downloaded yet" distinctly, and cannot be invalidated by local data changes.
+- Answering a cache miss with an empty `200` body, and holding the request until the fetch
+  returns (see second look 2).
+- Renaming `local_or_proxy` to `local`: every SPA build reads the class names; the behaviour
+  changed, the name did not need to.
+- Forwarding dictionary misses when online "because it is fast". Fast on a good network is the
+  5–10 s stall on a bad one.
+
+Three choices most worth a second look:
+1. **Keep-going batch = the daily goal, per press** (ADR-052, confirmed). The client sends
+   `new.today + max(1, goal)`. A different default (e.g. a fixed 10, or half the goal) is a
+   one-line change in the client; the contract only carries the number.
+2. **`503 shell_uncached` instead of an empty answer or a wait.** A screen backed by server-only
+   data (deck coverage curve, forecast, media lists) shows a "not downloaded yet" placeholder
+   the first time, for the moment the background fetch takes, and when offline before it was ever
+   loaded. The alternative that waits would hide that moment on a good network and bring the
+   stalls back on a bad one; the alternative that returns "empty" would show "you have no media".
+3. **The phone downloads the full dictionary by itself on Wi-Fi** (ADR-053, still provisional):
+   scope `all` instead of `top60k`, a larger download, started after the first sync on an
+   unmetered network unless the user chose `top60k` explicitly. Without it, a word outside the
+   60k most common is simply not found on the phone until it is referenced by a note or deck,
+   because dictionary search no longer asks the server.
+
+Also changed, smaller:
+- `createNote` for an entry the phone does not have answers `503 shell_dict_missing` at once and
+  fetches the entry in the background, instead of fetching it within the request.
+- `listDictHeadwords` answers what it has and flags the rest with `kotobaya-shell-partial: 1`.
+- `resolveSpeech` on the phone answers `pending` offline instead of `503`.
+- Two accepted differences of the new local writes: a grammar detection rule with a syntax error
+  is stored by the phone (only the server can parse rules; "test rule" stays an online action),
+  and a media deleted on the phone has its server-side jobs ended by the server when the change
+  arrives, not at the tap.
+- A local change the server would have refused because of something the phone had not pulled
+  yet is either reconciled by the normal merge rules or shown under Settings → Sync as a
+  rejected change; it is never lost silently (SHELL.md 10.21).
+- One file outside this ticket's listed paths was touched: one line in `contracts/db/check.sh`
+  (the allow-list of device-only tables gained `response_cache`); without it the new table
+  fails the device-versus-server schema comparison.
