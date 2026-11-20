@@ -48,6 +48,17 @@ internal class KanjiNeeds(
 ) {
     private class SenseUse(val appliesTo: Set<String>, val usuallyKana: Boolean)
     private class Entry(val headword: String, val reading: String, val formTags: List<Pair<String, List<String>>>, val senses: List<SenseUse>)
+    private class EntryCache(val token: String) {
+        val entries = java.util.concurrent.ConcurrentHashMap<Long, Entry>()
+    }
+
+    private companion object {
+        /** Bounds memory if something walks the whole dictionary through here; beyond it misses are just not cached. */
+        const val ENTRY_CACHE_MAX = 100_000
+
+        @Volatile
+        var entryCache: EntryCache? = null
+    }
 
     fun resolve(words: Collection<WordRef>): Map<String, ResolvedWord> {
         if (words.isEmpty()) return emptyMap()
@@ -60,18 +71,50 @@ internal class KanjiNeeds(
             forms[w.key] = e to r
         }
         val literals = forms.values.flatMap { DefaultCardGenerator.kanjiOf(it.first) }.toSet()
-        val facts = if (enabled) facts(literals) else emptyList()
+        // By literal, first row wins (as the requirement itself dedups). Each word gets only its own kanji's facts:
+        // the requirement indexes the list it is given, so handing every word the whole page's facts was
+        // O(words × kanji) per call (~15M map inserts for a 7.5k-word queue).
+        val factsByLiteral = HashMap<String, KanjiFacts>()
+        if (enabled) for (f in facts(literals)) factsByLiteral.putIfAbsent(f.literal, f)
         return words.associate { w ->
             val (expression, reading) = forms.getValue(w.key)
             val entry = w.entrySeq?.let(entries::get)
             val tags = entry?.formTags.orEmpty().filter { it.first == expression }.flatMap { it.second }.toSet()
             val uk = entry?.senses?.firstOrNull { "*" in it.appliesTo || expression in it.appliesTo }?.usuallyKana ?: false
-            val result = requirement.evaluate(WordForm(expression, tags, uk), facts, enabled)
-            w.key to ResolvedWord(expression, reading, DefaultCardGenerator.kanjiOf(expression), result.learnableKanji, result.frontFurigana)
+            val expressionKanji = DefaultCardGenerator.kanjiOf(expression)
+            val wordFacts = expressionKanji.mapNotNull(factsByLiteral::get)
+            val result = requirement.evaluate(WordForm(expression, tags, uk), wordFacts, enabled)
+            w.key to ResolvedWord(expression, reading, expressionKanji, result.learnableKanji, result.frontFurigana)
         }
     }
 
+    /**
+     * [Entry] rows are pure functions of `ref.dict_entry`, which only the worker's dictionary load writes, in one
+     * transaction that ends by setting `is_current` on its release row. That row's `(id, xmin)` therefore changes with
+     * every load (even a reload of the same id), and keys a process-wide cache: a queue build otherwise re-shapes the
+     * jsonb of every vocab entry (~45 ms for 7.5k words) on each request. A map is only ever filled by requests that
+     * read its token; a new token replaces the map.
+     */
     private fun entries(seqs: Set<Long>): Map<Long, Entry> {
+        if (seqs.isEmpty()) return emptyMap()
+        val token = dsl.fetchOptional("select id::text || ':' || xmin::text from ref.dict_release where is_current")
+            .map { it.get(0, String::class.java) }.orElse(null)
+            ?: return fetchEntries(seqs)
+        val cache = entryCache.let { c ->
+            if (c != null && c.token == token) c else EntryCache(token).also { entryCache = it }
+        }
+        val out = HashMap<Long, Entry>(seqs.size * 2)
+        val missing = ArrayList<Long>()
+        for (s in seqs) cache.entries[s]?.let { out[s] = it } ?: missing.add(s)
+        if (missing.isNotEmpty()) {
+            val fetched = fetchEntries(missing.toSet())
+            if (cache.entries.size + fetched.size <= ENTRY_CACHE_MAX) cache.entries.putAll(fetched)
+            out.putAll(fetched)
+        }
+        return out
+    }
+
+    private fun fetchEntries(seqs: Set<Long>): Map<Long, Entry> {
         if (seqs.isEmpty()) return emptyMap()
         return dsl.fetch(
             "select e.seq, e.headword, e.headword_reading, " +

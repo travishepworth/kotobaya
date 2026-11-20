@@ -112,8 +112,10 @@ internal class DeckEntryPlan(
         if (missing.isEmpty()) return
         missing.forEach { blockedKanji[it] = false }
         dsl.fetch(
-            "select distinct kanji_literal from app.note where kanji_literal = any(array(select unnest(?::text[]))) " +
-                "and (deleted_at is null or merged_into_id is null)",
+            // A join on unnest, not `= any(array(...))`: with a queue's ~2k literals the array form is a seq scan doing a
+            // linear array search per note row (~40 ms); the join hashes.
+            "select distinct n.kanji_literal from app.note n join unnest(?::text[]) as l(literal) on n.kanji_literal = l.literal " +
+                "where n.deleted_at is null or n.merged_into_id is null",
             missing.toTypedArray(),
         ).forEach { blockedKanji[it.get(0, String::class.java)] = true }
     }

@@ -175,24 +175,25 @@ internal class QueueLoader(private val dsl: DSLContext) {
     private fun pendingEntries(budget: Int, deckFilter: String?, burySiblings: Boolean, plan: DeckEntryPlan): List<PendingEntry> {
         if (budget <= 0) return emptyList()
         val rows = dsl.fetch(
-            "select x.deck_id, x.entry_seq, x.position, x.item_key, de.headword, de.headword_reading, de.senses::text, " +
-                DeckEntrySettings.columns("d") + " from (" +
-                "select di.deck_id, di.entry_seq, di.position, di.item_key, " +
-                "row_number() over (partition by di.deck_id order by di.position, di.item_key) as rn " +
-                "from app.deck_item di " +
-                "join app.deck d on d.id = di.deck_id and d.deleted_at is null and d.enabled and d.type <> 'smart' " +
-                "left join app.word_status ws on ws.entry_seq = di.entry_seq " +
-                "where di.deleted_at is null and di.entry_seq is not null " +
-                "and (?::uuid is null or di.deck_id = ?::uuid) " +
+            // Per deck, walk deck_item_order_idx and stop at the limit (LATERAL ... LIMIT), instead of filtering every
+            // item of every deck and numbering them: most leading items already have notes, but the walk stops as soon
+            // as the deck has enough. `word_status.entry_seq` is its key, so NOT EXISTS equals the old left join + filter.
+            "select d.id, x.entry_seq, x.position, x.item_key, de.headword, de.headword_reading, de.senses::text, " +
+                DeckEntrySettings.columns("d") + " from app.deck d cross join lateral (" +
+                "select di.entry_seq, di.position, di.item_key from app.deck_item di " +
+                "where di.deck_id = d.id and di.deleted_at is null and di.entry_seq is not null " +
                 "and exists (select 1 from ref.dict_entry de where de.seq = di.entry_seq) " +
                 // No live note (note_live_entry_uq) and no user-deleted note for the entry.
                 "and not exists (select 1 from app.note n where n.entry_seq = di.entry_seq and n.deleted_at is null) " +
                 "and not exists (select 1 from app.note n where n.entry_seq = di.entry_seq " +
                 "  and n.deleted_at is not null and n.merged_into_id is null) " +
-                "and (ws.override_status is null or ws.override_status not in ('known', 'never_forget', 'blacklisted', 'ignored'))" +
-                ") x join app.deck d on d.id = x.deck_id join ref.dict_entry de on de.seq = x.entry_seq " +
-                "where x.rn <= ? order by x.deck_id, x.position, x.item_key",
-            deckFilter, deckFilter, 2L * budget + 16,
+                "and not exists (select 1 from app.word_status ws where ws.entry_seq = di.entry_seq " +
+                "  and ws.override_status in ('known', 'never_forget', 'blacklisted', 'ignored')) " +
+                "order by di.position, di.item_key limit ?" +
+                ") x join ref.dict_entry de on de.seq = x.entry_seq " +
+                "where d.deleted_at is null and d.enabled and d.type <> 'smart' and (?::uuid is null or d.id = ?::uuid) " +
+                "order by d.id, x.position, x.item_key",
+            2L * budget + 16, deckFilter, deckFilter,
         )
         if (rows.isEmpty()) return emptyList()
         val entries = rows.mapNotNull { r ->
