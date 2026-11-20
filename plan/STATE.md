@@ -8,7 +8,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
 Design DONE: plan/tickets/LF-DESIGN.md + 18 tickets (LF-A8 added). C-31 APPROVED r2, merged into integration branch t/LF-int (worktree scratchpad/lfint, pushed). Writers branch from origin/t/LF-int; merge each into t/LF-int; t/LF-int -> main when ALL modules green, then ONE release.
-Running (from t/LF-int): LF-A1, LF-A2 (writer-senior), LF-A4 (writer). IN REVIEW: LOOP-31-CORE-A (fuzz found I7 + target bugs; I1-I5 held -> header mismatch is presenter/web). Next: LF-A5; LOOP-31-CORE-B + LOOP-31-API after CORE-A merges.
+Running (from t/LF-int): LF-A1, LF-A2 (writer-senior), LF-A4 (writer). LOOP-31-CORE-A MERGED to t/LF-int (I1-I5 held before fix -> header mismatch is presenter/web; CORE-B MUST add the pending-answer fuzz step for I6). Next on free slot: LOOP-31-CORE-B (critical path), then LOOP-31-API, LF-A5.
 Cleanup done: all merged worktrees/branches removed (local + origin t/*); main == origin/main. Kept release/0.1.9 (1 unmerged commit).
 
 ## Previous (2026-11-20) — perf + UX-1, direct session (not a ticket run)

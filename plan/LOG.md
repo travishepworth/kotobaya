@@ -1431,3 +1431,4 @@
 2026-11-20T10:44:08Z C-31 server/android red = expected drift (parity goldens, RouteTable) -> integration branch t/LF-int
 2026-11-20T10:52:59Z C-31 REVIEW_APPROVE r2, checks green -> merged into t/LF-int; DISPATCH LOOP-31-CORE-A, LF-A1, LF-A2 from t/LF-int
 2026-11-20T11:13:46Z LOOP-31-CORE-A HANDOFF (fuzz: I7 fail 117 seeds, target ignored 1232/2000 before fix) -> reviewer; DISPATCH LF-A4
+2026-11-20T11:15:49Z LOOP-31-CORE-A REVIEW_APPROVE + merged into t/LF-int; minors -> FOLLOWUPS
