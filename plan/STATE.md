@@ -8,7 +8,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
 Design DONE: plan/tickets/LF-DESIGN.md + 18 tickets (LF-A8 added). C-31 APPROVED r2, merged into integration branch t/LF-int (worktree scratchpad/lfint, pushed). Writers branch from origin/t/LF-int; merge each into t/LF-int; t/LF-int -> main when ALL modules green, then ONE release.
-Running (from t/LF-int): LF-A4 (writer), LOOP-31-CORE-B (writer-senior), LOOP-31-API (writer). LF-A2 APPROVED (merge after android re-check shows only the 4 known fails; LF-A2b filed). LF-A1 IN REVIEW (concern: 5 s writer lock + StoreBusyException 500 on UI path).
+Running (from t/LF-int): LOOP-31-CORE-B (writer-senior), LOOP-31-API (writer), LF-A5 (writer-senior). LF-A4 parked: rebase onto LF-int after A1+A2 push, enable bulkScheduleCards. LF-A2 APPROVED (merge after android re-check shows only the 4 known fails; LF-A2b filed). LF-A1 IN REVIEW (concern: 5 s writer lock + StoreBusyException 500 on UI path).
 Cleanup done: all merged worktrees/branches removed (local + origin t/*); main == origin/main. Kept release/0.1.9 (1 unmerged commit).
 
 ## Previous (2026-11-20) — perf + UX-1, direct session (not a ticket run)

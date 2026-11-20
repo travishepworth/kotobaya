@@ -899,7 +899,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LF-A2 — Shell: non-blocking upstream, `cached` class with response cache, no-network invariant test · model: opus · risk: high · deps: C-31 · status: APPROVED (await check) (ticket: plan/tickets/LF-A2.md)
 - LF-A3 — Shell: local stats for Home (summary, heatmap, retention) · model: opus · risk: med · deps: C-31, LF-A2 · status: TODO (ticket: plan/tickets/LF-A3.md)
 - LF-A4 — Shell: all bulkCards actions and bulkScheduleCards local · model: sonnet · risk: med · deps: C-31 · status: HANDOFF (needs rebase onto LF-int w/ LF-A2 to enable bulkScheduleCards) (ticket: plan/tickets/LF-A4.md)
-- LF-A5 — Shell: search and card queries never forward · model: opus · risk: med · deps: C-31 · status: TODO (ticket: plan/tickets/LF-A5.md)
+- LF-A5 — Shell: search and card queries never forward · model: opus · risk: med · deps: C-31 · status: RUNNING (ticket: plan/tickets/LF-A5.md)
 - LF-A6 — Shell: dictionary and speech never wait on the network · model: sonnet · risk: med · deps: C-31, LF-A2 · status: TODO (ticket: plan/tickets/LF-A6.md)
 - LF-A7 — Shell: startup and first-sync status · model: sonnet · risk: low · deps: C-31, LF-A1 · status: TODO (ticket: plan/tickets/LF-A7.md)
 - LF-W1 — Web: persisted answer outbox, background retry, grading never blocks · model: opus · risk: high · deps: LOOP-31-WEB · status: TODO (ticket: plan/tickets/LF-W1.md)
