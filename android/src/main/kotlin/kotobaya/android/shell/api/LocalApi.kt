@@ -10,6 +10,7 @@ import kotobaya.android.shell.api.device.routes as deviceRoutes
 import kotobaya.android.shell.api.identity.routes as identityRoutes
 import kotobaya.android.shell.api.mining.routes as miningRoutes
 import kotobaya.android.shell.api.review.routes as reviewRoutes
+import kotobaya.android.shell.api.stats.routes as statsRoutes
 import kotobaya.android.shell.api.struggle.routes as struggleRoutes
 
 /** The shell's state the dispatcher's gates read (SHELL.md 2.5, 3.1, L-8). */
@@ -42,7 +43,7 @@ object OfflineUpstream : Upstream {
 /** Every group's routes. Each L ticket fills only its own group's `Routes.kt`. */
 object LocalRoutes {
     val all: List<LocalRoute>
-        get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes
+        get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes + statsRoutes
 }
 
 /**
