@@ -1426,3 +1426,4 @@
 2026-11-20T09:52:53Z APK 0.1.40 built (pin 8b3f81df, code 140, cert ec6b7f45 ok) + INSTALLED (users 0+10)
 2026-11-20T10:00:07Z DECIDE ADR-050 (local-first shell, all routes) + ADR-051 (Keep going everywhere, count invariant) by user; architect design DISPATCH
 2026-11-20T10:09:25Z architect design done: 17 tickets (C-31, LOOP-31-*, LF-*) in plan/tickets, LF-DESIGN.md; DECIDE ADR-052/053 provisional; C-31 DISPATCH
+2026-11-20T10:12:17Z DECIDE ADR-052 confirmed by user + (a) due cards first in keep going (b) batch session-scoped, not owed after exit; sent to C-31

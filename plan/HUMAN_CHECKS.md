@@ -269,5 +269,5 @@ Known gaps: offline search/dictionary/decks/browse not yet local (L4-L8); pairin
 - Release note: deck `add_kanji: off` no longer opts out of kanji cards; the rule is global (setting `cards.kanji_exemptions` controls exemptions only).
 
 ## Provisional decisions (run 36, local-first round)
-- ADR-052: Keep going adds one goal-sized batch per press, then the stop screen returns (was an endless stream).
+- ADR-052 (confirmed by user): Keep going adds one goal-sized batch per press; due cards are served first; leaving review drops the unfinished batch.
 - ADR-053: full dictionary auto-downloads on Wi-Fi/unmetered.
