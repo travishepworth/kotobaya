@@ -267,3 +267,7 @@ Known gaps: offline search/dictionary/decks/browse not yet local (L4-L8); pairin
 - ADR-043 provisional: kanji units larger than today's remaining new budget introduce their kanji first and the word on a later day (limit never exceeded). OK?
 - ANSWERED 2026-11-19 (ADR-045): learnable kanji always get cards; word tags only give furigana.
 - Release note: deck `add_kanji: off` no longer opts out of kanji cards; the rule is global (setting `cards.kanji_exemptions` controls exemptions only).
+
+## Provisional decisions (run 36, local-first round)
+- ADR-052: Keep going adds one goal-sized batch per press, then the stop screen returns (was an endless stream).
+- ADR-053: full dictionary auto-downloads on Wi-Fi/unmetered.
