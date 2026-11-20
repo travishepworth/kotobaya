@@ -11,6 +11,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
@@ -26,8 +27,8 @@ import org.koin.core.context.GlobalContext
  * - [PERIODIC]: every 15 minutes (the platform minimum), kept if already scheduled.
  * - [NOW]: an expedited one-shot (falls back to a normal one-shot when out of quota); appended after
  *   a running one.
- * - [LOCAL]: the delayed backstop of a debounced local change (C-31, [requestDebounced]); the
- *   in-process debounce of [SyncTriggers.localChange] normally runs the cycle first and cancels it.
+ * - [LOCAL]: the delayed backstop of a debounced local change (C-31, [requestDebounced]; one not yet started, chained
+ *   behind a running one); the in-process debounce of [SyncTriggers.localChange] normally runs the cycle first and cancels it.
  * - [RETRY]: the one-shot after a failed cycle, delayed by T303a's [kotobaya.sync.client.protocol.SyncBackoff]
  *   (5 s doubling to 15 min, jitter); replaced by each new failure, cancelled by a success.
  *   WorkManager's own backoff is not used (its minimum is 10 s and its cap 5 h, not the contract's).
@@ -61,15 +62,22 @@ object SyncWork {
 
     /**
      * The process-death backstop of a debounced local change ([SyncTriggers.localChange], SYNC.md 6.1): one delayed
-     * one-shot, [DEBOUNCED_DELAY_MS] after the first change it covers (KEEP: later changes do not push it back).
-     * While the process lives the in-process timer runs the cycle first and [cancelDebounced] removes this request.
+     * one-shot, [DEBOUNCED_DELAY_MS] after the first change it covers. A backstop that has not started yet covers the
+     * new change too (later changes do not push it back). One that is RUNNING may have pushed before the change, so a
+     * new one is chained behind it (APPEND_OR_REPLACE, LF-A1b): KEEP would swallow the change. Blocks on WorkManager's
+     * state; call it off the main thread. While the process lives the in-process timer runs the cycle first and
+     * [cancelDebounced] removes the request.
      */
     fun requestDebounced(wm: WorkManager) {
-        val req = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setInitialDelay(DEBOUNCED_DELAY_MS, TimeUnit.MILLISECONDS)
-            .setConstraints(constraints())
-            .build()
-        wm.enqueueUniqueWork(LOCAL, ExistingWorkPolicy.KEEP, req)
+        synchronized(this) {
+            val live = wm.getWorkInfosForUniqueWork(LOCAL).get().filter { !it.state.isFinished }
+            if (live.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }) return
+            val req = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setInitialDelay(DEBOUNCED_DELAY_MS, TimeUnit.MILLISECONDS)
+                .setConstraints(constraints())
+                .build()
+            wm.enqueueUniqueWork(LOCAL, ExistingWorkPolicy.APPEND_OR_REPLACE, req).result.get()
+        }
     }
 
     fun cancelDebounced(wm: WorkManager) {
