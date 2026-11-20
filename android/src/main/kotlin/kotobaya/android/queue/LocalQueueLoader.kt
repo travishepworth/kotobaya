@@ -493,9 +493,10 @@ private class WordKanjiResolver(
 }
 
 /**
- * When a paired device may materialize deck entries: after a complete pull (`last_sync_at` set by a cycle that pulled
- * until `has_more` was false), with no cycle running, no failed cycle since (a pull cut off mid-way counts as one) and
- * no rebuild pending. An unpaired device has nothing to pull and may always.
+ * When a paired device may materialize deck entries (SYNC.md 8.1 "When a device materializes", SHELL.md 4.3, C-31):
+ * after its first complete pull (`last_sync_at` set by a cycle that pulled until `has_more` was false) and with no
+ * rebuild pending. Nothing else: not whether a cycle is running, has failed or how often, nor being online (L-9). An
+ * unpaired device has nothing to pull and may always.
  */
-fun materializeAllowed(paired: Boolean, syncRunning: Boolean, failures: Int, lastSyncAt: Long?, rebuildPending: Boolean): Boolean =
-    !paired || (!syncRunning && failures == 0 && lastSyncAt != null && !rebuildPending)
+fun materializeAllowed(paired: Boolean, lastSyncAt: Long?, rebuildPending: Boolean): Boolean =
+    !paired || (lastSyncAt != null && !rebuildPending)

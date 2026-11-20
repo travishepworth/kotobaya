@@ -23,7 +23,6 @@ import kotobaya.android.shell.api.identity.ShellIdentity
 import kotobaya.android.shell.api.identity.timestamp
 import kotobaya.android.review.CardRows
 import kotobaya.android.sync.SqlDelightDeviceStore
-import kotobaya.android.sync.SyncCoordinator
 import kotobaya.contracts.queue.LoopState
 import kotobaya.contracts.queue.PendingEntry
 import kotobaya.contracts.queue.QueueItem
@@ -92,10 +91,10 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
     val db = services.get<AppDatabase>()
     val dict = services.get<InstalledDictionary>()
     val now = services.get<ShellIdentity>().nowMs()
-    val coordinator = services.get<SyncCoordinator>()
+    // C-31 / L-9: only the first complete pull and the rebuild flag decide, never the sync coordinator
     val materializer = ShellEntryMaterializer(services.get<EntryMaterializer>()) {
         "new" in r.kinds && store.read { it.bookkeeping.lastSyncAt to it.bookkeeping.rebuildPending }.let { (lastSyncAt, rebuild) ->
-            materializeAllowed(true, coordinator.running.value, coordinator.consecutiveFailures, lastSyncAt, rebuild)
+            materializeAllowed(true, lastSyncAt, rebuild)
         }
     }
     // ADR-042: the process-wide cache when the app provides one (the loader runs on every answer), else per request
