@@ -288,10 +288,15 @@ describe('persisted answer outbox (LF-W1, C8)', () => {
 		page.start(null);
 		await tick();
 		const real = api.answerReview.getMockImplementation();
+		const sentOrder: string[] = []; // request order as the client sends them
 		let late!: () => void;
-		api.answerReview.mockImplementationOnce(
-			(r: { reviewAnswerRequest: Req }) => new Promise((res) => (late = () => res(real?.(r))))
-		);
+		let first = true;
+		api.answerReview.mockImplementation((r: { reviewAnswerRequest: Req }) => {
+			sentOrder.push(r.reviewAnswerRequest.cardId);
+			if (!first) return real?.(r);
+			first = false;
+			return new Promise((res) => (late = () => res(real?.(r))));
+		});
 		page.flip();
 		const aId = page.answerId;
 		void page.grade(good);
@@ -302,9 +307,9 @@ describe('persisted answer outbox (LF-W1, C8)', () => {
 		await tick(1000); // a retried (same id) and accepted, then b
 		late(); // the abandoned first request completes now
 		await tick();
-		expect(s.calls.map((c) => c.cardId)).toEqual(['a', 'a', 'b']);
-		expect(s.calls[1].id).toBe(aId);
-		expect(s.reviews.size).toBe(2);
+		expect(sentOrder).toEqual(['a', 'a', 'b']);
+		expect(s.calls[0].id).toBe(aId);
+		expect([...s.reviews.values()]).toEqual(['a', 'b']);
 		dispose();
 	});
 

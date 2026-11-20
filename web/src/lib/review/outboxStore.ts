@@ -130,10 +130,10 @@ export function idbOutboxStore(factory: IDBFactory): OutboxStore {
 			await run('readwrite', (s) => s.put(r), () => fallback.put(r).then(() => r.id));
 		},
 		delete: async (id) => {
-			await run('readwrite', (s) => s.delete(id), () => fallback.delete(id));
+			await run<undefined>('readwrite', (s) => s.delete(id), () => fallback.delete(id).then(() => undefined));
 		},
 		clear: async () => {
-			await run('readwrite', (s) => s.clear(), () => fallback.clear());
+			await run<undefined>('readwrite', (s) => s.clear(), () => fallback.clear().then(() => undefined));
 		}
 	};
 }
