@@ -897,7 +897,7 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - C-31 — Contracts: local-first shell classes, non-blocking upstream, keep-going target, loop presenter · model: fable · risk: high · deps: none · status: MERGED (t/LF-int) (ticket: plan/tickets/C-31.md)
 - LF-A1 — Shell: materialize without waiting for sync; debounced push; short pull slices · model: opus · risk: high · deps: C-31 · status: MERGED (t/LF-int) (ticket: plan/tickets/LF-A1.md)
 - LF-A2 — Shell: non-blocking upstream, `cached` class with response cache, no-network invariant test · model: opus · risk: high · deps: C-31 · status: MERGED (t/LF-int) (ticket: plan/tickets/LF-A2.md)
-- LF-A3 — Shell: local stats for Home (summary, heatmap, retention) · model: opus · risk: med · deps: C-31, LF-A2 · status: MERGED (t/LF-int, local; push after check) (ticket: plan/tickets/LF-A3.md)
+- LF-A3 — Shell: local stats for Home (summary, heatmap, retention) · model: opus · risk: med · deps: C-31, LF-A2 · status: MERGED (t/LF-int) (ticket: plan/tickets/LF-A3.md)
 - LF-A4 — Shell: all bulkCards actions and bulkScheduleCards local · model: sonnet · risk: med · deps: C-31 · status: MERGED (t/LF-int) (ticket: plan/tickets/LF-A4.md)
 - LF-A5 — Shell: search and card queries never forward · model: opus · risk: med · deps: C-31 · status: RUNNING (ticket: plan/tickets/LF-A5.md)
 - LF-A6 — Shell: dictionary and speech never wait on the network · model: sonnet · risk: med · deps: C-31, LF-A2 · status: RUNNING (ticket: plan/tickets/LF-A6.md)
