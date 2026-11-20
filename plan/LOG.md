@@ -1438,3 +1438,4 @@
 2026-11-20T11:31:08Z LF-A1 REVIEW_APPROVE (minors -> LF-A1b: StoreBusy 500 -> retry/503; debounce races)
 2026-11-20T11:34:48Z LF-A4 HANDOFF: bulkScheduleCards route disabled (branch predates LF-A2 ApiOperations); rebase after LF-int push, then enable + un-@Ignore test
 2026-11-20T11:35:03Z DISPATCH LF-A5
+2026-11-20T11:41:21Z LF-A1 + LF-A2 merged into t/LF-int (android 649 tests, only 4 known drift fails); pushed
