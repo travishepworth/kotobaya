@@ -1,4 +1,4 @@
-.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web tokens tokens-check
+.PHONY: check test fmt dev-up dev-down dev-ui screenshots-web tokens tokens-check perf-device
 
 MODULES := core server worker web android deploy contracts acceptance cli
 GRADLE := ./gradlew --no-daemon -q
@@ -117,3 +117,7 @@ push:
 apk:
 	@if [ -z "$(ANDROID_SDK)" ] && [ ! -f local.properties ]; then echo "apk: Android SDK not found (set ANDROID_HOME or create local.properties)" >&2; exit 1; fi
 	$(RUN) $(GRADLE) :android:assembleRelease
+
+# PERF-GATE: on-device timing of the local API (adb, installed APK). make perf-device ARGS="--user 10 --speed"
+perf-device:
+	scripts/perf-device.sh $(ARGS)

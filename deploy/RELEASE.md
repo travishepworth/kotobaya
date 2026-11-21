@@ -59,6 +59,7 @@ VERSION_NAME=<x.y.z> VERSION_CODE=<1yz> flock /tmp/kotobaya-gradle.lock ./gradle
 - [ ] `apksigner verify --print-certs` shows cert SHA-256 `ec6b7f45…dbf6cd`. On a mismatch, stop and ask: reinstalling wipes unsynced reviews.
 - [ ] Don't send the APK file. Tell the user "ready". When they plug in: `adb install -r <apk>`, then check user 10 has it (`adb shell pm list packages --user 10 --show-versioncode | grep com.ichi2.anki`).
 - [ ] Never clear app data.
+- [ ] Perf gate: after installing, `make perf-device ARGS="--user 10"` (add a `--speed` run when a number is close). No APK release without its table (`plan/perf/device-<version>-<date>.md`) attached to the LOG line, unless the user waives it. A non-zero exit means a target was missed.
 - [ ] Take an `adb exec-out screencap -p` screenshot of each changed screen in Private Space (user 10) and look at it.
 
 ## 6. Other clients

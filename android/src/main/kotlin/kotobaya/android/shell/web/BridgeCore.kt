@@ -5,6 +5,8 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +48,10 @@ class BridgeCore(
     private val onPageReset: () -> Unit = {},
     /** A handler took longer than [SLOW_HANDLER_MS]: the operationId and the duration (LF-A7); never a body. */
     private val onSlow: (operationId: String, ms: Long) -> Unit = ::logSlow,
+    /** PERF-GATE: one structured record per call (see [PerfRecord]); only called when [perfAll] or the call was slow. */
+    private val onPerf: (PerfRecord) -> Unit = ::logPerf,
+    /** PERF-GATE: log every call, not only slow ones (system property `kotobaya.perf` = 1, or `setprop log.tag.KTB-PERF DEBUG`). */
+    private val perfAll: () -> Boolean = ::perfAllFromEnvironment,
 ) {
     /** Incremented by every page load; a `res` of an older page life is dropped (2.5 "Reload"). */
     private var pageLife = 0L
@@ -97,22 +103,27 @@ class BridgeCore(
         val life = pageLife
         scope.launch(io) {
             val startedAt = nowMs()
+            val timing = CallTiming(nowMs)
             val response = try {
-                handle(ShellRequest.fromRaw(req.method, req.path, req.query, req.headers, req.body))
+                withContext(timing) { handle(ShellRequest.fromRaw(req.method, req.path, req.query, req.headers, req.body)) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 warn("bridge: ${req.method} ${req.path} failed: ${e.javaClass.simpleName}")
                 Problems.internal().toResponse(req.path, req.header("x-request-id") ?: req.id)
             }
-            val took = nowMs() - startedAt
-            if (took > SLOW_HANDLER_MS) {
-                val id = ApiOperations.match(req.method, req.path)?.first?.operationId ?: "unmatched"
-                runCatching { onSlow(id, took) }
-            }
+            val handled = nowMs()
+            val took = handled - startedAt
+            val id = ApiOperations.match(req.method, req.path)?.first?.operationId ?: "unmatched"
+            if (took > SLOW_HANDLER_MS) runCatching { onSlow(id, took) }
             val text = BridgeCodec.encode(BridgeMessage.Res(req.id, response.status, response.headers, response.body))
             withContext(main) {
                 if (life == pageLife) replyTo.post(text)
+            }
+            if (took > SLOW_HANDLER_MS || runCatching(perfAll).getOrDefault(false)) {
+                runCatching {
+                    onPerf(PerfRecord(id, response.status, timing.gateMs, timing.laneMs, timing.mutexMs, timing.computeMs, took, nowMs() - handled))
+                }
             }
         }
     }
@@ -171,8 +182,22 @@ class BridgeCore(
         /** A request whose handler takes longer than this is logged (LF-A7). */
         const val SLOW_HANDLER_MS: Long = 250
 
+        /** Logcat tag of every timing line (PERF-GATE), also of the startup "gate open after N ms" line. */
+        const val PERF_TAG: String = "KTB-PERF"
+
         /** The slow-handler log line: operationId and duration only. */
         fun slowLine(operationId: String, ms: Long): String = "slow handler: $operationId took $ms ms"
+
+        /** The `KTB-PERF` line: operationId, status and milliseconds only; never a body. */
+        fun perfLine(r: PerfRecord): String =
+            "call op=${r.operationId} status=${r.status} gate=${r.gateMs} lane=${r.laneMs} mutex=${r.mutexMs} compute=${r.computeMs} total=${r.totalMs} encode=${r.encodeMs}"
+
+        private fun logPerf(r: PerfRecord) {
+            runCatching { android.util.Log.i(PERF_TAG, perfLine(r)) }
+        }
+
+        private fun perfAllFromEnvironment(): Boolean =
+            System.getProperty("kotobaya.perf") == "1" || runCatching { android.util.Log.isLoggable(PERF_TAG, android.util.Log.DEBUG) }.getOrDefault(false)
 
         private fun logSlow(operationId: String, ms: Long) {
             runCatching { android.util.Log.w("KotobayaLoad", slowLine(operationId, ms)) }
@@ -183,4 +208,41 @@ class BridgeCore(
         /** RFC 3339 UTC with milliseconds (`event.at`). */
         fun formatAt(ms: Long): String = AT.format(Instant.ofEpochMilli(ms))
     }
+}
+
+/**
+ * PERF-GATE: where one handler call spent its time. [totalMs] is the whole `handle` (clock starts before the readiness
+ * gate); [gateMs] + [laneMs] + [mutexMs] + [computeMs] account for it (the rest is routing, a few microseconds);
+ * [encodeMs] is the JSON encode of the `res` plus the post to the WebView, after the handler returned.
+ */
+data class PerfRecord(
+    val operationId: String,
+    val status: Int,
+    val gateMs: Long,
+    val laneMs: Long,
+    val mutexMs: Long,
+    val computeMs: Long,
+    val totalMs: Long,
+    val encodeMs: Long,
+)
+
+/** The marks of one call, carried in the coroutine context from [BridgeCore] to `LocalApi.handle`. */
+class CallTiming(private val clock: () -> Long) : AbstractCoroutineContextElement(Key) {
+    var gateMs: Long = 0
+        private set
+    var laneMs: Long = 0
+        private set
+    var mutexMs: Long = 0
+        private set
+    var computeMs: Long = 0
+        private set
+
+    fun now(): Long = clock()
+
+    fun addGate(ms: Long) { gateMs += ms }
+    fun addLane(ms: Long) { laneMs += ms }
+    fun addMutex(ms: Long) { mutexMs += ms }
+    fun addCompute(ms: Long) { computeMs += ms }
+
+    companion object Key : CoroutineContext.Key<CallTiming>
 }

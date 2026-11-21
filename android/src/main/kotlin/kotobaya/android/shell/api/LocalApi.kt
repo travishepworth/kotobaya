@@ -4,7 +4,9 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.sync.Mutex
+import kotobaya.android.shell.web.CallTiming
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotobaya.android.shell.cache.ResponseCache
@@ -117,7 +119,20 @@ class LocalApi(
     /** The registered operationIds. */
     val registered: Set<String> get() = routesById.keys
 
+    /** PERF-GATE: runs [block], booking the time since [laneStart] up to its start as lane wait and its own time as compute. */
+    private suspend fun <T> computed(timing: CallTiming?, laneStart: Long?, block: suspend () -> T): T {
+        if (timing == null) return block()
+        val start = timing.now()
+        if (laneStart != null) timing.addLane(start - laneStart)
+        try {
+            return block()
+        } finally {
+            timing.addCompute(timing.now() - start)
+        }
+    }
+
     suspend fun handle(raw: ShellRequest): ShellResponse {
+        val timing = currentCoroutineContext()[CallTiming]
         val requestId = raw.header(ShellHeaders.REQUEST_ID)?.takeIf { REQUEST_ID_PATTERN.matches(it) } ?: newRequestId()
         val request = if (raw.method == "GET") raw.copy(body = null) else raw
         fun problem(p: Problem) = p.toResponse(request.path, requestId)
@@ -144,12 +159,24 @@ class LocalApi(
                 forward(request, op, requestId)
             }
         if (op.operationId !in GATE_EXEMPT) {
-            withTimeoutOrNull(readyTimeoutMs) { gate.awaitReady() } ?: return problem(Problems.shellRebuilding())
+            val gateStart = timing?.now()
+            val opened = withTimeoutOrNull(readyTimeoutMs) { gate.awaitReady() }
+            if (timing != null && gateStart != null) timing.addGate(timing.now() - gateStart)
+            opened ?: return problem(Problems.shellRebuilding())
             if (gate.isRebuildPending()) return problem(Problems.shellRebuilding())
         }
         val response = try {
             val call = LocalCall(request, op, params, requestId, services)
-            if (op.operationId in BACKGROUND_LANE) background(request) { withContext(backgroundLane) { route.handler(call) } } else route.handler(call)
+            if (op.operationId in BACKGROUND_LANE) {
+                val mutexStart = timing?.now()
+                background(request) {
+                    val laneStart = timing?.now()
+                    if (timing != null && mutexStart != null && laneStart != null) timing.addMutex(laneStart - mutexStart)
+                    withContext(backgroundLane) { computed(timing, laneStart) { route.handler(call) } }
+                }
+            } else {
+                computed(timing, null) { route.handler(call) }
+            }
         } catch (e: ProblemException) {
             return problem(e.problem)
         } catch (e: CancellationException) {

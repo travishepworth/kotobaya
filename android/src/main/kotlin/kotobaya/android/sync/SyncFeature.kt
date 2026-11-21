@@ -248,7 +248,9 @@ class SyncBootstrap(
                 .onFailure { Log.e(TAG, "startup replay failed; the applier retries it before the next apply", it) }
             ready.complete(Unit)
             // AND-POSTSYNC: every reader (queue, decks, review, local search) waits for this line
-            Log.i(TAG, "gate open after ${System.currentTimeMillis() - gateStart} ms (replayed=${replayed.getOrNull()})")
+            val gateLine = "gate open after ${System.currentTimeMillis() - gateStart} ms (replayed=${replayed.getOrNull()})"
+            Log.i(TAG, gateLine)
+            Log.i("KTB-PERF", gateLine) // PERF-GATE: the same line under the timing tag (kotobaya.android.shell.web.BridgeCore.PERF_TAG)
             status.refresh()
             runCatching { workManager()?.let(SyncWork::ensurePeriodic) }
             runCatching(onReady)
