@@ -170,9 +170,23 @@ private fun render(
             }
     }
     val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour)
-    val items = store.read { tx ->
-        QueueViews(tx.learning, dict, FsrsScheduler, settings.leechThreshold, kanji, wordAudio)
-            .items(wanted.map { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" }, now)
+    val cards = wanted.map { it.cardId to if (it.kind == QueueItemKind.REVIEW) "scheduled" else "learning" }
+    // PERF-LF: a page of 30 items (Home, the review prefetch) renders in a few parallel slices, each with its own views
+    // and reads; the items keep their order
+    fun slice(part: List<Pair<String, String>>): List<JsonValue> = store.read { tx ->
+        QueueViews(tx.learning, dict, FsrsScheduler, settings.leechThreshold, kanji, wordAudio).items(part, now)
+    }
+    val items = if (cards.size < PARALLEL_RENDER_MIN) {
+        slice(cards)
+    } else {
+        val parts = cards.chunked((cards.size + RENDER_SLICES - 1) / RENDER_SLICES)
+        RENDER_POOL.invokeAll(parts.map { part -> java.util.concurrent.Callable { slice(part) } }).flatMap { f ->
+            try {
+                f.get()
+            } catch (e: java.util.concurrent.ExecutionException) {
+                throw e.cause ?: e
+            }
+        }
     }
     val out = LinkedHashMap<String, JsonValue>()
     out["items"] = JsonArray(items)
@@ -213,6 +227,15 @@ private fun loopJson(s: LoopState): JsonObject = JsonObject(
 )
 
 private fun n(v: Int): JsonNumber = JsonNumber(v.toDouble())
+
+/** PERF-LF: pages of at least this many items render in [RENDER_SLICES] parallel slices on [RENDER_POOL]. */
+private const val PARALLEL_RENDER_MIN = 8
+private const val RENDER_SLICES = 3
+
+/** Daemon threads for the slices (idle threads cost nothing; a slice never waits on another). */
+private val RENDER_POOL: java.util.concurrent.ExecutorService = java.util.concurrent.Executors.newFixedThreadPool(RENDER_SLICES) { r ->
+    Thread(r, "kotobaya-queue-render").apply { isDaemon = true }
+}
 
 /**
  * The app's [EntryMaterializer] (production: `NoteCreator`), creating notes only while [allowed]. Unlike the native
