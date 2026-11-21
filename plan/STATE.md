@@ -80,6 +80,7 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 
 
 ## Queued
+(PERF-LF MERGED 2026-11-21; android check green after rebase.)
 P11 perf (2026-11-21). Rule from the user: an idea becomes a ticket only once it is validated against code and measurements.
 - PERF-GATE (sonnet, low): VALIDATED (BridgeCore.kt:98 clock includes gate, lane and mutex waits; no benchmark, profile or minify setup). Next after the PERF-LF merge.
 - PERF-SNAP2: WITHDRAWN. Premise false: review already saves the queue snapshot after every answer (review.svelte.ts:1575 and others), and Home revalidates on sync.changed.

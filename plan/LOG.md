@@ -1515,3 +1515,4 @@
 2026-11-21T00:00:00Z PERF-LF r3 CHECK_GREEN android; test APK 0.1.42/142 built from 60ee56fa (includes PERF-SNAP SPA bundle), cert ok -> waiting for phone to measure on device
 - 2026-11-21 run 39: independent review of 4 perf ideas (2 Plan agents). Server Home counts REJECTED (breaks REVIEW-LOOP same-numbers / ADR-051b). Persisted derived tables REJECTED. Home counts-only REJECTED. Device gate holds. Tickets written: PERF-GATE, PERF-WARM, PERF-SNAP2, C-33. Not dispatched.
 - 2026-11-21: user: validate before ticketing. Verified in code: PERF-GATE ok; PERF-SNAP2 premise false (writer stopped, no output kept); PERF-WARM queue-first item false; WARM and STATS-CACHED moved to plan/proposals (unvalidated).
+- 2026-11-21: PERF-LF MERGED to main (rebased, android check exit 0).
