@@ -1,0 +1,198 @@
+{
+  "id" : "preset-writes-local",
+  "steps" : [ {
+    "status" : 201,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "desired_retention" : 0.85,
+      "easy_days" : [ 1, 1, 1, 1, 1, 1, 1 ],
+      "fsrs_version" : null,
+      "fuzz" : true,
+      "id" : "0193b000-0006-7000-8000-000000000001",
+      "learning_steps_s" : [ 60, 600 ],
+      "maximum_interval_days" : 36500,
+      "name" : "Kanji",
+      "optimized_at" : null,
+      "optimizer_stats" : null,
+      "relearning_steps_s" : [ 600 ],
+      "updated_at" : "2026-11-20T10:00:01.000Z",
+      "weights" : null,
+      "weights_version" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "desired_retention" : 0.85,
+      "easy_days" : [ 1, 1, 1, 1, 1, 1, 1 ],
+      "fsrs_version" : null,
+      "fuzz" : true,
+      "id" : "0193b000-0006-7000-8000-000000000001",
+      "learning_steps_s" : [ 60, 600 ],
+      "maximum_interval_days" : 36500,
+      "name" : "Kanji",
+      "optimized_at" : null,
+      "optimizer_stats" : null,
+      "relearning_steps_s" : [ 600 ],
+      "updated_at" : "2026-11-20T10:00:01.000Z",
+      "weights" : null,
+      "weights_version" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "desired_retention" : 0.88,
+      "easy_days" : [ 1, 1, 1, 1, 1, 1, 1 ],
+      "fsrs_version" : null,
+      "fuzz" : true,
+      "id" : "0193b000-0006-7000-8000-000000000001",
+      "learning_steps_s" : [ 60, 600, 3600 ],
+      "maximum_interval_days" : 36500,
+      "name" : "Kanji",
+      "optimized_at" : null,
+      "optimizer_stats" : null,
+      "relearning_steps_s" : [ 600 ],
+      "updated_at" : "2026-11-20T10:00:03.000Z",
+      "weights" : null,
+      "weights_version" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "desired_retention" : 0.88,
+      "easy_days" : [ 1, 1, 1, 1, 1, 1, 1 ],
+      "fsrs_version" : null,
+      "fuzz" : true,
+      "id" : "0193b000-0006-7000-8000-000000000001",
+      "learning_steps_s" : [ 60, 600, 3600 ],
+      "maximum_interval_days" : 36500,
+      "name" : "Kanji",
+      "optimized_at" : null,
+      "optimizer_stats" : null,
+      "relearning_steps_s" : [ 600 ],
+      "updated_at" : "2026-11-20T10:00:03.000Z",
+      "weights" : null,
+      "weights_version" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "created_at" : "1970-01-01T00:00:00.000Z",
+        "deleted_at" : null,
+        "desired_retention" : 0.9,
+        "easy_days" : [ 1, 1, 1, 1, 1, 1, 1 ],
+        "fsrs_version" : null,
+        "fuzz" : true,
+        "id" : "00000000-0000-7000-8000-000000000010",
+        "learning_steps_s" : [ 60, 600 ],
+        "maximum_interval_days" : 36500,
+        "name" : "Default",
+        "optimized_at" : null,
+        "optimizer_stats" : null,
+        "relearning_steps_s" : [ 600 ],
+        "updated_at" : "1970-01-01T00:00:00.000Z",
+        "weights" : null,
+        "weights_version" : 0
+      }, {
+        "created_at" : "2026-11-20T10:00:01.000Z",
+        "deleted_at" : null,
+        "desired_retention" : 0.88,
+        "easy_days" : [ 1, 1, 1, 1, 1, 1, 1 ],
+        "fsrs_version" : null,
+        "fuzz" : true,
+        "id" : "0193b000-0006-7000-8000-000000000001",
+        "learning_steps_s" : [ 60, 600, 3600 ],
+        "maximum_interval_days" : 36500,
+        "name" : "Kanji",
+        "optimized_at" : null,
+        "optimizer_stats" : null,
+        "relearning_steps_s" : [ 600 ],
+        "updated_at" : "2026-11-20T10:00:03.000Z",
+        "weights" : null,
+        "weights_version" : 0
+      } ]
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "out_of_range",
+        "pointer" : "/desired_retention"
+      } ],
+      "instance" : "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "required",
+        "pointer" : "/name"
+      } ],
+      "instance" : "/api/v1/presets",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 409,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "builtin_immutable",
+      "instance" : "/api/v1/presets/00000000-0000-7000-8000-000000000010",
+      "status" : 409,
+      "type" : "urn:kotobaya:problem:builtin_immutable"
+    }
+  } ]
+}

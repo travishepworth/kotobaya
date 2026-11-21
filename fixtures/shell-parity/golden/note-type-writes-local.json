@@ -1,0 +1,223 @@
+{
+  "id" : "note-type-writes-local",
+  "steps" : [ {
+    "status" : 201,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "base_type" : "vocab",
+      "builtin" : false,
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "css" : "",
+      "deleted_at" : null,
+      "fields" : [ {
+        "key" : "expression",
+        "kind" : "text",
+        "label" : "Expression"
+      }, {
+        "key" : "reading",
+        "kind" : "text",
+        "label" : "Reading"
+      }, {
+        "key" : "meaning",
+        "kind" : "text",
+        "label" : "Meaning"
+      } ],
+      "id" : "0193b000-0007-7000-8000-000000000001",
+      "name" : "Custom vocab",
+      "templates" : {
+        "meaning" : {
+          "back" : null,
+          "default" : true,
+          "front" : null
+        }
+      },
+      "updated_at" : "2026-11-20T10:00:01.000Z"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/fields"
+      } ],
+      "instance" : "/api/v1/note-types",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "base_type" : "vocab",
+      "builtin" : false,
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "css" : ".expr { font-size: 3rem; }",
+      "deleted_at" : null,
+      "fields" : [ {
+        "key" : "expression",
+        "kind" : "text",
+        "label" : "Expression"
+      }, {
+        "key" : "reading",
+        "kind" : "text",
+        "label" : "Reading"
+      }, {
+        "key" : "meaning",
+        "kind" : "text",
+        "label" : "Meaning"
+      } ],
+      "id" : "0193b000-0007-7000-8000-000000000001",
+      "name" : "Custom vocab",
+      "templates" : {
+        "meaning" : {
+          "back" : null,
+          "default" : true,
+          "front" : null
+        }
+      },
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "base_type" : "vocab",
+      "builtin" : false,
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "css" : ".expr { font-size: 3rem; }",
+      "deleted_at" : null,
+      "fields" : [ {
+        "key" : "expression",
+        "kind" : "text",
+        "label" : "Expression"
+      }, {
+        "key" : "reading",
+        "kind" : "text",
+        "label" : "Reading"
+      }, {
+        "key" : "meaning",
+        "kind" : "text",
+        "label" : "Meaning"
+      } ],
+      "id" : "0193b000-0007-7000-8000-000000000001",
+      "name" : "Custom vocab",
+      "templates" : {
+        "meaning" : {
+          "back" : null,
+          "default" : true,
+          "front" : null
+        }
+      },
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 201,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "cards" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-20T10:00:05.000Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "<id1>",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note_id" : "0193b000-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-20T10:00:05.000Z"
+      } ],
+      "created_at" : "2026-11-20T10:00:05.000Z",
+      "created_by_device_id" : "<device>",
+      "deck_ids" : [ ],
+      "deleted_at" : null,
+      "entry_seq" : null,
+      "fields" : {
+        "expression" : "うっかり",
+        "meaning" : "carelessly",
+        "reading" : "うっかり"
+      },
+      "grammar_point_id" : null,
+      "id" : "0193b000-0001-7000-8000-000000000001",
+      "kanji_literal" : null,
+      "language" : "ja",
+      "merged_into_id" : null,
+      "mnemonic" : "",
+      "note_type_id" : "0193b000-0007-7000-8000-000000000001",
+      "origin" : "api",
+      "source_media_id" : null,
+      "source_sentence" : "",
+      "source_sentence_id" : null,
+      "tags" : [ ],
+      "type" : "vocab",
+      "updated_at" : "2026-11-20T10:00:05.000Z"
+    }
+  }, {
+    "status" : 409,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "in_use",
+      "instance" : "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+      "status" : 409,
+      "type" : "urn:kotobaya:problem:in_use"
+    }
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/note-types/0193b000-0007-7000-8000-000000000001",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 409,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "builtin_immutable",
+      "instance" : "/api/v1/note-types/00000000-0000-7000-8000-000000000101",
+      "status" : 409,
+      "type" : "urn:kotobaya:problem:builtin_immutable"
+    }
+  } ]
+}

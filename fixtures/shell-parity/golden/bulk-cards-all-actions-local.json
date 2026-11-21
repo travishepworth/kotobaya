@@ -1,0 +1,456 @@
+{
+  "id" : "bulk-cards-all-actions-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 2,
+      "dry_run" : true,
+      "matched" : 2,
+      "ops_emitted" : 0,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "cards" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.001Z"
+      } ],
+      "created_at" : "2026-11-17T10:00:00.001Z",
+      "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+      "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+      "deleted_at" : null,
+      "entry_seq" : 1000360,
+      "fields" : { },
+      "grammar_point_id" : null,
+      "id" : "0193a1b2-0001-7000-8000-000000000001",
+      "kanji_literal" : null,
+      "language" : "ja",
+      "merged_into_id" : null,
+      "mnemonic" : "",
+      "note_type_id" : "00000000-0000-7000-8000-000000000101",
+      "origin" : "manual",
+      "source_media_id" : null,
+      "source_sentence" : "",
+      "source_sentence_id" : null,
+      "tags" : [ ],
+      "type" : "vocab",
+      "updated_at" : "2026-11-17T10:00:00.001Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 2,
+      "dry_run" : false,
+      "matched" : 2,
+      "ops_emitted" : 2,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "cards" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.001Z"
+      } ],
+      "created_at" : "2026-11-17T10:00:00.001Z",
+      "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+      "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+      "deleted_at" : null,
+      "entry_seq" : 1000360,
+      "fields" : { },
+      "grammar_point_id" : null,
+      "id" : "0193a1b2-0001-7000-8000-000000000001",
+      "kanji_literal" : null,
+      "language" : "ja",
+      "merged_into_id" : null,
+      "mnemonic" : "",
+      "note_type_id" : "00000000-0000-7000-8000-000000000101",
+      "origin" : "manual",
+      "source_media_id" : null,
+      "source_sentence" : "",
+      "source_sentence_id" : null,
+      "tags" : [ "later" ],
+      "type" : "vocab",
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 0,
+      "dry_run" : false,
+      "matched" : 2,
+      "ops_emitted" : 0,
+      "skipped" : 2
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 1,
+      "dry_run" : false,
+      "matched" : 1,
+      "ops_emitted" : 1,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "cards" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.001Z"
+      } ],
+      "created_at" : "2026-11-17T10:00:00.001Z",
+      "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+      "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000001" ],
+      "deleted_at" : null,
+      "entry_seq" : 1000360,
+      "fields" : { },
+      "grammar_point_id" : null,
+      "id" : "0193a1b2-0001-7000-8000-000000000001",
+      "kanji_literal" : null,
+      "language" : "ja",
+      "merged_into_id" : null,
+      "mnemonic" : "",
+      "note_type_id" : "00000000-0000-7000-8000-000000000101",
+      "origin" : "manual",
+      "source_media_id" : null,
+      "source_sentence" : "",
+      "source_sentence_id" : null,
+      "tags" : [ ],
+      "type" : "vocab",
+      "updated_at" : "2026-11-20T10:00:06.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "cards" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.002Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000020",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.002Z"
+      } ],
+      "created_at" : "2026-11-17T10:00:00.002Z",
+      "created_by_device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+      "deck_ids" : [ ],
+      "deleted_at" : null,
+      "entry_seq" : 1000470,
+      "fields" : { },
+      "grammar_point_id" : null,
+      "id" : "0193a1b2-0001-7000-8000-000000000002",
+      "kanji_literal" : null,
+      "language" : "ja",
+      "merged_into_id" : null,
+      "mnemonic" : "",
+      "note_type_id" : "00000000-0000-7000-8000-000000000101",
+      "origin" : "manual",
+      "source_media_id" : null,
+      "source_sentence" : "",
+      "source_sentence_id" : null,
+      "tags" : [ "later" ],
+      "type" : "vocab",
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 2,
+      "dry_run" : false,
+      "matched" : 2,
+      "ops_emitted" : 2,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-17T10:00:00.002Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000020",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000470,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000002",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ "later" ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+      "preset_id" : "0193a1b2-0006-7000-8000-000000000001",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-20T10:00:08.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 2,
+      "dry_run" : false,
+      "matched" : 2,
+      "ops_emitted" : 3,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "added_at" : "2026-11-20T10:00:11.000Z",
+        "deck_id" : "0193a1b2-0004-7000-8000-000000000002",
+        "entry" : {
+          "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000002" ],
+          "freq_rank" : null,
+          "glosses" : [ "easily", "readily", "quickly", "flatly (refuse)" ],
+          "headword" : "あっさり",
+          "headword_reading" : "あっさり",
+          "is_common" : true,
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "retired" : false,
+          "seq" : 1000360,
+          "status" : "new"
+        },
+        "entry_seq" : 1000360,
+        "item_key" : "e:1000360",
+        "note_id" : null,
+        "occurrence_count" : 0,
+        "position" : 1024,
+        "status" : "new"
+      }, {
+        "added_at" : "2026-11-20T10:00:11.000Z",
+        "deck_id" : "0193a1b2-0004-7000-8000-000000000002",
+        "entry" : {
+          "deck_ids" : [ "0193a1b2-0004-7000-8000-000000000002" ],
+          "freq_rank" : null,
+          "glosses" : [ "contrary", "opposite", "inverse", "reverse", "back-to-front" ],
+          "headword" : "あべこべ",
+          "headword_reading" : "あべこべ",
+          "is_common" : true,
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "pos" : [ "adj-no", "adj-na", "n" ],
+          "retired" : false,
+          "seq" : 1000470,
+          "status" : "new"
+        },
+        "entry_seq" : 1000470,
+        "item_key" : "e:1000470",
+        "note_id" : null,
+        "occurrence_count" : 0,
+        "position" : 2048,
+        "status" : "new"
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 1,
+      "dry_run" : false,
+      "matched" : 1,
+      "ops_emitted" : 1,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/cards/0193a1b2-0002-7000-8000-000000000020",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 1,
+      "dry_run" : false,
+      "matched" : 1,
+      "ops_emitted" : 1,
+      "skipped" : 1
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : null,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000360,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "0193a1b2-0006-7000-8000-000000000001",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-20T10:00:08.000Z"
+      } ],
+      "next_cursor" : null
+    }
+  } ]
+}
