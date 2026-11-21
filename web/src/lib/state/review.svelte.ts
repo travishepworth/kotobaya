@@ -870,6 +870,7 @@ export class ReviewPage {
 		await outbox.load();
 		if (gen !== this.gen || this.disposed) return false;
 		const epoch = this.epoch;
+		const appliedAtStart = this.applied;
 			const outboxSeq = outbox.seq;
 		const startedAt = Date.now();
 		const pendingAtStart = outbox.answerCards();
@@ -895,9 +896,12 @@ export class ReviewPage {
 		const fresh = q.items.filter((i) => !answered.has(i.card.id) && !pendingAtStart.has(i.card.id));
 		const cur = this.current;
 		if (append) {
-			// LF-W2: a prefetch is merged, never discarded: not because a full fetch applied meanwhile (its cards are
-			// kept, answered ones are filtered above) and not because a learning card came due (a card the server lists
-			// first, or listed now but not before, is spliced in behind the card on screen, ahead of the rest).
+			// LF-W2: a prefetch is merged, not discarded, when a learning card came due meanwhile: the card the server
+			// lists first is spliced in behind the card on screen, ahead of the rest.
+			// A full fetch applied while this prefetch was in flight is newer (it may already reflect an answer that
+			// buried a sibling, or a card suspended elsewhere): this response is not merged, and `refill` asks again
+			// at once, so the refill is not lost.
+			if (this.applied !== appliedAtStart) return false;
 			// Prefetch: the card on screen, then the server's order, then any local card the server did not list
 			// (an undo or restore may have put one back meanwhile): never removes a local card. The loop numbers
 			// wait for the refresh after the answers.
@@ -1104,11 +1108,19 @@ export class ReviewPage {
 		if (this.isDrill || this.disposed || this.prefetching || this.items.length > PREFETCH_LOW) return;
 		this.prefetching = true;
 		try {
-			await this.fetchQueue(false, true);
+			await this.refill();
 		} catch {
 			/* the refresh after the answers are saved tries again */
 		} finally {
 			this.prefetching = false;
+		}
+	}
+
+	/** One prefetch; when a newer full fetch made it stale, once more (the new response is built after that fetch). */
+	private async refill(): Promise<void> {
+		for (let i = 0; i < 2; i++) {
+			if (await this.fetchQueue(false, true)) return;
+			if (this.disposed || this.isDrill || this.items.length > PREFETCH_LOW) return;
 		}
 	}
 
