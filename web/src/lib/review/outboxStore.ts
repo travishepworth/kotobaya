@@ -54,6 +54,20 @@ export function nextAddedAt(): number {
 	return lastAddedAt;
 }
 
+/**
+ * Raise the floor of `nextAddedAt` to `max` (the highest `addedAt` read back from the store). The clock may have
+ * moved backward since those were written (C8: a clock that was ahead gets fixed); a later tap must still sort
+ * after them, or an undo could go out before its answer.
+ */
+export function seedAddedAt(max: number): void {
+	if (Number.isFinite(max)) lastAddedAt = Math.max(lastAddedAt, max);
+}
+
+/** Test hook: a fresh module (a page reload starts from 0). */
+export function resetAddedAtForTests(): void {
+	lastAddedAt = 0;
+}
+
 function byAddedAt(a: OutboxRecord, b: OutboxRecord): number {
 	return a.addedAt - b.addedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
@@ -83,41 +97,109 @@ function req<T>(r: IDBRequest<T>): Promise<T> {
 	});
 }
 
-function open(factory: IDBFactory): Promise<IDBDatabase> {
+/** How long an open may stay `blocked` (another tab holds an older version open) before memory takes over. */
+export const OPEN_BLOCKED_TIMEOUT_MS = 10_000;
+
+/**
+ * Open the database. `blocked` is not an error: the open completes once the other connection closes, so it is
+ * waited for, up to `blockedTimeoutMs`. Without `version` (a reopen after another tab upgraded) the current
+ * version is opened; it must still hold our store.
+ */
+function open(factory: IDBFactory, blockedTimeoutMs: number, version?: number): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
-		const r = factory.open(OUTBOX_DB, OUTBOX_DB_VERSION);
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		let gaveUp = false;
+		const stop = () => {
+			if (timer !== null) clearTimeout(timer);
+			timer = null;
+		};
+		const r = version === undefined ? factory.open(OUTBOX_DB) : factory.open(OUTBOX_DB, version);
 		r.onupgradeneeded = () => {
 			// Other stores of this database (LF-W2) create their own on a later version; never drop ours.
 			if (!r.result.objectStoreNames.contains(OUTBOX_STORE)) r.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id' });
 		};
-		r.onsuccess = () => resolve(r.result);
-		r.onerror = () => reject(r.error ?? new Error('IndexedDB open failed'));
-		r.onblocked = () => reject(new Error('IndexedDB open blocked'));
+		r.onsuccess = () => {
+			stop();
+			const d = r.result;
+			if (gaveUp || !d.objectStoreNames.contains(OUTBOX_STORE)) {
+				d.close();
+				reject(new Error('IndexedDB outbox store missing'));
+				return;
+			}
+			resolve(d);
+		};
+		r.onerror = () => {
+			stop();
+			reject(r.error ?? new Error('IndexedDB open failed'));
+		};
+		r.onblocked = () => {
+			timer ??= setTimeout(() => {
+				gaveUp = true; // a success after this closes at once: no connection left blocking other tabs
+				reject(new Error('IndexedDB open blocked'));
+			}, blockedTimeoutMs);
+		};
 	});
 }
 
 /**
  * The IndexedDB store. Each write is its own transaction; transactions on one store run in the order they were
- * created, so a put followed by a delete of the same key always ends deleted. If the database cannot be opened,
- * every call goes to an in-memory store instead (and `persistent` turns false).
+ * created, so a put followed by a delete of the same key always ends deleted. Our connection closes when another
+ * tab upgrades the database (`versionchange`) and is reopened on the next call. If the database cannot be opened,
+ * or a transaction cannot be started even after a reopen, every call from then on goes to an in-memory store
+ * (and `persistent` turns false, so the page warns before a close).
  */
-export function idbOutboxStore(factory: IDBFactory): OutboxStore {
+export function idbOutboxStore(factory: IDBFactory, opts: { blockedTimeoutMs?: number } = {}): OutboxStore {
+	const blockedTimeoutMs = opts.blockedTimeoutMs ?? OPEN_BLOCKED_TIMEOUT_MS;
 	const fallback = memoryOutboxStore();
 	let failed = false;
-	const db = open(factory).catch(() => {
-		failed = true;
-		return null;
-	});
+	let db: Promise<IDBDatabase | null> | null = null;
+	function connect(version?: number): Promise<IDBDatabase | null> {
+		const p = open(factory, blockedTimeoutMs, version)
+			.catch((e: unknown) => {
+				// Another tab already upgraded past our version (LF-W2 stores): open whatever is current.
+				if (version !== undefined && e instanceof Error && e.name === 'VersionError') return open(factory, blockedTimeoutMs);
+				throw e;
+			})
+			.then(
+				(d) => {
+					d.onversionchange = () => {
+						d.close();
+						if (db === p) db = null; // reopened (at the new version) on the next call
+					};
+					return d;
+				},
+				() => {
+					failed = true;
+					return null;
+				}
+			);
+		return p;
+	}
+	function tx(d: IDBDatabase, mode: IDBTransactionMode): IDBTransaction | null {
+		try {
+			return d.transaction(OUTBOX_STORE, mode);
+		} catch {
+			return null; // closed (versionchange, browser shutdown) or otherwise unusable
+		}
+	}
 	async function run<T>(mode: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest<T>, mem: () => Promise<T>): Promise<T> {
-		const d = await db;
-		if (!d) return mem();
-		const tx = d.transaction(OUTBOX_STORE, mode);
+		if (failed) return mem();
+		let d = await (db ??= connect(OUTBOX_DB_VERSION));
+		let t = d ? tx(d, mode) : null;
+		if (d && !t) {
+			// One reopen at the current version; if that cannot start a transaction either, memory from now on.
+			db = connect();
+			d = await db;
+			t = d ? tx(d, mode) : null;
+			if (!t) failed = true;
+		}
+		if (!t) return mem();
 		const done = new Promise<void>((resolve, reject) => {
-			tx.oncomplete = () => resolve();
-			tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
-			tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
+			t.oncomplete = () => resolve();
+			t.onerror = () => reject(t.error ?? new Error('IndexedDB transaction failed'));
+			t.onabort = () => reject(t.error ?? new Error('IndexedDB transaction aborted'));
 		});
-		const out = await req(f(tx.objectStore(OUTBOX_STORE)));
+		const out = await req(f(t.objectStore(OUTBOX_STORE)));
 		if (mode === 'readwrite') await done; // durable once the transaction commits
 		return out;
 	}
@@ -125,15 +207,34 @@ export function idbOutboxStore(factory: IDBFactory): OutboxStore {
 		get persistent() {
 			return !failed;
 		},
-		all: async () => (await run('readonly', (s) => s.getAll() as IDBRequest<OutboxRecord[]>, () => fallback.all())).sort(byAddedAt),
+		all: async () =>
+			(
+				await run(
+					'readonly',
+					(s) => s.getAll() as IDBRequest<OutboxRecord[]>,
+					() => fallback.all()
+				)
+			).sort(byAddedAt),
 		put: async (r) => {
-			await run('readwrite', (s) => s.put(r), () => fallback.put(r).then(() => r.id));
+			await run(
+				'readwrite',
+				(s) => s.put(r),
+				() => fallback.put(r).then(() => r.id)
+			);
 		},
 		delete: async (id) => {
-			await run<undefined>('readwrite', (s) => s.delete(id), () => fallback.delete(id).then(() => undefined));
+			await run<undefined>(
+				'readwrite',
+				(s) => s.delete(id),
+				() => fallback.delete(id).then(() => undefined)
+			);
 		},
 		clear: async () => {
-			await run<undefined>('readwrite', (s) => s.clear(), () => fallback.clear().then(() => undefined));
+			await run<undefined>(
+				'readwrite',
+				(s) => s.clear(),
+				() => fallback.clear().then(() => undefined)
+			);
 		}
 	};
 }
