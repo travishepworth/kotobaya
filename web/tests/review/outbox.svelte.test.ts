@@ -488,4 +488,106 @@ describe('persisted answer outbox (LF-W1, C8)', () => {
 		expect(s.calls).toEqual([]);
 		dispose();
 	});
+
+	it('clock moved backward between loads: later taps still sort after the stored ones and go out in tap order', async () => {
+		const s = server(['a', 'b', 'c']);
+		const t0 = Date.now();
+		vi.setSystemTime(t0 + 3_600_000); // this device's clock is an hour ahead
+		const first = mount();
+		first.page.start(null);
+		await tick();
+		s.hang = true;
+		first.page.flip();
+		const aId = first.page.answerId;
+		void first.page.grade(good);
+		await tick();
+		simulateReloadForTests();
+		first.dispose();
+
+		vi.setSystemTime(t0); // the user fixed the clock, then reloaded
+		const second = mount();
+		second.page.start(null);
+		await tick();
+		expect(second.page.current?.card.id).toBe('b');
+		second.page.flip();
+		const bId = second.page.answerId;
+		void second.page.grade(good);
+		await tick();
+		expect((await store.all()).map((r) => r.id)).toEqual([aId, bId]);
+		simulateReloadForTests();
+		second.dispose();
+
+		s.hang = false;
+		const before = s.calls.length;
+		const third = mount();
+		third.page.start(null);
+		await tick();
+		await tick(100);
+		expect(s.calls.slice(before).map((c) => c.id)).toEqual([aId, bId]);
+		expect(await store.all()).toEqual([]);
+		third.dispose();
+	});
+
+	it('another 4xx (400) is a final refusal: dropped with a toast, the taps behind it are not held forever', async () => {
+		const s = server(['a', 'b', 'c']);
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		api.answerReview.mockRejectedValueOnce(new ResponseError(new Response(null, { status: 400 })));
+		page.flip();
+		void page.grade(good);
+		page.flip();
+		void page.grade(good);
+		await tick();
+		expect(s.calls.map((c) => c.cardId)).toEqual(['b']);
+		expect(await store.all()).toEqual([]);
+		dispose();
+	});
+
+	it('403 keeps the outbox and stops sending like 401 (the session is refused, not the record)', async () => {
+		const s = server(['a', 'b']);
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		const real = api.answerReview.getMockImplementation();
+		let tries = 0;
+		api.answerReview.mockImplementation((r: unknown) => {
+			tries++;
+			return tries === 1 ? Promise.reject(new ResponseError(new Response(null, { status: 403 }))) : real?.(r);
+		});
+		page.flip();
+		void page.grade(good);
+		await tick(120_000);
+		expect(tries).toBe(1);
+		expect(await store.all()).toHaveLength(1);
+		page.start(null);
+		await tick();
+		expect(s.calls).toHaveLength(1);
+		expect(await store.all()).toEqual([]);
+		dispose();
+	});
+
+	it('an answer refused for good drops the undo queued behind it: no undo request, no "undo failed"', async () => {
+		server(['a', 'b']);
+		const { page, dispose } = mount();
+		page.start(null);
+		await tick();
+		let refuse!: () => void;
+		api.answerReview.mockImplementationOnce(
+			() => new Promise((_, rej) => (refuse = () => rej(new ResponseError(new Response(null, { status: 410 })))))
+		);
+		page.flip();
+		const aId = page.answerId;
+		void page.grade(good); // in flight
+		await tick();
+		await page.undo();
+		expect((await store.all()).map((r) => r.id)).toEqual([aId, `undo:${aId}`]);
+		refuse();
+		await tick();
+		expect(api.undoReview).not.toHaveBeenCalled();
+		expect(page.notice).toBeNull();
+		expect(page.saving).toBe(false);
+		expect(await store.all()).toEqual([]);
+		dispose();
+	});
 });

@@ -45,7 +45,14 @@ import {
 	touchKeepGoing
 } from '../review/keepGoingDay';
 import { loopParts, loopView, type LoopView } from '../review/loop';
-import { defaultOutboxStore, nextAddedAt, type OutboxRecord, type OutboxStore } from '../review/outboxStore';
+import {
+	defaultOutboxStore,
+	nextAddedAt,
+	resetAddedAtForTests,
+	seedAddedAt,
+	type OutboxRecord,
+	type OutboxStore
+} from '../review/outboxStore';
 import { renderPreview, type Rendered } from './preview.svelte';
 
 export type { KanjiPart, Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
@@ -128,19 +135,22 @@ const RETRY_MAX_MS = 30_000;
  * C8: what a failed send means.
  * - 'clock': 422 on `/reviewed_at` (this device's clock is off, e.g. `in_future`): resent at once without
  *   `reviewed_at` (the server's now); from then on no answer of this page life carries it.
- * - 'permanent': refused for good (card deleted 410, suspended 409, unknown 404, other 422): dropped with a toast.
- * - 'auth': 401: sending stops and the outbox is kept until the user is back (page started, online, visible).
+ * - 'permanent': refused for good (card deleted 410, suspended 409, unknown 404, other 422) and every other 4xx
+ *   not listed below (400, 413, ...: this record will never be accepted, and retrying it would hold every later
+ *   answer behind it for ever): dropped with a toast.
+ * - 'auth': 401, and 403 (the session, not the record, is refused: every entry would be): sending stops and the
+ *   outbox is kept until the user is back (page started, online, visible).
  * - 'retry': timeouts, network errors, 408, 429, 5xx and anything else: the entry stays and is retried.
  */
 async function classify(e: unknown): Promise<'clock' | 'permanent' | 'auth' | 'retry'> {
 	if (!(e instanceof ResponseError)) return 'retry';
 	const status = e.response.status;
-	if (status === 401) return 'auth';
+	if (status === 401 || status === 403) return 'auth';
 	if (status === 422) {
 		const p = await readProblem(e.response);
 		if (p?.errors?.some((f) => f.pointer === '/reviewed_at')) return 'clock';
 	}
-	return [404, 409, 410, 422].includes(status) ? 'permanent' : 'retry';
+	return status >= 400 && status < 500 && status !== 408 && status !== 429 ? 'permanent' : 'retry';
 }
 
 /**
@@ -223,6 +233,8 @@ class Outbox {
 	private idleWaiters: (() => void)[] = [];
 	private listening = false;
 	private warning = false;
+	/** Ids whose store write failed: only memory holds them. */
+	private unsaved = new Set<string>();
 
 	private storeRef(): OutboxStore {
 		return (this.store ??= defaultOutboxStore());
@@ -258,8 +270,18 @@ class Outbox {
 				.then(
 					(recs) => {
 						if (gen !== this.gen) return;
+						// The clock may have gone back since these were stored: later taps must still sort after them.
+						seedAddedAt(Math.max(...recs.map((r) => r.addedAt)));
 						const known = new Set(this.pending.map((e) => e.rec.id));
 						const back = recs.filter((r) => !known.has(r.id)).map((r) => newEntry(r, null));
+						// Taps made before this read finished go after what it found, in the store too.
+						const floor = Math.max(...back.map((e) => e.rec.addedAt));
+						for (const e of this.pending)
+							if (e.rec.addedAt <= floor) {
+								e.rec.addedAt = nextAddedAt();
+								const write = e.persisted.then(() => this.storeRef().put(e.rec));
+								e.persisted = write.catch(() => {});
+							}
 						for (const e of back) this.logAnswer(e);
 						this.pending = [...back, ...this.pending];
 						this.sync();
@@ -278,7 +300,8 @@ class Outbox {
 		e.persisted = this.storeRef()
 			.put(e.rec)
 			.catch(() => {
-				/* the in-memory entry is still sent */
+				// The in-memory entry is still sent, but a tab close would lose it: warn (beforeunload) until it is.
+				this.unsaved.add(e.rec.id);
 			});
 		this.pending.push(e);
 		this.logAnswer(e);
@@ -287,7 +310,7 @@ class Outbox {
 			this.warning = true;
 			window.addEventListener('beforeunload', (ev) => {
 				// Only when a tab close would lose them (no IndexedDB).
-				if (this.pending.length > 0 && !this.storeRef().persistent) ev.preventDefault();
+				if (this.pending.length > 0 && (!this.storeRef().persistent || this.unsaved.size > 0)) ev.preventDefault();
 			});
 		}
 		void this.pump();
@@ -359,6 +382,7 @@ class Outbox {
 		this.gen++;
 		for (const e of this.pending) e.settle();
 		this.pending = [];
+		this.unsaved.clear();
 		this.sync();
 		this.log = [];
 		this.added = [];
@@ -456,6 +480,12 @@ class Outbox {
 				this.finish(e);
 				this.forget([r.id]);
 				if (r.op === 'answer') {
+					// An undo queued behind it has nothing left to undo (it would 404 and say "undo failed").
+					const undo = this.find(`undo:${r.id}`);
+					if (undo) {
+						this.finish(undo);
+						undo.settle();
+					}
 					pushToast(tr('review.answerDropped'));
 					e.page?.dropped(e);
 				} else e.page?.undoRefused();
@@ -481,6 +511,7 @@ class Outbox {
 	private finish(e: OutboxEntry): void {
 		e.state = 'done';
 		this.pending = this.pending.filter((x) => x !== e);
+		this.unsaved.delete(e.rec.id);
 		for (const l of this.log) if (l.answerId === e.rec.id) l.acked = true;
 		void this.storeRef()
 			.delete(e.rec.id)
@@ -524,6 +555,7 @@ export function setOutboxStoreForTests(s: OutboxStore): void {
 /** Test hook: a page reload. Everything in memory is gone (an in-flight request is ignored); the store is kept. */
 export function simulateReloadForTests(): void {
 	outbox.reset();
+	resetAddedAtForTests();
 }
 
 /**
