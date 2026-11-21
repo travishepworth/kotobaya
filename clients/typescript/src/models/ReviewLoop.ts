@@ -68,12 +68,18 @@ import {
  * backlog.reviews - ready.review`, 0 when `reviews.limit` is null;
  * `later_today.next_due_at` is null iff `later_today.count` is 0, else after
  * `generated_at` and before `day_ends_at`; `phase = reviewing` whenever `items` is
- * non-empty; `goal_reached` / `done_for_today` only with `keep_going = false`.
+ * non-empty; `goal_reached` / `done_for_today` only with `keep_going = false` or with a
+ * `keep_going_new_target` (C-31).
  * ADR-049: `phase = waiting` iff nothing is served and `later_today.count > 0`; a stop
  * screen (`goal_reached`, `done_for_today`, `empty`) implies `ready.total = 0`,
  * `later_today.count = 0` and `until_stop = 0`, and `until_stop = 0` implies a stop screen;
  * `keep_going_available` is true in `goal_reached` / `done_for_today`, false in `empty`,
- * false with `keep_going = true`; `until_stop_parts` sums to `until_stop`.
+ * false in `reviewing`, and false with `keep_going = true` unless a
+ * `keep_going_new_target` was sent (C-31); `until_stop_parts` sums to `until_stop`.
+ * C-31 (ADR-051), for every response: `ready.total > 0` implies `phase = reviewing` with
+ * a non-empty `items` (unless `kinds` excluded them); and with `keep_going = false`,
+ * `until_stop_parts.new <= max(0, new.goal - new.today)` (ADR-052: an unfinished
+ * keep-going batch is not owed).
  * `until_stop` (ADR-038) and `until_stop_parts` (ADR-049) are the numbers besides `phase`,
  * `keep_going` and `keep_going_available` that depend on `keep_going`, and with
  * `keep_going=true` on `limit`. `until_stop`, `keep_going_available` and
@@ -92,13 +98,16 @@ export interface ReviewLoop {
      */
     keepGoing: boolean;
     /**
-     * ADR-049 (additive). **Show a Keep going button now** (core
-     * `LoopState.keepGoingAvailable`). True iff the request had `keep_going=false` (or
-     * omitted it), a normal request serves nothing (no item, nothing to materialize) and
-     * the same request with `keep_going=true` would serve at least one card. Always true
-     * in `goal_reached` / `done_for_today`; in `waiting` true when a backlog beyond the
-     * review cap or a new card exists, else false; false in `reviewing` for
-     * `keep_going=false`; false in `empty`; always false for `keep_going=true`.
+     * ADR-049 (additive), redefined by C-31 (ADR-051). **Show a Keep going button now:
+     * pressing it would serve a card now** (core `LoopState.keepGoingAvailable`). True iff
+     * this request serves nothing (no item, nothing to materialize) and the same request
+     * with `keep_going=true` and the next target (`new.today + max(1, new.goal)`) would
+     * serve at least one card. Always true in `goal_reached` / `done_for_today`; in
+     * `waiting` true when a backlog beyond the review cap or a new card exists, else
+     * false; false in `reviewing`; false in `empty`. For `keep_going=true` **without**
+     * `keep_going_new_target` it is always false, as before C-31; **with** a target it
+     * is true once the batch is done and new cards remain (at the stop screen, and in a
+     * `waiting` reached while keeping going).
      * Unaffected by `kinds` and `limit`. Clients render the button from this member only.
      * Sent by every server and local API implementing ADR-049; absent (older) → clients
      * use `phase` in (`goal_reached`, `done_for_today`).
@@ -149,9 +158,15 @@ export interface ReviewLoop {
      *   These are the answers before the stop screen (`goal_reached` / `done_for_today`
      *   / `empty`). ADR-049: in `waiting` it equals `later_today.count` (>= 1); at a stop
      *   screen it is always 0, and 0 only there.
-     * - `keep_going = true`: the stream is endless, so it is what is in sight:
-     *   `ready.learning + later_today.count + backlog.reviews` + the new cards this
-     *   response drew (about `limit`; a kanji group may overshoot).
+     * - `keep_going = true` without `keep_going_new_target`: the stream is endless, so it
+     *   is what is in sight: `ready.learning + later_today.count + backlog.reviews` + the
+     *   new cards this response drew (about `limit`; a kanji group may overshoot).
+     * - `keep_going = true` with `keep_going_new_target` (C-31): `ready.learning +
+     *   later_today.count + backlog.reviews` + the new cards left to the target (the
+     *   smaller of `target - new.today` and what the decks can supply; **not** bounded by
+     *   `limit`). It reaches 0 exactly when the stop screen returns. Example: goal 40
+     *   met, target 80, nothing else due → 40; after 25 of them, 3 on their timers and 1
+     *   due → 19.
      * Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every
      * server and local API implementing ADR-038; absent (older) → clients use `ready.total`.
      * Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40

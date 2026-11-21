@@ -1,0 +1,391 @@
+{
+  "id" : "card-writes-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-17T10:00:00.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : true,
+      "updated_at" : "2026-11-20T10:00:01.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-17T10:00:00.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 2,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "0193a1b2-0006-7000-8000-000000000001",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : true,
+      "updated_at" : "2026-11-20T10:00:02.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : "2026-11-21T19:00:00.000Z",
+      "created_at" : "2026-11-17T10:00:00.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 2,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "0193a1b2-0006-7000-8000-000000000001",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-17T10:00:00.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 2,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "0193a1b2-0006-7000-8000-000000000001",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-20T10:00:04.000Z"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "required",
+        "pointer" : ""
+      } ],
+      "instance" : "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 201,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-20T10:00:06.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193b000-0002-7000-8000-000000000001",
+      "interval_days" : null,
+      "kind" : "listening",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-20T10:00:06.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-20T10:00:06.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193b000-0002-7000-8000-000000000001",
+      "interval_days" : null,
+      "kind" : "listening",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-20T10:00:06.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-20T10:00:06.000Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193b000-0002-7000-8000-000000000001",
+      "interval_days" : null,
+      "kind" : "listening",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-20T10:00:06.000Z"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/kind"
+      } ],
+      "instance" : "/api/v1/cards",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/kind"
+      } ],
+      "instance" : "/api/v1/cards",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/cards/0193a1b2-0002-7000-8000-000000000010",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "buried_until" : null,
+        "created_at" : "2026-11-20T10:00:06.000Z",
+        "deleted_at" : null,
+        "difficulty" : null,
+        "due_at" : null,
+        "flags" : 0,
+        "id" : "0193b000-0002-7000-8000-000000000001",
+        "interval_days" : null,
+        "kind" : "listening",
+        "lapses" : 0,
+        "last_review_at" : null,
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000360,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 0,
+        "stability" : null,
+        "state" : "new",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-20T10:00:06.000Z"
+      } ],
+      "next_cursor" : null
+    }
+  } ]
+}

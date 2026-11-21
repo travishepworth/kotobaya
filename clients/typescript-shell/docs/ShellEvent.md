@@ -1,7 +1,7 @@
 
 # ShellEvent
 
-The `event` member of a bridge `event` message: the `Event` envelope of `../openapi.yaml` with the shell\'s type set. `data` by `type`: `hello` - `ShellEventHello`; `sync.changed` - `ShellEventSyncChanged`; `note.created` - `ShellEventNoteCreated`; `shell.connectivity` - `ShellEventConnectivity`; `shell.sync` - `ShellSyncStatus`; `shell.dict` - `ShellDictInstall`. `job.updated`, `device.paired` and `device.revoked` are never sent in shell mode (SHELL.md 2.6). 
+The `event` member of a bridge `event` message: the `Event` envelope of `../openapi.yaml` with the shell\'s type set. `data` by `type`: `hello` - `ShellEventHello`; `sync.changed` - `ShellEventSyncChanged`; `note.created` - `ShellEventNoteCreated`; `shell.connectivity` - `ShellEventConnectivity`; `shell.sync` - `ShellSyncStatus`; `shell.dict` - `ShellDictInstall`; `cache.updated` (C-31) - `ShellEventCacheUpdated`. `job.updated`, `device.paired` and `device.revoked` are never sent in shell mode (SHELL.md 2.6). 
 
 ## Properties
 

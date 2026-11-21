@@ -2,7 +2,7 @@
 /* eslint-disable */
 /**
  * Kotobaya shell API
- * The Android app is a WebView shell around the web SPA (ADR-036). The SPA talks to the shell over the bridge defined in `SHELL.md` section 2 and `bridge.schema.json`. Requests whose path starts with `/api/v1/` are operations of `../openapi.yaml`, answered as `ops.json` says. Requests whose path starts with `/shell/v1/` are the 18 operations of this file: device state that has no server equivalent (pairing, sync status, dictionary install, storage, notifications, push, AnkiConnect).  These operations never travel over HTTP. There is no socket: `servers[0].url` is only the path prefix the generated client puts in the bridge `req.path`. `SHELL.md` is normative for everything this file does not say (transport, limits, readiness, events).  ## Conventions  The conventions of `../openapi.yaml` section 1 apply unchanged: JSON, `snake_case`, unknown request properties and unknown query parameters are `422 validation_failed` (`errors[].code = unknown_field`), clients ignore unknown response properties and treat unknown enum values as \"other\", instants are RFC 3339 UTC with milliseconds, `PATCH` semantics for absent properties (\"leave unchanged\").  ## Who may call  Only the SPA in the shell\'s WebView (the bridge is origin-restricted, `SHELL.md` 2.1), so no credential is sent and every operation has `security: []`. What matters instead is whether the device is **paired** (a device token is stored):  - `getShellInfo`, `pairShell`, `getDisplayPrefs` and `updateDisplayPrefs` work unpaired. - Every other operation answers `401 unauthenticated` while unpaired, before anything else.  The device token is never part of any request or response of this API.  ## Errors  Every non-2xx answer is `application/problem+json` with the `Problem` schema of `../openapi.yaml` (referenced, not copied). Besides the codes of that file\'s error table, the shell uses the codes of `SHELL.md` section 5:  | Status | `code` | When | |---|---|---| | 415 | `shell_unsupported` | The bridge cannot carry the request or the response (size, content type). | | 409 | `shell_pending_ops` | `unpairShell` without `force` while ops are waiting to be pushed. | | 503 | `shell_offline` | The operation needs the server and the device is offline or the server did not answer. | | 503 | `shell_dict_missing` | Dictionary data that is neither in the installed package nor in the sidecar cache is needed and the server cannot be asked. | | 503 | `shell_rebuilding` | The local replica is being rebuilt; `Retry-After: 2`. |  Shell operations never mint sync ops and never change learning data.  ## Events  Shell state changes are announced by bridge `event` messages (`SHELL.md` 2.6); their payloads are the `ShellEvent*` schemas below, `ShellSyncStatus` (`shell.sync`) and `ShellDictInstall` (`shell.dict`). 
+ * The Android app is a WebView shell around the web SPA (ADR-036). The SPA talks to the shell over the bridge defined in `SHELL.md` section 2 and `bridge.schema.json`. Requests whose path starts with `/api/v1/` are operations of `../openapi.yaml`, answered as `ops.json` says. Requests whose path starts with `/shell/v1/` are the 18 operations of this file: device state that has no server equivalent (pairing, sync status, dictionary install, storage, notifications, push, AnkiConnect).  These operations never travel over HTTP. There is no socket: `servers[0].url` is only the path prefix the generated client puts in the bridge `req.path`. `SHELL.md` is normative for everything this file does not say (transport, limits, readiness, events).  ## Conventions  The conventions of `../openapi.yaml` section 1 apply unchanged: JSON, `snake_case`, unknown request properties and unknown query parameters are `422 validation_failed` (`errors[].code = unknown_field`), clients ignore unknown response properties and treat unknown enum values as \"other\", instants are RFC 3339 UTC with milliseconds, `PATCH` semantics for absent properties (\"leave unchanged\").  ## Who may call  Only the SPA in the shell\'s WebView (the bridge is origin-restricted, `SHELL.md` 2.1), so no credential is sent and every operation has `security: []`. What matters instead is whether the device is **paired** (a device token is stored):  - `getShellInfo`, `pairShell`, `getDisplayPrefs` and `updateDisplayPrefs` work unpaired. - Every other operation answers `401 unauthenticated` while unpaired, before anything else.  The device token is never part of any request or response of this API.  ## Errors  Every non-2xx answer is `application/problem+json` with the `Problem` schema of `../openapi.yaml` (referenced, not copied). Besides the codes of that file\'s error table, the shell uses the codes of `SHELL.md` section 5:  | Status | `code` | When | |---|---|---| | 415 | `shell_unsupported` | The bridge cannot carry the request or the response (size, content type). | | 409 | `shell_pending_ops` | `unpairShell` without `force` while ops are waiting to be pushed. | | 503 | `shell_offline` | The operation needs the server and the device is offline or the server did not answer. | | 503 | `shell_uncached` | C-31. An operation of class `cached` in `ops.json` whose answer is not in the device\'s response cache yet (`SHELL.md` rule K-3). Only for `/api/v1` operations, never for an operation of this file; listed here because the shell generates it. No `Retry-After`; the `cache.updated` event says when to ask again. | | 503 | `shell_dict_missing` | Dictionary data that is neither in the installed package nor in the sidecar cache is needed and the server cannot be asked. | | 503 | `shell_rebuilding` | The local replica is being rebuilt; `Retry-After: 2`. |  Shell operations never mint sync ops and never change learning data.  ## Events  Shell state changes are announced by bridge `event` messages (`SHELL.md` 2.6); their payloads are the `ShellEvent*` schemas below, `ShellSyncStatus` (`shell.sync`) and `ShellDictInstall` (`shell.dict`). 
  *
  * The version of the OpenAPI document: 1.0.0
  * 
@@ -13,6 +13,13 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { ShellSyncStatusFirstSync } from './ShellSyncStatusFirstSync';
+import {
+    ShellSyncStatusFirstSyncFromJSON,
+    ShellSyncStatusFirstSyncFromJSONTyped,
+    ShellSyncStatusFirstSyncToJSON,
+    ShellSyncStatusFirstSyncToJSONTyped,
+} from './ShellSyncStatusFirstSync';
 import type { ShellSyncStatusProgress } from './ShellSyncStatusProgress';
 import {
     ShellSyncStatusProgressFromJSON,
@@ -84,9 +91,13 @@ export interface ShellSyncStatus {
      */
     lastError: string | null;
     /**
-     * Failed cycles in a row (the backoff count); 0 after a success.
+     * Failed cycles in a row (the backoff count); 0 after a success. C-31 - informational only; no local operation, and in particular not materialization in `getReviewQueue`, depends on it (`SHELL.md` rule L-9).
      */
     consecutiveFailures: number;
+    /**
+     * 
+     */
+    firstSync: ShellSyncStatusFirstSync;
 }
 
 
@@ -124,6 +135,7 @@ export function instanceOfShellSyncStatus(value: object): value is ShellSyncStat
     if (!('progress' in value) || value['progress'] === undefined) return false;
     if ((!('lastError' in (value as Record<string, any>)) && !('last_error' in (value as Record<string, any>))) || ((value as Record<string, any>)['lastError'] === undefined && (value as Record<string, any>)['last_error'] === undefined)) return false;
     if ((!('consecutiveFailures' in (value as Record<string, any>)) && !('consecutive_failures' in (value as Record<string, any>))) || ((value as Record<string, any>)['consecutiveFailures'] === undefined && (value as Record<string, any>)['consecutive_failures'] === undefined)) return false;
+    if ((!('firstSync' in (value as Record<string, any>)) && !('first_sync' in (value as Record<string, any>))) || ((value as Record<string, any>)['firstSync'] === undefined && (value as Record<string, any>)['first_sync'] === undefined)) return false;
     return true;
 }
 
@@ -150,6 +162,7 @@ export function ShellSyncStatusFromJSONTyped(json: any, ignoreDiscriminator: boo
         'progress': ShellSyncStatusProgressFromJSON(json['progress']),
         'lastError': json['last_error'],
         'consecutiveFailures': json['consecutive_failures'],
+        'firstSync': ShellSyncStatusFirstSyncFromJSON(json['first_sync']),
     };
 }
 
@@ -177,6 +190,7 @@ export function ShellSyncStatusToJSONTyped(value?: ShellSyncStatus | null, ignor
         'progress': ShellSyncStatusProgressToJSON(value['progress']),
         'last_error': value['lastError'],
         'consecutive_failures': value['consecutiveFailures'],
+        'first_sync': ShellSyncStatusFirstSyncToJSON(value['firstSync']),
     };
 }
 

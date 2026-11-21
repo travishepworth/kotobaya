@@ -1,6 +1,7 @@
 // What the SPA offers a principal and a connection state (SHELL.md 9.4): scope rule and mode rule. Pure functions;
 // the scope rule applies on the plain web too (a personal token without `import` has no Import screen).
 import { opClass } from '../api/shell/ops';
+import { shell } from '../state/shell.svelte';
 import type { NavItem } from './kinds';
 
 export type ScopeName = 'read' | 'write' | 'review' | 'import' | 'admin';
@@ -28,18 +29,13 @@ export function visibleSections<T extends { id: string }>(sections: readonly T[]
 }
 
 /**
- * The operations each route calls (operationIds of openapi.yaml), by path prefix. A route is gated behind
- * "needs connection" only when it has no operation the phone can answer: every operation is `proxy`.
+ * Remote-only operations (`proxy` in ops.json) reachable from a route, by path prefix. A route is gated behind
+ * "needs connection" only when every operation it calls is `proxy`: listing a route with any local, cached,
+ * local_or_proxy or hidden operation would gate its local reads offline. Since C-31 no route qualifies, so the
+ * table is empty. The remote-only actions that sit inside mixed routes (createDeck type=list, parse overrides,
+ * grammar rule tests, jpdb vocab mapping, job polling) need a per-action affordance instead (SHELL.md 9.4).
  */
-export const ROUTE_OPS: Readonly<Record<string, readonly string[]>> = {
-	'/stats': ['getStatsSummary', 'getStatsHeatmap', 'getStatsRetention', 'getStatsForecast', 'getStatsKnownWords', 'getStatsCalibration'],
-	'/media': ['listMedia', 'getMedia', 'getMediaCoverage', 'listMediaSentences', 'updateMedia', 'deleteMedia'],
-	'/import/mapping': ['listJpdbVocab', 'listMediaSentences'],
-	'/note-types': ['listNoteTypes', 'getNoteType', 'createNoteType', 'updateNoteType', 'deleteNoteType'],
-	'/struggle': ['listHotWords', 'listLeeches', 'listConfusables', 'listWordConfusables'],
-	'/decks': ['listDecks', 'getDeck', 'listDeckItems', 'listDeckLists', 'getDeckCoverage'],
-	'/dictionary': ['searchDictionary', 'getDictEntry', 'listEntryExamples', 'getKanji']
-};
+export const ROUTE_OPS: Readonly<Record<string, readonly string[]>> = {};
 
 /** True when no operation of the route can be answered without the server. */
 export function isProxyOnly(operationIds: readonly string[]): boolean {
@@ -64,4 +60,22 @@ export function isGatedPath(path: string): boolean {
 /** Show `NeedsConnection` instead of the route: offline and a route that is proxy-only. */
 export function needsConnection(path: string, online: boolean): boolean {
 	return !online && isGatedPath(path);
+}
+
+/**
+ * Per-action rule (SHELL.md 9.4): a `proxy` operation triggered from a mixed route is disabled with "needs
+ * connection" while the shell is offline. Outside the shell nothing is ever gated.
+ */
+export function actionNeedsConnection(operationId: string, state: { present: boolean; online: boolean }): boolean {
+	return state.present && !state.online && opClass(operationId) === 'proxy';
+}
+
+/** Reactive form of `actionNeedsConnection` over the shell state. */
+export function needsConnectionFor(operationId: string): boolean {
+	return actionNeedsConnection(operationId, shell);
+}
+
+/** Exports and blob uploads are not offered in shell mode (SHELL.md 9.4 "Unsupported"). */
+export function uploadsOffered(state: { present: boolean } = shell): boolean {
+	return !state.present;
 }

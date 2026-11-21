@@ -1,0 +1,2599 @@
+{
+  "id" : "queue-keep-going-target",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 2,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.001Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000010",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000360,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000001",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.001Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "あっさり",
+          "headword_reading" : "あっさり",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あっさり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "アッサリ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "easily"
+            }, {
+              "lang" : "eng",
+              "text" : "readily"
+            }, {
+              "lang" : "eng",
+              "text" : "quickly"
+            }, {
+              "lang" : "eng",
+              "text" : "flatly (refuse)"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "lightly (seasoned food, applied make-up, etc.)"
+            }, {
+              "lang" : "eng",
+              "text" : "plainly"
+            }, {
+              "lang" : "eng",
+              "text" : "simply"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000360,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "あっさり\neasily; readily; quickly; flatly (refuse); lightly (seasoned food, applied make-up, etc.); plainly; simply",
+          "front" : "あっさり",
+          "reading" : "あっさり",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あっさり",
+          "voice" : "3"
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.002Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000020",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000470,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000002",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.002Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "あべこべ",
+          "headword_reading" : "あべこべ",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "pitch" : [ ],
+          "pos" : [ "adj-no", "adj-na", "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あべこべ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "contrary"
+            }, {
+              "lang" : "eng",
+              "text" : "opposite"
+            }, {
+              "lang" : "eng",
+              "text" : "inverse"
+            }, {
+              "lang" : "eng",
+              "text" : "reverse"
+            }, {
+              "lang" : "eng",
+              "text" : "back-to-front"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adj-no", "adj-na", "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000470,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "あべこべ\ncontrary; opposite; inverse; reverse; back-to-front",
+          "front" : "あべこべ",
+          "reading" : "あべこべ",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あべこべ",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 2,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 2,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.001Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-30T10:00:02.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000010",
+        "interval_days" : 10,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:02.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000360,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.001Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:02.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.002Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-30T10:00:03.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000020",
+        "interval_days" : 10,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:03.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000470,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.002Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000020",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc2>",
+        "id" : "0193b000-0003-7000-8000-000000000002",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:03.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : true,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 2
+        },
+        "phase" : "goal_reached",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : true,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.003Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000030",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000510,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000003",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.003Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "あやふや",
+          "headword_reading" : "あやふや",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+          "pitch" : [ ],
+          "pos" : [ "adj-na" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あやふや"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "uncertain"
+            }, {
+              "lang" : "eng",
+              "text" : "indefinite"
+            }, {
+              "lang" : "eng",
+              "text" : "vague"
+            }, {
+              "lang" : "eng",
+              "text" : "ambiguous"
+            }, {
+              "lang" : "eng",
+              "text" : "equivocal"
+            }, {
+              "lang" : "eng",
+              "text" : "dubious"
+            }, {
+              "lang" : "eng",
+              "text" : "doubtful"
+            }, {
+              "lang" : "eng",
+              "text" : "non-committal"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adj-na" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000510,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:05.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:05.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:05.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:35.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "あやふや\nuncertain; indefinite; vague; ambiguous; equivocal; dubious; doubtful; non-committal",
+          "front" : "あやふや",
+          "reading" : "あやふや",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あやふや",
+          "voice" : "3"
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.004Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001010,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.004Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "carelessly"
+            }, {
+              "lang" : "eng",
+              "text" : "thoughtlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "inadvertently"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001010,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:05.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:05.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:05.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:35.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 2
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 2,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 2,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.003Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-27T10:00:06.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000030",
+        "interval_days" : 7,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:06.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000510,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000003",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000003",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.003Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000030",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc3>",
+        "id" : "0193b000-0003-7000-8000-000000000003",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:06.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.004Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001010,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.004Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "carelessly"
+            }, {
+              "lang" : "eng",
+              "text" : "thoughtlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "inadvertently"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001010,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:07.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:07.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:07.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:37.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 3
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 1,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 1,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : true,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 3
+        },
+        "phase" : "goal_reached",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : true,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.004Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000040",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001010,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000004",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.004Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うっかり",
+          "headword_reading" : "うっかり",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うっかり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウッカリ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "carelessly"
+            }, {
+              "lang" : "eng",
+              "text" : "thoughtlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "inadvertently"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001010,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:09.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:09.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:09.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:39.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うっかり\ncarelessly; thoughtlessly; inadvertently",
+          "front" : "うっかり",
+          "reading" : "うっかり",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うっかり",
+          "voice" : "3"
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.005Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000050",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001030,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000005",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000005",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.005Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うとうと",
+          "headword_reading" : "うとうと",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000005",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うとうと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウトウト"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "うとっと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ウトッと"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ "sk" ],
+            "text" : "ウトっと"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "falling into a doze"
+            }, {
+              "lang" : "eng",
+              "text" : "dozing off"
+            }, {
+              "lang" : "eng",
+              "text" : "nodding off"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001030,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:09.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:09.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:09.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:39.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うとうと\nfalling into a doze; dozing off; nodding off",
+          "front" : "うとうと",
+          "reading" : "うとうと",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うとうと",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 3
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 2,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 2,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.004Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-26T10:00:10.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000040",
+        "interval_days" : 6,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:10.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1001010,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000004",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000004",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.004Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000040",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc4>",
+        "id" : "0193b000-0003-7000-8000-000000000004",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:10.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.005Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-27T10:00:11.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000050",
+        "interval_days" : 7,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:11.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1001030,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000005",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000005",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.005Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000050",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc5>",
+        "id" : "0193b000-0003-7000-8000-000000000005",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:11.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : true,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 5
+        },
+        "phase" : "goal_reached",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : true,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 5
+        },
+        "phase" : "goal_reached",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : true,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 5
+        },
+        "phase" : "goal_reached",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : true,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.006Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000060",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001060,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000006",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.006Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うろうろ",
+          "headword_reading" : "うろうろ",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うろうろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウロウロ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "restlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "aimlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "without purpose"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "to loiter"
+            }, {
+              "lang" : "eng",
+              "text" : "to drift"
+            }, {
+              "lang" : "eng",
+              "text" : "to hang about doing nothing"
+            }, {
+              "lang" : "eng",
+              "text" : "to wander aimlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "to be restless"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "vs" ],
+            "xref" : [ "うろつく" ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "to be restless"
+            }, {
+              "lang" : "eng",
+              "text" : "to fuss"
+            }, {
+              "lang" : "eng",
+              "text" : "to be in a fidget"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001060,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:15.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:15.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:15.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:45.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うろうろ\nrestlessly; aimlessly; without purpose; to loiter; to drift; to hang about doing nothing; to wander aimlessly; to be restless; to be restless; to fuss; to be in a fidget",
+          "front" : "うろうろ",
+          "reading" : "うろうろ",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うろうろ",
+          "voice" : "3"
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.007Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000070",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001110,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000007",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000007",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.007Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うんざり",
+          "headword_reading" : "うんざり",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000007",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うんざり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウンザリ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "tedious"
+            }, {
+              "lang" : "eng",
+              "text" : "boring"
+            }, {
+              "lang" : "eng",
+              "text" : "being fed up with"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001110,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:15.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:15.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:15.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:45.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うんざり\ntedious; boring; being fed up with",
+          "front" : "うんざり",
+          "reading" : "うんざり",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うんざり",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 5
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 2,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 2,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/keep_going_new_target"
+      } ],
+      "instance" : "/api/v1/review/queue",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/keep_going_new_target"
+      } ],
+      "instance" : "/api/v1/review/queue",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.006Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000060",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001060,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000006",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.006Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うろうろ",
+          "headword_reading" : "うろうろ",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うろうろ"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウロウロ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "restlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "aimlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "without purpose"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to" ],
+            "xref" : [ ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "to loiter"
+            }, {
+              "lang" : "eng",
+              "text" : "to drift"
+            }, {
+              "lang" : "eng",
+              "text" : "to hang about doing nothing"
+            }, {
+              "lang" : "eng",
+              "text" : "to wander aimlessly"
+            }, {
+              "lang" : "eng",
+              "text" : "to be restless"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "vs" ],
+            "xref" : [ "うろつく" ]
+          }, {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "to be restless"
+            }, {
+              "lang" : "eng",
+              "text" : "to fuss"
+            }, {
+              "lang" : "eng",
+              "text" : "to be in a fidget"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001060,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:18.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:18.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:18.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:48.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うろうろ\nrestlessly; aimlessly; without purpose; to loiter; to drift; to hang about doing nothing; to wander aimlessly; to be restless; to be restless; to fuss; to be in a fidget",
+          "front" : "うろうろ",
+          "reading" : "うろうろ",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うろうろ",
+          "voice" : "3"
+        }
+      }, {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.007Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000070",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1001110,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000007",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000007",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.007Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "うんざり",
+          "headword_reading" : "うんざり",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000007",
+          "pitch" : [ ],
+          "pos" : [ "adv", "adv-to", "vs" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "うんざり"
+          }, {
+            "applies_to" : [ "*" ],
+            "common" : false,
+            "tags" : [ ],
+            "text" : "ウンザリ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "tedious"
+            }, {
+              "lang" : "eng",
+              "text" : "boring"
+            }, {
+              "lang" : "eng",
+              "text" : "being fed up with"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adv", "adv-to", "vs" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1001110,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:18.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:18.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:18.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:48.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "うんざり\ntedious; boring; being fed up with",
+          "front" : "うんざり",
+          "reading" : "うんざり",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "うんざり",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 2,
+          "today" : 5
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 2,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 2,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.006Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-27T10:00:19.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000060",
+        "interval_days" : 7,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:19.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1001060,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000006",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000006",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.006Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000060",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc6>",
+        "id" : "0193b000-0003-7000-8000-000000000006",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:19.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.007Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-27T10:00:20.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000070",
+        "interval_days" : 7,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:20.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1001110,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000007",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000007",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.007Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000070",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc7>",
+        "id" : "0193b000-0003-7000-8000-000000000007",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:20.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : true,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 2,
+          "today" : 7
+        },
+        "phase" : "empty",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : false,
+          "goal" : 2,
+          "today" : 7
+        },
+        "phase" : "empty",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : null,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  } ]
+}

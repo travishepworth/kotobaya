@@ -182,10 +182,11 @@ private enum class EntryCheck { FOUND, NOT_FOUND, NOT_ON_DEVICE }
  * `createNote` (SHELL.md 4.3, L-2, L-4; openapi `createNote`): the server's rules and answers, minted by the device.
  * - Idempotency: an `id` that exists in the replica (live, deleted or merged) → `200` with it or its survivor, nothing
  *   minted, nothing looked up.
- * - `entry_seq` by the full L-7 lookup (installed package → sidecar cache → when online the server, cached): a known
- *   miss (authoritative package, or the server said `404`) → `422 /entry_seq not_found`; not on the device and not
- *   reachable → `503 shell_dict_missing`, nothing minted — unless a live note already holds the entry, which answers
- *   as the duplicate it is.
+ * - `entry_seq` by the L-7 lookup (installed package → sidecar cache; C-31: never the network, never a wait): a known
+ *   miss (authoritative package, or a standing `404`) → `422 /entry_seq not_found`; any other miss → `503
+ *   shell_dict_missing` at once, nothing minted, the entry enqueued for gap fill (`urgent`; the SPA repeats the request
+ *   on `shell.dict`, L-4 makes that safe) — unless a live note already holds the entry, which answers as the
+ *   duplicate it is.
  * - Card kinds by core `CardGenerator.kindsForNewNote(type, card_kinds, cards.reading_enabled)` (ADR-035: no
  *   `reading` card while the setting is not true); `deck.item_put` when `deck_id` is given (also on
  *   `return_existing`). The duplicate check, the id check and the mint share one store transaction ([LocalWrites]).

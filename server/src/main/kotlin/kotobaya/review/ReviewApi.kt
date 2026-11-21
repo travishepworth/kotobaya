@@ -73,10 +73,16 @@ internal class ReviewApi(
             "true" -> true
             else -> { e.add("/keep_going", "invalid_value", "Must be true or false, not $v."); false }
         }
+        // C-31 (ADR-052): decimal integer 0..2147483647, validated even without keep_going, used only with it.
+        val target = q["keep_going_new_target"]?.let { v ->
+            if (!Regex("[0-9]+").matches(v)) { e.add("/keep_going_new_target", "invalid_value", "Must be a decimal integer, not $v."); null }
+            else v.toBigInteger().takeIf { it <= Int.MAX_VALUE.toBigInteger() }?.toInt()
+                ?: run { e.add("/keep_going_new_target", "out_of_range", "Must be 0 to 2147483647."); null }
+        }
         e.throwIfAny()
 
         val nowMs = clock().toEpochMilli()
-        val req = QueueRequest(nowMs, limit, deckId, kinds, keepGoing)
+        val req = QueueRequest(nowMs, limit, deckId, kinds, keepGoing, if (keepGoing) target else null)
         // C-27 (ADR-032): deck entries the builder draws become notes and cards here, the one materialization path
         // for API clients. Only for a caller that may review (`review` or `write`), and only when new cards are asked for.
         val scopes = call.authenticated?.principal?.scopes.orEmpty()
@@ -119,7 +125,7 @@ internal class ReviewApi(
     /** README "C-27": pending materialization = entries to create + kanji notes to mint (the API's `to_materialize`). */
     private fun ReviewQueue.pendingMaterialization(): Int = toMaterialize.size + kanjiToMaterialize.size
 
-    private class QueueRequest(val nowMs: Long, val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean)
+    private class QueueRequest(val nowMs: Long, val limit: Int, val deckId: String?, val kinds: Set<String>, val keepGoing: Boolean, val keepGoingNewTarget: Int? = null)
 
     private class Built(val settings: ReviewSettings, val loaded: LoadedQueue, val result: LoopResult) {
         /** The build to serve (N, or K under keep going); the only one whose `toMaterialize` may be materialized. */
@@ -129,7 +135,7 @@ internal class ReviewApi(
     private fun buildQueue(dsl: DSLContext, r: QueueRequest): Built {
         val settings = ReviewSettings.load(dsl)
         // C-26: keep going is a per-request override (core rule 6); the batch is the page size.
-        val loaded = QueueLoader(dsl).load(r.nowMs, settings, r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit)
+        val loaded = QueueLoader(dsl).load(r.nowMs, settings, r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit, keepGoingNewTarget = r.keepGoingNewTarget)
         return Built(settings, loaded, loop.evaluate(loaded.input))
     }
 

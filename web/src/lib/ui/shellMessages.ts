@@ -2,6 +2,9 @@
 const en = {
 	'shell.needs.title': 'Needs a connection',
 	'shell.needs.body': 'This screen talks to your server and this phone is offline. Everything you study keeps working; come back when you are online.',
+	'shell.needs.action': 'Needs a connection',
+	'shell.uploads.unavailable': 'Uploads are not available in the app. Use the web version.',
+	'shell.job.waiting': 'Waiting for a connection…',
 	'shell.needs.home': 'Back to Today',
 	'sync.chip.label': 'Sync status',
 	'sync.syncing': 'Syncing…',

@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { needsConnectionFor } from '../../../../lib/ui/access';
+	import NeedsConnectionHint from '../../../../lib/ui/NeedsConnectionHint.svelte';
+	const offline = $derived(needsConnectionFor('putParseOverride'));
 	// A tapped word: its entry and status, Mine / Known / Ignore, and — folded away — fixing the parse.
 	import Button from '../../../../lib/ui/Button.svelte';
 	import Dialog from '../../../../lib/ui/Dialog.svelte';
@@ -84,12 +87,13 @@
 					/>
 					<div class="line">
 						<TextField label={tr('rd.splitAt')} inputmode="numeric" bind:value={splitText} />
-						<Button variant="outline" disabled={!vm.splitPreview} onclick={() => vm.save(vm.splitPreview)}>{tr('rd.split')}</Button>
+						<Button variant="outline" disabled={!vm.splitPreview || offline} onclick={() => vm.save(vm.splitPreview)}>{tr('rd.split')}</Button>
+						<NeedsConnectionHint op="putParseOverride" />
 					</div>
 					<p class="muted" lang="ja">{showEdit(vm.splitPreview) || tr('rd.cannotSplit')}</p>
 					<div class="line">
 						<p class="muted" lang="ja">{showEdit(vm.joinPreview) || tr('rd.noNext')}</p>
-						<Button variant="outline" disabled={!vm.joinPreview} onclick={() => vm.save(vm.joinPreview)}>{tr('rd.join')}</Button>
+						<Button variant="outline" disabled={!vm.joinPreview || offline} onclick={() => vm.save(vm.joinPreview)}>{tr('rd.join')}</Button>
 					</div>
 					<form
 						class="line"

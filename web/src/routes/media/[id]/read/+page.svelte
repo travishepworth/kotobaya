@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { needsConnectionFor } from '../../../../lib/ui/access';
+	import NeedsConnectionHint from '../../../../lib/ui/NeedsConnectionHint.svelte';
 	// Reader: the text on a reading measure, Japanese body type, unknown words underlined dotted (not only coloured);
 	// tap a word for its entry. Furigana toggle, parts, parse overrides folded at the end.
 	import { page } from '$app/state';
@@ -115,7 +117,8 @@
 					<li>
 						<span lang="ja">{o.matchText} → {o.tokens.map((t) => t.surface).join(' | ')}</span>
 						<span class="hint">{tr(`rd.overrides.scope.${scopeOf(o)}`)}</span>
-						<Button size="sm" variant="quiet" onclick={() => ov.remove(o)}>{tr('rd.overrides.delete')}</Button>
+						<Button size="sm" variant="quiet" disabled={needsConnectionFor('deleteParseOverride')} onclick={() => ov.remove(o)}>{tr('rd.overrides.delete')}</Button>
+						<NeedsConnectionHint op="deleteParseOverride" />
 					</li>
 				{/each}
 			</ul>

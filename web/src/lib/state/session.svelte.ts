@@ -4,6 +4,7 @@ import { resumeErrorReports } from '../errors';
 import { isShellMode } from '../api/shell';
 import { openEventStream } from '../events';
 import { initShell } from './shell.svelte';
+import { clearOutbox } from './review.svelte';
 import { t } from '../i18n';
 import { pushToast } from '../toasts.svelte';
 
@@ -71,6 +72,8 @@ export async function logout(): Promise<void> {
 	try {
 		await authApi.logout();
 	} finally {
+		// Unsent answers belong to the user who logged out (LF-W1): gone here and in IndexedDB.
+		await clearOutbox().catch(() => {});
 		setOut();
 	}
 }

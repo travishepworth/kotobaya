@@ -1,0 +1,273 @@
+{
+  "id" : "bulk-schedule-cards-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 1,
+      "dry_run" : true,
+      "matched" : 1,
+      "ops_emitted" : 0,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a1e3cc9d00-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-16T10:00:00.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 1,
+      "dry_run" : false,
+      "matched" : 1,
+      "ops_emitted" : 1,
+      "skipped" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-15T10:00:00.001Z",
+      "deleted_at" : null,
+      "difficulty" : 1,
+      "due_at" : "2026-11-25T19:00:00.000Z",
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : 5,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : "2026-11-16T10:00:00.000Z",
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 1,
+      "stability" : 8.2956,
+      "state" : "review",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-15T10:00:00.001Z"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_state",
+        "pointer" : "/action/type"
+      } ],
+      "instance" : "/api/v1/cards/bulk/schedule",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : null,
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : null,
+        "hlc" : "<hlc1>",
+        "id" : "<id1>",
+        "import_source" : null,
+        "manual_action" : "set_due",
+        "manual_due_at" : "2026-11-25T19:00:00.000Z",
+        "rating" : null,
+        "review_type" : "manual",
+        "reviewed_at" : "2026-11-20T10:00:03.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }, {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a1e3cc9d00-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-16T10:00:00.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "changed" : 1,
+      "dry_run" : false,
+      "matched" : 2,
+      "ops_emitted" : 1,
+      "skipped" : 1
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "buried_until" : null,
+      "created_at" : "2026-11-15T10:00:00.001Z",
+      "deleted_at" : null,
+      "difficulty" : null,
+      "due_at" : null,
+      "flags" : 0,
+      "id" : "0193a1b2-0002-7000-8000-000000000010",
+      "interval_days" : null,
+      "kind" : "meaning",
+      "lapses" : 0,
+      "last_review_at" : null,
+      "leech" : false,
+      "merged_into_id" : null,
+      "note" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "preset_id" : "00000000-0000-7000-8000-000000000010",
+      "reps" : 0,
+      "stability" : null,
+      "state" : "new",
+      "step" : null,
+      "suspended" : false,
+      "updated_at" : "2026-11-15T10:00:00.001Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "button" : null,
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : null,
+        "hlc" : "<hlc2>",
+        "id" : "<id2>",
+        "import_source" : null,
+        "manual_action" : "reset",
+        "manual_due_at" : null,
+        "rating" : null,
+        "review_type" : "manual",
+        "reviewed_at" : "2026-11-20T10:00:07.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }, {
+        "button" : null,
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "<device>",
+        "duration_ms" : null,
+        "hlc" : "<hlc1>",
+        "id" : "<id1>",
+        "import_source" : null,
+        "manual_action" : "set_due",
+        "manual_due_at" : "2026-11-25T19:00:00.000Z",
+        "rating" : null,
+        "review_type" : "manual",
+        "reviewed_at" : "2026-11-20T10:00:03.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }, {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000010",
+        "device_id" : "01931f3e-0000-7000-8000-0000000000a1",
+        "duration_ms" : 3000,
+        "hlc" : "01a1e3cc9d00-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "id" : "0193a1b2-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-16T10:00:00.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "required",
+        "pointer" : "/action/due_at"
+      } ],
+      "instance" : "/api/v1/cards/bulk/schedule",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  } ]
+}

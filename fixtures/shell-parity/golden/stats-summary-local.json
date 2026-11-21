@@ -1,0 +1,347 @@
+{
+  "id" : "stats-summary-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "done_today" : {
+        "new_cards" : 0,
+        "retention" : null,
+        "reviews" : 0,
+        "time_ms" : 0
+      },
+      "due" : {
+        "learning" : 0,
+        "new" : 1,
+        "review" : 0
+      },
+      "more_available" : false,
+      "next_due_at" : "2026-11-28T10:00:00.000Z",
+      "streak_days" : 0,
+      "study_day" : "2026-11-20",
+      "totals" : {
+        "cards" : 3,
+        "leeches" : 0,
+        "notes" : 3,
+        "suspended" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 1,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ {
+        "card" : {
+          "buried_until" : null,
+          "created_at" : "2026-11-17T10:00:00.002Z",
+          "deleted_at" : null,
+          "difficulty" : null,
+          "due_at" : null,
+          "flags" : 0,
+          "id" : "0193a1b2-0002-7000-8000-000000000020",
+          "interval_days" : null,
+          "kind" : "meaning",
+          "lapses" : 0,
+          "last_review_at" : null,
+          "leech" : false,
+          "merged_into_id" : null,
+          "note" : {
+            "entry_seq" : 1000470,
+            "fields" : { },
+            "grammar_point_id" : null,
+            "id" : "0193a1b2-0001-7000-8000-000000000002",
+            "kanji_literal" : null,
+            "mnemonic" : "",
+            "note_type_id" : "00000000-0000-7000-8000-000000000101",
+            "source_sentence" : "",
+            "tags" : [ ],
+            "type" : "vocab"
+          },
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "preset_id" : "00000000-0000-7000-8000-000000000010",
+          "reps" : 0,
+          "stability" : null,
+          "state" : "new",
+          "step" : null,
+          "suspended" : false,
+          "updated_at" : "2026-11-17T10:00:00.002Z"
+        },
+        "deck_count" : 0,
+        "decks" : [ ],
+        "entry" : {
+          "deck_ids" : [ ],
+          "freq_rank" : null,
+          "freqs" : [ ],
+          "headword" : "あべこべ",
+          "headword_reading" : "あべこべ",
+          "is_common" : true,
+          "kanji" : [ ],
+          "kanji_forms" : [ ],
+          "language" : "ja",
+          "misc" : [ "on-mim" ],
+          "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+          "pitch" : [ ],
+          "pos" : [ "adj-no", "adj-na", "n" ],
+          "readings" : [ {
+            "applies_to" : [ "*" ],
+            "common" : true,
+            "tags" : [ ],
+            "text" : "あべこべ"
+          } ],
+          "retired" : false,
+          "senses" : [ {
+            "applies_to_kana" : [ "*" ],
+            "applies_to_kanji" : [ "*" ],
+            "dialect" : [ ],
+            "field" : [ ],
+            "gloss" : [ {
+              "lang" : "eng",
+              "text" : "contrary"
+            }, {
+              "lang" : "eng",
+              "text" : "opposite"
+            }, {
+              "lang" : "eng",
+              "text" : "inverse"
+            }, {
+              "lang" : "eng",
+              "text" : "reverse"
+            }, {
+              "lang" : "eng",
+              "text" : "back-to-front"
+            } ],
+            "info" : [ ],
+            "misc" : [ "on-mim" ],
+            "pos" : [ "adj-no", "adj-na", "n" ],
+            "xref" : [ ]
+          } ],
+          "seq" : 1000470,
+          "status" : "new"
+        },
+        "front_furigana" : false,
+        "is_new" : true,
+        "kanji" : null,
+        "kanji_parts" : [ ],
+        "preview" : {
+          "again" : {
+            "due_at" : "2026-11-20T10:01:01.000Z",
+            "interval_days" : 0
+          },
+          "easy" : {
+            "due_at" : "2026-11-28T10:00:01.000Z",
+            "interval_days" : 8
+          },
+          "good" : {
+            "due_at" : "2026-11-20T10:10:01.000Z",
+            "interval_days" : 0
+          },
+          "hard" : {
+            "due_at" : "2026-11-20T10:05:31.000Z",
+            "interval_days" : 0
+          }
+        },
+        "review_type" : "learning",
+        "sentence" : null,
+        "text" : {
+          "back" : "あべこべ\ncontrary; opposite; inverse; reverse; back-to-front",
+          "front" : "あべこべ",
+          "reading" : "あべこべ",
+          "sentence" : null
+        },
+        "word_audio" : {
+          "blob_hash" : null,
+          "source" : "tts",
+          "text" : "あべこべ",
+          "voice" : "3"
+        }
+      } ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : false,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 1,
+          "today" : 0
+        },
+        "phase" : "reviewing",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 1,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 1,
+          "review" : 0
+        }
+      },
+      "more_available" : false,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "card" : {
+        "buried_until" : null,
+        "created_at" : "2026-11-17T10:00:00.002Z",
+        "deleted_at" : null,
+        "difficulty" : 1,
+        "due_at" : "2026-11-30T10:00:02.000Z",
+        "flags" : 0,
+        "id" : "0193a1b2-0002-7000-8000-000000000020",
+        "interval_days" : 10,
+        "kind" : "meaning",
+        "lapses" : 0,
+        "last_review_at" : "2026-11-20T10:00:02.000Z",
+        "leech" : false,
+        "merged_into_id" : null,
+        "note" : {
+          "entry_seq" : 1000470,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "preset_id" : "00000000-0000-7000-8000-000000000010",
+        "reps" : 1,
+        "stability" : 8.2956,
+        "state" : "review",
+        "step" : null,
+        "suspended" : false,
+        "updated_at" : "2026-11-17T10:00:00.002Z"
+      },
+      "review" : {
+        "button" : "easy",
+        "card_id" : "0193a1b2-0002-7000-8000-000000000020",
+        "device_id" : "<device>",
+        "duration_ms" : 4200,
+        "hlc" : "<hlc1>",
+        "id" : "0193b000-0003-7000-8000-000000000001",
+        "import_source" : null,
+        "manual_action" : null,
+        "manual_due_at" : null,
+        "rating" : 4,
+        "review_type" : "learning",
+        "reviewed_at" : "2026-11-20T10:00:02.000Z",
+        "sentence_id" : null,
+        "undone_at" : null,
+        "utc_offset_min" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "done_today" : {
+        "new_cards" : 1,
+        "retention" : null,
+        "reviews" : 1,
+        "time_ms" : 4200
+      },
+      "due" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "more_available" : true,
+      "next_due_at" : "2026-11-28T10:00:00.000Z",
+      "streak_days" : 1,
+      "study_day" : "2026-11-20",
+      "totals" : {
+        "cards" : 3,
+        "leeches" : 0,
+        "notes" : 3,
+        "suspended" : 0
+      }
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "counts" : {
+        "learning" : 0,
+        "new" : 0,
+        "review" : 0
+      },
+      "day_ends_at" : "2026-11-21T04:00:00.000Z",
+      "items" : [ ],
+      "loop" : {
+        "backlog" : {
+          "beyond_limit" : 0,
+          "reviews" : 0
+        },
+        "keep_going" : false,
+        "keep_going_available" : true,
+        "later_today" : {
+          "count" : 0,
+          "next_due_at" : null
+        },
+        "new" : {
+          "available" : true,
+          "goal" : 1,
+          "today" : 1
+        },
+        "phase" : "done_for_today",
+        "ready" : {
+          "learning" : 0,
+          "review" : 0,
+          "total" : 0
+        },
+        "reviews" : {
+          "limit" : 200,
+          "today" : 0
+        },
+        "until_stop" : 0,
+        "until_stop_parts" : {
+          "later" : 0,
+          "learning" : 0,
+          "new" : 0,
+          "review" : 0
+        }
+      },
+      "more_available" : true,
+      "study_day" : "2026-11-20",
+      "to_materialize" : 0
+    }
+  } ]
+}

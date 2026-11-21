@@ -75,6 +75,8 @@ class CoreDictOps(
     private val online: () -> Boolean,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    /** L-7 "Auto-install": a scope the user asked for is remembered (`top60k` stops the auto-install). */
+    private val onScopeChosen: (String) -> Unit = {},
 ) : DictOps {
     private val running = AtomicBoolean(false)
 
@@ -109,7 +111,10 @@ class CoreDictOps(
     }
 
     override fun start(scope: String?) {
-        if (scope != null) port.setScope(scope)
+        if (scope != null) {
+            port.setScope(scope)
+            onScopeChosen(scope)
+        }
         if (!running.compareAndSet(false, true)) return
         this.scope.launch(io) {
             try {
@@ -159,6 +164,7 @@ class CoreDictOps(
                 serverRelease = { cache.serverReleaseId() },
                 online = network::isOnline,
                 scope = scope,
+                onScopeChosen = { chosen -> s.get<kotobaya.android.dict.DictChoice>().userChoseTop60k = chosen == "top60k" },
             )
         }
     }

@@ -588,6 +588,40 @@ class ReviewApiTest : SyncFixture() {
         assertEquals("empty", after["loop"]["phase"].asText())
     }
 
+    /** C-31 (ADR-052): keep_going_new_target bounds the new cards of a keep-going request. */
+    @Test
+    fun keepGoingNewTargetStopsAtTheTarget() = reviewApp {
+        val t = token()
+        setting("scheduler.reviews_unlimited", "true")
+        setting("scheduler.new_per_day", "1")
+        listOf("a", "b", "c").forEach { note(t, it) }
+        assertEquals(200, answer(t, ids(fetchQueue(t))[0], 4).status.value)
+        assertEquals("goal_reached", fetchQueue(t)["loop"]["phase"].asText())
+        val kg = fetchQueue(t, "?keep_going=true&keep_going_new_target=2&limit=5")
+        assertEquals(1, kg["items"].size(), "only up to the target")
+        assertTrue(kg["items"][0]["is_new"].asBoolean())
+        assertEquals(200, answer(t, ids(kg)[0], 4).status.value)
+        val reached = fetchQueue(t, "?keep_going=true&keep_going_new_target=2&limit=5")
+        assertEquals(0, reached["items"].size())
+        assertEquals("goal_reached", reached["loop"]["phase"].asText())
+        assertEquals(true, reached["loop"]["keep_going_available"].asBoolean())
+        // ignored without keep_going
+        assertEquals(0, fetchQueue(t, "?keep_going_new_target=9")["items"].size())
+        val last = fetchQueue(t, "?keep_going=true&keep_going_new_target=3&limit=5")
+        assertEquals(1, last["items"].size())
+        assertEquals(200, answer(t, ids(last)[0], 4).status.value)
+        val none = fetchQueue(t, "?keep_going=true&keep_going_new_target=4&limit=5")
+        assertEquals(0, none["items"].size())
+        assertEquals("empty", none["loop"]["phase"].asText())
+        assertEquals(false, none["loop"]["keep_going_available"].asBoolean())
+        for ((v, code) in listOf("x" to "invalid_value", "-1" to "invalid_value", "1.5" to "invalid_value", "2147483648" to "out_of_range")) {
+            val bad = client.call(HttpMethod.Get, "/review/queue?keep_going_new_target=$v", bearer = t)
+            assertProblem(bad, 422, "validation_failed")
+            assertEquals("/keep_going_new_target", bad.json()["errors"][0]["pointer"].asText())
+            assertEquals(code, bad.json()["errors"][0]["code"].asText(), v)
+        }
+    }
+
     @Test
     fun loopIndependentOfKindsAndLimit() = reviewApp {
         val t = token()

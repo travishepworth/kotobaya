@@ -295,6 +295,34 @@ public data class QueueLimits(
      * `true` → false).
      */
     public val reviewsUnlimited: Boolean = false,
+    /**
+     * C-31 (additive; ADR-051, ADR-052) **Keep-going target**: the value [TodayReview.introducedNew]
+     * reviews of today may reach in this keep-going build, or `null` = no target (the endless
+     * stream of C-26, bit for bit). Read **only when [keepGoing] is true**; a normal build ignores
+     * it completely, so the normal build never owes an unfinished batch (invariant I8 of
+     * [ReviewLoop]). With a target `T`, rule 6 draws new cards against `targetRemaining = max(0, T −
+     * iToday)` (`iToday` = today's `introducedNew` count after rule 0) exactly as rule 4 of the
+     * normal build draws against `dayRemaining`; reviews and learning are not affected by it.
+     *
+     * Where it comes from: the client. When the user presses Keep going the client computes
+     * `T = newToday + pendingNew + max(1, newGoal)` from the [LoopState] on screen ("one
+     * goal-sized batch per press"; `pendingNew` = the [PendingAnswer]s of kind NEW that state
+     * does not count yet, 0 on every [LoopPresenter] screen that shows the button, so the batch
+     * is never short by answers still on their way) and passes it on every build of that review
+     * visit until the next press. It is held
+     * in the client's memory only: never persisted, never an op, never a setting, dropped when
+     * the visit ends (leaving Review, app or tab restart, study-day change, 10 minutes idle;
+     * rule 6 "Scope"). API: `getReviewQueue?keep_going=true&keep_going_new_target=T`.
+     *
+     * Constraints: any `Int`; a value `<= iToday` (already reached or exceeded, also every value
+     * `<= 0`) draws **no** new card. It is not clamped to a multiple of the goal and not checked
+     * against `newPerDay`.
+     * Example: goal 40, 40 introduced, press → `T = 80`: this build and the rebuilds after each
+     * answer draw new cards until `introducedNew == 80`, then none. Example: `T = 80` and 83
+     * already introduced (another device studied meanwhile) → no new card. Example:
+     * `newPerDay = 0`, 5 introduced, press → `T = 6`: one new card per press.
+     */
+    public val keepGoingNewTarget: Int? = null,
 ) {
     /** Constants. */
     public companion object {
@@ -1059,6 +1087,34 @@ public data class ReviewQueue(
  *      belongs to the normal build only (user decision 2026-11-17).
  *    - Rules 1 and 2: unchanged (eligibility, sibling burying, learning, learn-ahead).
  *    - [ReviewQueue.moreAvailable] is false.
+ *    - **Target (C-31, ADR-052)**, only when `limits.keepGoingNewTarget` is a number `T`; with
+ *      `null` the bullets above apply unchanged. `targetRemaining = max(0, T − iToday)`, `iToday`
+ *      = today's `introducedNew` reviews after rule 0. Rule 4 then runs with the budget test of
+ *      the **normal** build in which `dayRemaining` is replaced by `targetRemaining` and every
+ *      per-deck limit stays lifted: a unit of size `g` is drawn whole iff `drawn < batch` and
+ *      `drawn + g <= targetRemaining`; a unit that does not fit **leads** with as many of its
+ *      kanji as fit and its source stops there for this build (rule 4 "Fits or leads", ADR-043);
+ *      a kanji part fits iff `drawn + size <= targetRemaining`, or it is the first draw of the
+ *      build (`drawn == 0`) and `targetRemaining >= 1` (the ADR-044 exception in target form: a
+ *      part larger than what is left of the target is still drawn once, so a press with
+ *      `targetRemaining >= 1` and a new card in the pool always serves a new card).
+ *      `targetRemaining == 0` draws nothing. **`availableToday`** of such a build = what `drawn`
+ *      would reach with the batch unbounded: `min(targetRemaining, what the pool supplies)` up
+ *      to that exception; [ReviewLoop] shows it as the new part. Rules 3 and 5 of the keep-going
+ *      build are **not** changed by the target: every due review is taken, and the order stays
+ *      due learning, the open group, all reviews, then new cards — so (ADR-052 a) a learning
+ *      card whose step has elapsed is the head of the next build, and a review that has become
+ *      due precedes every new card, with one named exception. **Open-unit exception to
+ *      ADR-052 (a):** while a kanji unit is half-answered (rule 5 "Open group first": the last
+ *      answer of today introduced a card of the unit, `s == 0`), the unit's remaining cards
+ *      are served before a review that has become due — never before a due learning card. It
+ *      delays that review by at most the cards left in one word's unit (its other kanji and
+ *      the word), and exists so that a kanji is not separated from its word (ADR-040). It
+ *      applies with and without a target; [ReviewLoop] example W4 and invariant I5 state it.
+ *      Example (`newPerDay` 2 with two `introducedNew` today, batch 10, new N1 … N5, no reviews):
+ *      `T = 4` → `N1 N2`, `availableToday = 2`; after N1 is answered (`iToday = 3`) → `N2`; after
+ *      N2 (`iToday = 4`) → empty, although N3 … N5 exist. `T = 4` with `iToday = 5` → empty.
+ *      `T = null` → `N1 N2 N3 N4 N5`. Example (same, plus a review R that came due): `R N1 N2`.
  *    Accounting does not change: cards studied through keep going are answered with ordinary
  *    reviews, so they appear in [QueueInput.today] as `introducedNew`/`countsAsReview` and use up
  *    today's normal limits; they never raise tomorrow's allowance (limits are per study day).
@@ -1078,6 +1134,11 @@ public data class ReviewQueue(
  *    (ADR-049: after a `waiting` phase while today's learning cards are still on their timers).
  *    It is never stored, never an op and never a synced setting; counts do not depend on it
  *    ([LoopState], except `untilStop`, `untilStopParts` and `keepGoingAvailable`).
+ *    C-31 (ADR-052 b): the same scope holds for `keepGoingNewTarget`. When the visit ends the
+ *    target is gone with the flag; the cards of the batch that were not shown are **not owed**:
+ *    the next normal build draws against `newPerDay − iToday` as always (0 once the goal is
+ *    met), and the next press computes a fresh target from the then-current `iToday`. Cards that
+ *    were introduced keep their learning steps and come due as usual.
  *    Example (`newPerDay` 2 with two `introducedNew` today; `reviewsPerDay` 1 with one
  *    `countsAsReview` today; batch 10): new N1, N2, N3 in deck order, R4 due today, R5 due
  *    tomorrow → normal build: empty, `moreAvailable = true`; keep-going build: `R4 N1 N2 N3`

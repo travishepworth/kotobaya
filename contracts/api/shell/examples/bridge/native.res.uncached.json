@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "t": "res",
+  "id": "7b1e3c52-9d0a-4f6e-8a51-2f4c8d1e9a12",
+  "status": 503,
+  "headers": {
+    "content-type": "application/problem+json",
+    "kotobaya-local": "1",
+    "x-request-id": "0193a1b2-7000-7000-8000-00000000e021"
+  },
+  "body": "{\"type\":\"urn:kotobaya:problem:shell_uncached\",\"title\":\"Not downloaded yet\",\"status\":503,\"code\":\"shell_uncached\",\"instance\":\"/api/v1/stats/forecast\",\"request_id\":\"0193a1b2-7000-7000-8000-00000000e021\"}"
+}

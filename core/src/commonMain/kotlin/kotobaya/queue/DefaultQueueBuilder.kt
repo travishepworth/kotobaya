@@ -64,7 +64,7 @@ public object DefaultQueueBuilder : QueueBuilder {
     internal class Built(
         /** The build ([ReviewQueue.moreAvailable] false unless probed). */
         val queue: ReviewQueue,
-        /** Rule 4 `availableToday` (normal build); the drawn count `drawn` of a keep-going build. */
+        /** Rule 4 `availableToday` (normal build, keep going with a target); the drawn count `drawn` of a keep-going build without one. */
         val availableToday: Int,
         /** NEW items + pending entries of the batch-unbounded draw: `LegacyCounts.new` (normal build). */
         val unboundedNewCount: Int,
@@ -358,8 +358,9 @@ public object DefaultQueueBuilder : QueueBuilder {
             val middle = order(reviews, news.units.filter { it.items.isNotEmpty() }, news.availableToday)
             val items = learningNow + middle + learningAhead
             val empty = items.isEmpty() && news.materialize.isEmpty() && news.kanjiToMaterialize.isEmpty()
+            // The probe is K∞ (no target): a normal build is the same for every `keepGoingNewTarget` (C-31).
             val moreAvailable = probeMoreAvailable && !limits.keepGoing && empty &&
-                Build(input.copy(limits = limits.copy(keepGoing = true))).run(probeMoreAvailable = false).queue
+                Build(input.copy(limits = limits.copy(keepGoing = true, keepGoingNewTarget = null))).run(probeMoreAvailable = false).queue
                     .let { it.items.isNotEmpty() || it.toMaterialize.isNotEmpty() || it.kanjiToMaterialize.isNotEmpty() }
             return Built(
                 queue = ReviewQueue(items, news.materialize, nextLearningDueAt, moreAvailable, news.kanjiToMaterialize),
@@ -476,12 +477,22 @@ public object DefaultQueueBuilder : QueueBuilder {
             val keepGoing = limits.keepGoing
             val batch = maxOf(1, limits.keepGoingNewBatch)
             val iToday = input.today.count { it.introducedNew }
-            // Normal build (ADR-037): the draw runs without the batch test (which gives `availableToday`);
-            // the batch then keeps the units started while fewer than the batch were drawn, a prefix of
-            // that draw. Keep going (rule 6): the batch bounds the draw itself, no day test.
-            val dayRemaining = if (keepGoing) Long.MAX_VALUE else maxOf(0, limits.newPerDay - iToday).toLong()
-            val drawLimit = if (keepGoing) batch else Int.MAX_VALUE
-            val firstOfDayPossible = limits.newPerDay >= 1 && iToday == 0
+            // Rule 6 "Target" (C-31): read only by a keep-going build.
+            val target = if (keepGoing) limits.keepGoingNewTarget else null
+            // Normal build (ADR-037) and keep going with a target (C-31): the draw runs without the batch
+            // test against the day's (target's) remainder, which gives `availableToday`; the batch then
+            // keeps the units started while fewer than the batch were drawn, a prefix of that draw.
+            // Keep going without a target (rule 6): the batch bounds the draw itself, no day test.
+            val bounded = !keepGoing || target != null
+            val dayRemaining = when {
+                target != null -> maxOf(0L, target.toLong() - iToday)
+                keepGoing -> Long.MAX_VALUE
+                else -> maxOf(0, limits.newPerDay - iToday).toLong()
+            }
+            val drawLimit = if (bounded) Int.MAX_VALUE else batch
+            // The ADR-044 exception: a part may overshoot as the build's first draw; in target form
+            // whenever the target is not reached yet (a press always serves a new card).
+            val firstOfDayPossible = if (target != null) dayRemaining >= 1 else limits.newPerDay >= 1 && iToday == 0
             val share = maxOf(1, limits.newPerDay / 2)
             var drawn = 0
             var b = 0
@@ -610,7 +621,7 @@ public object DefaultQueueBuilder : QueueBuilder {
                         bfIndex++
                         continue
                     }
-                    if (!keepGoing && !partFits(part.size)) return
+                    if (bounded && !partFits(part.size)) return
                     if (withShare && !shareOk(part.size)) return
                     val before = drawn
                     val claims = mutableListOf<String>()

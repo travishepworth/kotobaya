@@ -43,29 +43,17 @@ private fun decodeCursor(s: String, size: Int): List<String> {
 }
 
 /**
- * The answer rule of SHELL.md L-7 for the paged dictionary lists (`searchDictionary`, `listKanjiWords`):
- * - a local cursor (`l.`) → local (no package: `422` at `/cursor`); any other cursor → forwarded (offline: `422`);
- * - no cursor: **local** when a package is installed and it is authoritative and the local first page is not empty;
- *   otherwise **forward and merge** (the server's page with the overlay recomputed from the replica); the forward
- *   fails as in P-1 → the local answer when a package is installed, else `503 shell_dict_missing`.
+ * The answer rule of SHELL.md L-7 (C-31) for the paged dictionary lists (`searchDictionary`, `listKanjiWords`): always
+ * local over the installed package plus the sidecar cache. Any cursor not issued by the device (no `l.`), and a local
+ * cursor with no package, is `422` at `/cursor`. No package and an empty sidecar cache → `503 shell_dict_missing`.
+ * Never forwarded, never merged with a server page.
  */
-private suspend fun localOrForward(env: DictEnv, cursor: String?, kanjiWords: Boolean, local: () -> JsonObject): ShellResponse {
-    if (cursor != null) {
-        if (cursor.startsWith(LOCAL_CURSOR)) {
-            if (!env.installed) badCursor()
-            return ShellResponse.json(local())
-        }
-        return env.forward()?.let { env.overlaid(it, kanjiWords) } ?: badCursor()
+private fun localOnly(env: DictEnv, cursor: String?, local: () -> JsonObject): ShellResponse {
+    if (cursor != null && (!cursor.startsWith(LOCAL_CURSOR) || !env.installed)) badCursor()
+    if (!env.installed && GapEntryIndex.of(env).entries.isEmpty()) {
+        dictMissing("No dictionary is installed and nothing is cached; this lookup")
     }
-    var page: JsonObject? = null
-    if (env.installed && env.authoritative) {
-        page = local()
-        if ((page.members["items"] as? JsonArray)?.items?.isNotEmpty() == true) return ShellResponse.json(page)
-    }
-    val forwarded = env.forward()
-    if (forwarded != null) return env.overlaid(forwarded, kanjiWords)
-    if (!env.installed) dictMissing("No dictionary is installed and the server cannot be reached; this search")
-    return ShellResponse.json(page ?: local())
+    return ShellResponse.json(local())
 }
 
 // --------------------------------------------------------------------------------------------- searchDictionary
@@ -205,7 +193,7 @@ private fun localSearch(env: DictEnv, q: String, commonOnly: Boolean, limit: Int
     return jsonObj("items" to JsonArray(views), "next_cursor" to (next?.let(::JsonString) ?: JsonNull))
 }
 
-/** `searchDictionary` (L-7): validation as the server's `DictApi.search`, then [localOrForward]. */
+/** `searchDictionary` (L-7): validation as the server's `DictApi.search`, then [localOnly]. */
 internal suspend fun searchDictionary(call: LocalCall): ShellResponse {
     val params = call.query("q", "common_only", "limit", "cursor")
     val raw = params.first("q") ?: invalid("/q", "q is required.", "required")
@@ -221,7 +209,7 @@ internal suspend fun searchDictionary(call: LocalCall): ShellResponse {
     val limit = params.first("limit")?.let { it.toIntOrNull()?.takeIf { n -> n in 1..500 } ?: invalid("/limit", "limit must be an integer from 1 to 500.") } ?: 50
     val cursor = params.first("cursor")
     val env = DictEnv(call)
-    return localOrForward(env, cursor, kanjiWords = false) { localSearch(env, q, commonOnly, limit, cursor) }
+    return localOnly(env, cursor) { localSearch(env, q, commonOnly, limit, cursor) }
 }
 
 // --------------------------------------------------------------------------------------------- listKanjiWords
@@ -285,7 +273,7 @@ private fun mineEntries(t: LearningTables): Set<Long> {
     return out
 }
 
-/** `listKanjiWords` (C-17, L-7): validation as the server's `KanjiWordsApi`, then [localOrForward]. */
+/** `listKanjiWords` (C-17, L-7): validation as the server's `KanjiWordsApi`, then [localOnly]. */
 internal suspend fun listKanjiWords(call: LocalCall): ShellResponse {
     val params = call.query("deck_id", "mine", "limit", "cursor")
     val literal = pathLiteral(call)
@@ -300,5 +288,5 @@ internal suspend fun listKanjiWords(call: LocalCall): ShellResponse {
     val limit = params.first("limit")?.let { it.toIntOrNull()?.takeIf { n -> n in 1..200 } ?: invalid("/limit", "limit must be an integer from 1 to 200.") } ?: 50
     val cursor = params.first("cursor")
     val env = DictEnv(call)
-    return localOrForward(env, cursor, kanjiWords = true) { localKanjiWords(env, literal, deckId, mine, limit, cursor) }
+    return localOnly(env, cursor) { localKanjiWords(env, literal, deckId, mine, limit, cursor) }
 }

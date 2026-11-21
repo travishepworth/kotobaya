@@ -1,0 +1,55 @@
+-- LF-A3: the replica reads of the three local stats operations (getStatsSummary, getStatsHeatmap, getStatsRetention),
+-- the server's StatsQueries over SQLite. Reads only; times are epoch ms (UTC); study days are computed in Kotlin.
+-- No window functions (minSdk 26 ships SQLite 3.18): `introduced` is a correlated lookup of the previous row.
+
+-- Non-undone, non-manual reviews with reviewed_at in [:lo, :hi) (a window wider than the requested study days).
+-- introduced (scheduled / learning rows only): the row is the first schedule-feeding row of its card's replay root
+-- (the card, or its merge survivor, with every card merged into that root), or the row before it is a manual reset;
+-- replay order (reviewed_at, hlc, id). Drill and cram rows are never introduced.
+statsDayRows:
+SELECT r.reviewed_at, r.utc_offset_min, r.review_type, r.rating, COALESCE(r.duration_ms, 0) AS duration_ms,
+       CASE WHEN r.review_type IN ('scheduled', 'learning') THEN
+         COALESCE((SELECT COALESCE(p.manual_action, '') FROM review_log p
+                   WHERE p.card_id IN (SELECT pc.id FROM card pc WHERE pc.id = COALESCE(c.merged_into_id, c.id) AND pc.merged_into_id IS NULL
+                                       UNION ALL
+                                       SELECT pm.id FROM card pm WHERE pm.merged_into_id = COALESCE(c.merged_into_id, c.id))
+                     AND p.undone_at IS NULL AND p.review_type IN ('scheduled', 'learning', 'manual')
+                     AND (p.reviewed_at < r.reviewed_at OR (p.reviewed_at = r.reviewed_at AND (p.hlc < r.hlc OR (p.hlc = r.hlc AND p.id < r.id))))
+                   ORDER BY p.reviewed_at DESC, p.hlc DESC, p.id DESC LIMIT 1), 'reset') = 'reset'
+       ELSE 0 END AS introduced
+FROM review_log r
+JOIN card c ON c.id = r.card_id
+WHERE r.undone_at IS NULL AND r.review_type <> 'manual' AND r.reviewed_at >= :lo AND r.reviewed_at < :hi;
+
+-- Streak input: non-undone, non-manual reviews, newest first (read through a cursor; the caller stops at the first gap).
+statsStreakRows:
+SELECT reviewed_at, utc_offset_min FROM review_log
+WHERE undone_at IS NULL AND review_type <> 'manual'
+ORDER BY reviewed_at DESC;
+
+-- StatsSummary.totals: live notes; live cards of live notes, of those suspended and leeches (lapses >= :leech).
+statsTotals:
+SELECT (SELECT COUNT(*) FROM note WHERE deleted_at IS NULL) AS notes,
+       COUNT(*) AS cards,
+       COUNT(CASE WHEN c.suspended = 1 THEN 1 END) AS suspended,
+       COUNT(CASE WHEN c.lapses >= :leech THEN 1 END) AS leeches
+FROM card c
+JOIN note n ON n.id = c.note_id
+WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL;
+
+-- StatsSummary.next_due_at: the earliest due_at after :now among live unsuspended cards of live notes; ADR-035: a
+-- retired card (vocab reading while :readingEnabled = 0) is never next.
+statsNextDue:
+SELECT MIN(c.due_at) AS next_due FROM card c
+JOIN note n ON n.id = c.note_id
+WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL AND c.suspended = 0
+  AND c.due_at > :now
+  AND (c.kind <> 'reading' OR n.type <> 'vocab' OR :readingEnabled = 1);
+
+-- Replay roots (the card, or its merge survivor) with a non-undone scheduled review in [:lo, :hi).
+statsScheduledRoots:
+SELECT DISTINCT COALESCE(c.merged_into_id, c.id) AS root
+FROM review_log r
+JOIN card c ON c.id = r.card_id
+WHERE r.undone_at IS NULL AND r.review_type = 'scheduled' AND r.reviewed_at >= :lo AND r.reviewed_at < :hi
+ORDER BY root;

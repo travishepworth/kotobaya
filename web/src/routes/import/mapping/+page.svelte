@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { needsConnectionFor } from '../../../lib/ui/access';
+	import NeedsConnection from '../../../lib/ui/NeedsConnection.svelte';
 	import Button from '../../../lib/ui/Button.svelte';
 	import EmptyState from '../../../lib/ui/EmptyState.svelte';
 	import LoadError from '../../../lib/ui/LoadError.svelte';
@@ -12,7 +13,11 @@
 	import { tm } from './messages';
 
 	const vm = new MappingPage();
-	onMount(() => void vm.load(false));
+	const offline = $derived(needsConnectionFor('listJpdbVocab'));
+	// Offline in the shell: wait instead of failing; load once a connection is back.
+	$effect(() => {
+		if (!offline && !vm.loaded && !vm.loading) void vm.load(false);
+	});
 </script>
 
 <svelte:head><title>{tm('map.title')} · Kotobaya</title></svelte:head>
@@ -30,7 +35,9 @@
 		</div>
 	{/if}
 
-	{#if !vm.loaded}
+	{#if offline && !vm.loaded}
+		<NeedsConnection />
+	{:else if !vm.loaded}
 		<Skeleton shape="block" height="12rem" />
 	{:else if vm.loadFailed && vm.items.length === 0}
 		<LoadError size="page" onretry={() => vm.retry()} />

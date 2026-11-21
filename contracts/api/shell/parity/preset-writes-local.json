@@ -1,0 +1,222 @@
+{
+  "id": "preset-writes-local",
+  "title": "createPreset, updatePreset and deletePreset are answered on the device (C-31, rule L-10)",
+  "covers": [
+    "presets.writes_local"
+  ],
+  "narrative": [
+    "An empty replica (only the built-in rows). Before C-31 the shell forwarded these three operations.",
+    "Step 0: createPreset with a client id fills the column defaults (steps 60/600, relearning 600, 36500 days, fuzz).",
+    "Step 1: the same id again is 200 with the stored preset, whatever the rest of the body says; nothing is minted.",
+    "Steps 2-4: updatePreset writes the registers present; getPreset and listPresets (local reads) show it at once.",
+    "Steps 5-6: a desired_retention outside 0.7-0.99 and a body without name are 422; nothing is minted.",
+    "Steps 7-9: deletePreset is 204, twice; the preset then answers 410.",
+    "Step 10: the Default preset cannot be deleted: 409 builtin_immutable."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": []
+  },
+  "operations": [
+    "createPreset",
+    "deletePreset",
+    "getPreset",
+    "listPresets",
+    "updatePreset"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/presets",
+        "query": "",
+        "body": {
+          "id": "0193b000-0006-7000-8000-000000000001",
+          "name": "Kanji",
+          "desired_retention": 0.85
+        }
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "/id": "0193b000-0006-7000-8000-000000000001",
+          "/name": "Kanji",
+          "/desired_retention": 0.85,
+          "/learning_steps_s": [
+            60,
+            600
+          ],
+          "/relearning_steps_s": [
+            600
+          ],
+          "/maximum_interval_days": 36500,
+          "/fuzz": true
+        }
+      }
+    },
+    {
+      "at_ms": 1795168802000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/presets",
+        "query": "",
+        "body": {
+          "id": "0193b000-0006-7000-8000-000000000001",
+          "name": "Other name",
+          "desired_retention": 0.8
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/id": "0193b000-0006-7000-8000-000000000001",
+          "/name": "Kanji",
+          "/desired_retention": 0.85
+        }
+      }
+    },
+    {
+      "at_ms": 1795168803000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+        "query": "",
+        "body": {
+          "desired_retention": 0.88,
+          "learning_steps_s": [
+            60,
+            600,
+            3600
+          ]
+        }
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/desired_retention": 0.88,
+          "/learning_steps_s": [
+            60,
+            600,
+            3600
+          ],
+          "/name": "Kanji"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/desired_retention": 0.88
+        }
+      }
+    },
+    {
+      "at_ms": 1795168804000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/presets",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 200
+      }
+    },
+    {
+      "at_ms": 1795168805000,
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+        "query": "",
+        "body": {
+          "desired_retention": 0.5
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed",
+        "field_error": {
+          "pointer": "/desired_retention"
+        }
+      }
+    },
+    {
+      "at_ms": 1795168806000,
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/presets",
+        "query": "",
+        "body": {
+          "desired_retention": 0.9
+        }
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168807000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168808000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 204
+      }
+    },
+    {
+      "at_ms": 1795168809000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/presets/0193b000-0006-7000-8000-000000000001",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 410,
+        "problem_code": "gone"
+      }
+    },
+    {
+      "at_ms": 1795168810000,
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/presets/00000000-0000-7000-8000-000000000010",
+        "query": "",
+        "body": null
+      },
+      "expect": {
+        "status": 409,
+        "problem_code": "builtin_immutable"
+      }
+    }
+  ]
+}

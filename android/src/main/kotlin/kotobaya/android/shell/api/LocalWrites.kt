@@ -1,5 +1,6 @@
 package kotobaya.android.shell.api
 
+import kotobaya.android.sync.StoreBusyException
 import kotobaya.contracts.sync.Op
 import kotobaya.sync.client.mint.MintRefusal
 import kotobaya.sync.client.mint.MintRequest
@@ -35,6 +36,10 @@ sealed interface WritePlan<L, out T> {
  * A refusal, or a [ProblemException] thrown by [block], rolls the whole transaction back and
  * propagates as [ProblemException]; nothing is minted, applied or queued and no sync is triggered.
  * Must not be called inside another store transaction (the trigger would fire before the commit).
+ *
+ * Busy writer (LF-A1b; answered like SHELL.md L-8): a transaction that did not get the write connection within the store's bound
+ * ([StoreBusyException]: a rebuild, the startup replay or a large write held it) has run nothing, so it is retried
+ * once; still busy, the write is `503 shell_rebuilding` with `Retry-After: 2` (the SPA retries it), never `500`.
  */
 class LocalWrites<L>(
     private val store: DeviceStore<L>,
@@ -43,7 +48,21 @@ class LocalWrites<L>(
 ) {
     fun <T> write(block: (StoreTransaction<L>) -> WritePlan<L, T>): T {
         var minted = false
-        val result = store.transaction { tx ->
+        val result = try {
+            attempt(block) { minted = true }
+        } catch (first: StoreBusyException) {
+            try {
+                attempt(block) { minted = true }
+            } catch (again: StoreBusyException) {
+                throw ProblemException(Problems.shellRebuilding())
+            }
+        }
+        if (minted) runCatching { onLocalChange() }
+        return result
+    }
+
+    private fun <T> attempt(block: (StoreTransaction<L>) -> WritePlan<L, T>, onMinted: () -> Unit): T =
+        store.transaction { tx ->
             when (val plan = block(tx)) {
                 is WritePlan.Answer -> plan.value
                 is WritePlan.Mint -> {
@@ -53,7 +72,7 @@ class LocalWrites<L>(
                         when (val r = minter.mintAll(plan.requests)) {
                             is MintResult.Refused -> throw ProblemException(Problems.fromMintRefusal(r.reason, plan.invalidPointer))
                             is MintResult.Minted -> {
-                                minted = true
+                                onMinted()
                                 plan.respond(tx, r.ops)
                             }
                         }
@@ -61,7 +80,4 @@ class LocalWrites<L>(
                 }
             }
         }
-        if (minted) runCatching { onLocalChange() }
-        return result
-    }
 }

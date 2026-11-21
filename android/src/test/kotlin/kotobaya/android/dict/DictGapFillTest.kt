@@ -11,6 +11,8 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotobaya.android.net.ApiError
 import kotobaya.android.review.InstalledRenderData
@@ -260,30 +262,67 @@ class DictGapFillTest {
     }
 
     @Test
-    fun theFullLookupAsksTheServerOnlyWhenNotAuthoritativeAndCachesTheAnswer() = runBlocking {
+    fun theLookupNeverAsksTheServerAndAMissIsFilledInTheBackground() = runBlocking<Unit> {
         installPackage(1, "top60k", inTop60k)
-        val lookup = DictLookup(dict, cache, remote)
+        var landed = 0
+        val queue = BackgroundGapFillQueue(
+            CoroutineScope(Dispatchers.Unconfined), dict, cache, remote, onLanded = { landed++ }, nowMs = { 1_000L },
+        )
+        val lookup = DictLookup(dict, cache, remote, queue = queue)
         remote.entries[5_000] = FakeGapRemote.entryBody(5_000, "語", "ご", "word")
         assertEquals(1L, assertIs<Resolved.Found<DictEntryDetail>>(lookup.resolveEntry(1)).value.seq) // step 1
-        assertEquals("語", assertIs<Resolved.Found<DictEntryDetail>>(lookup.resolveEntry(5_000)).value.headword) // step 3
-        remote.offline = true
-        assertEquals("語", lookup.entry(5_000)?.headword) // step 2, offline
-        assertEquals(Resolved.NotOnDevice, lookup.resolveEntry(6_000)) // top60k miss offline: 503
+        assertTrue(remote.asked.isEmpty())
+
+        // a miss: answered at once (503), enqueued; no request was made on the call's path
+        remote.offline = true // the drain the enqueue starts fails and keeps the reference
+        assertEquals(Resolved.NotOnDevice, lookup.resolveEntry(5_000))
+        assertEquals(1, queue.pendingCount())
+        lookup.resolveEntry(5_000) // the same reference twice is one fetch
+        assertEquals(1, queue.pendingCount())
+        assertTrue(remote.asked.isEmpty())
+
         remote.offline = false
-        assertEquals(Resolved.NotFound, lookup.resolveEntry(6_000)) // server 404 -> negative result
+        queue.drain()
+        assertEquals(listOf("e:5000"), remote.asked)
+        assertEquals(1, landed, "shell.dict follows the landed entry")
+        assertEquals(1, cache.counts()?.cached) // gap_fill.cached + 1
+        assertEquals("語", assertIs<Resolved.Found<DictEntryDetail>>(lookup.resolveEntry(5_000)).value.headword) // the second read hits
         remote.offline = true
-        assertEquals(Resolved.NotFound, lookup.resolveEntry(6_000)) // standing negative, offline
+        assertEquals("語", lookup.entry(5_000)?.headword)
+
+        // a server 404 is a standing negative result: NotFound afterwards, without asking again
+        remote.offline = false
+        assertEquals(Resolved.NotOnDevice, lookup.resolveEntry(6_000))
+        queue.drain()
+        assertEquals(Resolved.NotFound, lookup.resolveEntry(6_000))
+        assertEquals(2, remote.asked.size)
         assertFalse(lookup.isAuthoritative())
 
         installPackage(2, "all", inTop60k)
         cache.recordServerRelease(2)
         assertTrue(lookup.isAuthoritative())
-        remote.asked.clear()
-        remote.offline = false
-        assertEquals(Resolved.NotFound, lookup.resolveEntry(7_000))
-        assertTrue(remote.asked.isEmpty(), "an authoritative package answers 404 without asking")
+        val asked = remote.asked.size
+        assertEquals(Resolved.NotFound, lookup.resolveEntry(8_000))
+        assertEquals(asked, remote.asked.size, "an authoritative package answers 404 without asking")
         cache.recordServerRelease(3) // the server moved on: the package is no longer authoritative
         assertFalse(lookup.isAuthoritative())
+    }
+
+    @Test
+    fun everyDeckItemEntryIsResolvableAfterGapFill() = runBlocking<Unit> {
+        installPackage(1, "top60k", inTop60k)
+        val deckSeqs = listOf(1L, 2_000L, 2_001L, 2_002L)
+        listDeck("d1", deckSeqs)
+        remote.entries[2_000] = FakeGapRemote.entryBody(2_000, "語", "ご", "word")
+        remote.entries[2_001] = FakeGapRemote.entryBody(2_001, "本", "ほん", "book")
+        // 2_002 is unknown to the server: a negative result is a resolution too
+        val report = gapFill().run()
+        assertTrue(report.missing.values.all { it == MissingReason.SERVER_NOT_FOUND })
+        val lookup = DictLookup(dict, cache, null)
+        for (seq in deckSeqs) {
+            assertTrue(lookup.resolveEntry(seq) !is Resolved.NotOnDevice, "deck_item $seq must resolve (design RC-5c)")
+        }
+        assertNotNull(lookup.entry(2_001))
     }
 
     @Test

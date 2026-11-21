@@ -21,7 +21,7 @@
 	import Skeleton from '../../lib/ui/Skeleton.svelte';
 	import type { Grade, GradeOption, MenuItem } from '../../lib/ui/kinds';
 	import { tr } from '../../lib/review/messages';
-	import { createReviewPage, loopParts, type GradeButton } from '../../lib/state/review.svelte';
+	import { createReviewPage, type GradeButton } from '../../lib/state/review.svelte';
 	import { keepSession, newSessionKey, takeSession } from '../../lib/state/reviewSession';
 	import BackExtras from './BackExtras.svelte';
 	import EditNoteDialog from './EditNoteDialog.svelte';
@@ -157,12 +157,12 @@
 	// ADR-037: the scheduled session's figures come from `loop` (ready now = `ready.total`, C3); a drill counts its
 	// own list. The bar is this visit's answers against those plus what is ready now.
 	const remaining = $derived(s.loop ? s.loop.ready.total : s.items.length);
-	// ADR-049 C3: the header shows `until_stop_parts` (learning, later, review, new), which sum to the bar's total.
-	const parts = $derived(s.loop ? loopParts(s.loop) : { learning: 0, later: 0, review: 0, new: 0 });
+	// ADR-051 C7: the header parts and the bar remainder are the core presenter's output; nothing is counted here.
+	const parts = $derived(s.presentation?.parts ?? { learning: 0, later: 0, review: 0, new: 0 });
 	const done = $derived(s.history.length);
 	// ADR-038 C3: total = done + `until_stop` (every answer left before the stop screen, so it grows on Again); a
 	// server older than ADR-038 sends none and the ready count stands in.
-	const total = $derived(done + (s.loop?.untilStop ?? remaining));
+	const total = $derived(done + (s.presentation && s.loop?.untilStop !== undefined ? s.presentation.untilStop : remaining));
 	// A heavy day (e.g. after a break): a calm tip instead of a wall of numbers.
 	// Shown before the first answer of a visit only, and dismissable: once you are going it is just in the way.
 	let bigDayDismissed = $state(false);
@@ -367,6 +367,14 @@
 					<span class="kb-sr">{rv('rv.loading')}</span>
 					<Skeleton shape="block" height="4.5rem" />
 					<Skeleton shape="text" count={2} />
+					{#if s.phase === 'settling'}
+						<!-- C7 settling with no card to hold: the screen retries by itself; a quiet way to check at once. -->
+						<p class="muted" role="status">{rv('rv.settling.body')}</p>
+						{#if s.refreshFailed}<p class="inline-error" role="status">{rv('rv.checkFailed')}</p>{/if}
+						{#if s.pendingStopped}
+							<Button variant="quiet" icon="sync" loading={s.busy} onclick={() => void s.reload()}>{rv('rv.done.check')}</Button>
+						{/if}
+					{/if}
 					{#if slow}
 						<div class="slow" role="status">
 							<p>{rv('rv.slow.loading')}</p>
@@ -397,31 +405,6 @@
 						</div>
 					{/snippet}
 				</EmptyState>
-			</div>
-		{:else if s.phase === 'pending'}
-			<!-- Not the end: the loop says cards are ready but none was served yet; fetched again by itself. -->
-			<div class="finished" aria-live="polite">
-				<div class="wait">
-					<Icon name="clock" size={40} />
-					<h2>{rv('rv.pending.title')}</h2>
-					{#if s.refreshFailed}
-						<!-- One failed check does not replace this screen: the next check is already scheduled. -->
-						<p class="inline-error" role="status">{rv('rv.checkFailed')}</p>
-					{/if}
-					<p class="muted">{s.pendingStopped ? rv('rv.pending.stopped') : rv('rv.pending.body')}</p>
-					<div class="done-actions">
-						<Button
-							variant={s.pendingStopped ? 'primary' : 'outline'}
-							icon="sync"
-							loading={s.busy}
-							onclick={() => s.reload()}>{s.pendingStopped ? rv('rv.pending.refresh') : rv('rv.done.check')}</Button
-						>
-						{#if s.history.length > 0}
-							<Button variant="quiet" icon="undo" onclick={() => s.undo()}>{rv('rv.undo')}</Button>
-						{/if}
-						<Button variant="quiet" href="/">{rv('rv.done.today')}</Button>
-					</div>
-				</div>
 			</div>
 		{:else if s.display}
 			{@const d = s.display}
@@ -493,9 +476,11 @@
 						<Button variant="primary" size="lg" full icon="sync" onclick={() => void s.retryAnswer()}>{rv('rv.answerFailed.retry')}</Button>
 					</div>
 				{:else if s.phase === 'settling'}
-					<div class="swap">
-						<Button variant="primary" size="lg" full disabled loading>{slow ? rv('rv.slow.saving') : rv('rv.saving')}</Button>
-					</div>
+					<!-- The held card is inert: a status line, never a button-looking control. -->
+					<p class="saving" role="status" data-testid="saving">{s.saving ? (slow ? rv('rv.slow.saving') : rv('rv.saving')) : rv('rv.settling.body')}</p>
+					{#if s.pendingStopped}
+						<Button variant="quiet" icon="sync" loading={s.busy} onclick={() => void s.reload()}>{rv('rv.done.check')}</Button>
+					{/if}
 				{:else if !s.flipped || !s.current}
 					<div class="swap">
 						<Button variant="primary" size="lg" full disabled={!s.current} onclick={() => s.flip()} aria-keyshortcuts="Space">
@@ -789,6 +774,12 @@
 	}
 
 	/* ---------- held card (answer saving), inline notices ---------- */
+	.saving {
+		margin: 0;
+		text-align: center;
+		font: var(--kb-type-body-sm);
+		color: var(--kb-color-text-muted);
+	}
 	.card.held .card-body {
 		opacity: 0.6;
 		transition: opacity var(--kb-duration-fast) var(--kb-ease-standard);

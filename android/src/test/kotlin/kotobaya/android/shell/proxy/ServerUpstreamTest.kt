@@ -7,7 +7,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotobaya.android.shell.api.ApiOperation
 import kotobaya.android.shell.api.ApiOperations
@@ -19,37 +18,27 @@ import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import okio.Buffer
 
-/** SHELL-A5 acceptance: rules P-1 … P-3 of SHELL.md against a MockWebServer. */
+/** SHELL-A5 acceptance: rules P-1 … P-3 of SHELL.md (as amended by C-31: no pre-push, no hold) against a MockWebServer. */
 class ServerUpstreamTest {
     private val server = MockWebServer().apply { start() }
     private val token = "kbd_" + "t".repeat(40)
     private var online = true
 
-    /** Records the order of sync calls against the number of requests the server had seen. */
-    private class FakeSync(private val server: MockWebServer) : ProxySync {
+    /** Records the pulls requested; the cursor never moves by itself (a pull that never finishes). */
+    private class FakeSync : ProxySync {
         var cursor = 0L
-        val log = ArrayList<String>()
-        var onPush: suspend () -> Unit = {}
-        var onPull: suspend () -> Unit = {}
+        val pullRequests = ArrayList<Long>()
 
-        override suspend fun push() {
-            log += "push@${server.requestCount}"
-            onPush()
-        }
-
-        override suspend fun pull() {
-            log += "pull@${server.requestCount}"
-            onPull()
+        override fun requestPull(seq: Long) {
+            pullRequests += seq
         }
 
         override fun pullCursor(): Long = cursor
     }
 
-    private val sync = FakeSync(server)
+    private val sync = FakeSync()
 
     private fun upstream(
-        pushBudgetMs: Long = 5_000,
-        pullBudgetMs: Long = 10_000,
         callBudgetMs: Long = 12_000,
         tokenSource: () -> String? = { token },
         proxySync: ProxySync = sync,
@@ -58,10 +47,7 @@ class ServerUpstreamTest {
         token = tokenSource,
         isOnline = { online },
         sync = proxySync,
-        pushBudgetMs = pushBudgetMs,
         callBudgetMs = callBudgetMs,
-        pullBudgetMs = pullBudgetMs,
-        pullRetryDelayMs = 10,
     )
 
     private fun op(id: String): ApiOperation = ApiOperations.byId.getValue(id)
@@ -138,7 +124,7 @@ class ServerUpstreamTest {
     }
 
     @Test
-    fun offlineAnswers503ShellOfflineWithZeroRequestsAndNoPush() = runBlocking {
+    fun remoteIsShellOfflineWithNoNetworkAttemptWhenOffline() = runBlocking {
         online = false
         val res = upstream().forward(get("/api/v1/stats/summary"), op("getStatsSummary"), "r1")
         assertEquals(503, res.status)
@@ -146,7 +132,7 @@ class ServerUpstreamTest {
         assertEquals("1", res.headers["kotobaya-local"])
         assertEquals("r1", res.headers["x-request-id"])
         assertEquals(0, server.requestCount)
-        assertEquals(emptyList(), sync.log)
+        assertEquals(emptyList(), sync.pullRequests)
     }
 
     @Test
@@ -167,67 +153,68 @@ class ServerUpstreamTest {
     }
 
     @Test
-    fun pendingOpsArePushedBeforeAForwardedGet() = runBlocking {
+    fun nothingIsPushedOrPulledBeforeAForward() = runBlocking {
         server.enqueue(MockResponse().setBody("[]").setHeader("Content-Type", "application/json"))
-        upstream().forward(get("/api/v1/stats/summary"), op("getStatsSummary"), "r1")
+        upstream().forward(get("/api/v1/jobs"), op("listJobs"), "r1")
         takeRequest()
-        assertEquals(listOf("push@0"), sync.log)
+        assertEquals(emptyList(), sync.pullRequests)
+        assertEquals(1, server.requestCount)
     }
 
     @Test
-    fun aFailingOrSlowPushDoesNotStopTheForward() = runBlocking {
-        sync.onPush = { error("push failed") }
-        server.enqueue(MockResponse().setBody("{}").setHeader("Content-Type", "application/json"))
-        assertEquals(200, upstream().forward(get("/api/v1/stats/summary"), op("getStatsSummary"), "r1").status)
-        sync.onPush = { delay(60_000) }
-        server.enqueue(MockResponse().setBody("{}").setHeader("Content-Type", "application/json"))
+    fun remoteWriteReturnsWithoutWaitingForTheCursorAndCarriesShellStale() = runBlocking {
+        sync.cursor = 48213
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody("""{"id":"d"}""").setHeader("Content-Type", "application/json").setHeader("Kotobaya-Seq", "48214"),
+        )
         val started = System.nanoTime()
-        assertEquals(200, upstream(pushBudgetMs = 100).forward(get("/api/v1/stats/summary"), op("getStatsSummary"), "r2").status)
-        assertTrue((System.nanoTime() - started) / 1_000_000 < 5_000)
-    }
-
-    @Test
-    fun aMutatingReplyWithKotobayaSeqReturnsOnlyAfterThePullCursorPassedIt() = runBlocking {
-        sync.cursor = 40
-        var pulls = 0
-        sync.onPull = { pulls++; sync.cursor = if (pulls < 3) 41 else 42 }
-        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"p"}""").setHeader("Content-Type", "application/json").setHeader("Kotobaya-Seq", "42"))
-        val res = upstream().forward(ShellRequest("POST", "/api/v1/presets", body = "{}", headers = mapOf("content-type" to "application/json")), op("createPreset"), "r1")
+        val res = upstream().forward(
+            ShellRequest("POST", "/api/v1/decks", body = """{"name":"N5","type":"list","list_key":"jlpt-n5"}""", headers = mapOf("content-type" to "application/json")),
+            op("createDeck"), "r1",
+        )
+        val tookMs = (System.nanoTime() - started) / 1_000_000
         assertEquals(201, res.status)
-        assertTrue(sync.cursor >= 42)
-        assertEquals(3, pulls)
-        assertEquals("42", res.headers["kotobaya-seq"])
-        assertNull(res.headers["kotobaya-shell-stale"])
-        assertEquals(listOf("push@0", "pull@1", "pull@1", "pull@1"), sync.log)
+        assertEquals("48214", res.headers["kotobaya-seq"])
+        assertEquals("1", res.headers["kotobaya-shell-stale"])
+        assertEquals(listOf(48214L), sync.pullRequests, "one pull scheduled, not awaited")
+        assertEquals(48213, sync.cursor, "the answer did not wait for the cursor")
+        assertTrue(tookMs < 2_000, "answered in $tookMs ms")
     }
 
     @Test
-    fun aCursorAlreadyPastTheSeqAnswersWithoutPulling() = runBlocking {
+    fun aCursorAlreadyPastTheSeqAnswersWithoutStaleOrPull() = runBlocking {
         sync.cursor = 50
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}").setHeader("Content-Type", "application/json").setHeader("Kotobaya-Seq", "42"))
-        val res = upstream().forward(ShellRequest("PATCH", "/api/v1/presets/x", body = "{}", headers = mapOf("content-type" to "application/json")), op("updatePreset"), "r1")
+        val res = upstream().forward(ShellRequest("PUT", "/api/v1/parse-overrides/x", body = "{}", headers = mapOf("content-type" to "application/json")), op("putParseOverride"), "r1")
         assertEquals(200, res.status)
-        assertEquals(listOf("push@0"), sync.log)
+        assertNull(res.headers["kotobaya-shell-stale"])
+        assertEquals(emptyList(), sync.pullRequests)
     }
 
     @Test
-    fun aPullThatNeverReachesTheSeqSetsTheStaleHeaderAfterTheBudget() = runBlocking {
-        sync.cursor = 1
-        server.enqueue(MockResponse().setResponseCode(204).setHeader("Kotobaya-Seq", "9"))
-        val res = upstream(pullBudgetMs = 200).forward(ShellRequest("DELETE", "/api/v1/presets/x"), op("deletePreset"), "r1")
-        assertEquals(204, res.status)
-        assertNull(res.body)
-        assertEquals("1", res.headers["kotobaya-shell-stale"])
-        assertEquals("9", res.headers["kotobaya-seq"])
-    }
-
-    @Test
-    fun aNon2xxWithKotobayaSeqIsNotHeld() = runBlocking {
+    fun aNon2xxOrNoSeqIsNeitherStaleNorPulls() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(409).setBody("{}").setHeader("Content-Type", "application/problem+json").setHeader("Kotobaya-Seq", "9"))
-        val res = upstream().forward(ShellRequest("DELETE", "/api/v1/presets/x"), op("deletePreset"), "r1")
+        val res = upstream().forward(ShellRequest("DELETE", "/api/v1/parse-overrides/x"), op("deleteParseOverride"), "r1")
         assertEquals(409, res.status)
         assertNull(res.headers["kotobaya-shell-stale"])
-        assertEquals(listOf("push@0"), sync.log)
+        server.enqueue(MockResponse().setResponseCode(204))
+        val noSeq = upstream().forward(ShellRequest("DELETE", "/api/v1/parse-overrides/x"), op("deleteParseOverride"), "r2")
+        assertEquals(204, noSeq.status)
+        assertNull(noSeq.headers["kotobaya-shell-stale"])
+        assertEquals(emptyList(), sync.pullRequests)
+    }
+
+    @Test
+    fun aCachedFetchSendsIfNoneMatchAndGetsTheEtagButAProxyCallDoesNot() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(304).setHeader("ETag", "\"v2\""))
+        val cached = upstream().forward(get("/api/v1/stats/forecast", headers = mapOf("if-none-match" to "\"v1\"")), op("getStatsForecast"), "r1")
+        assertEquals("\"v1\"", takeRequest().getHeader("If-None-Match"))
+        assertEquals(304, cached.status)
+        assertEquals("\"v2\"", cached.headers["etag"])
+        server.enqueue(MockResponse().setBody("[]").setHeader("Content-Type", "application/json").setHeader("ETag", "\"j\""))
+        val proxied = upstream().forward(get("/api/v1/jobs", headers = mapOf("if-none-match" to "\"v1\"")), op("listJobs"), "r2")
+        assertNull(takeRequest().getHeader("If-None-Match"))
+        assertNull(proxied.headers["etag"])
     }
 
     @Test

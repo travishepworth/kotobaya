@@ -130,10 +130,11 @@ class LocalQueueLoader(
         deckFilter: String? = null,
         keepGoing: Boolean = false,
         keepGoingNewBatch: Int = QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH,
+        keepGoingNewTarget: Int? = null,
     ): LoadedQueue {
         awaitReady()
-        return gate.run(LoadKey(deckFilter, keepGoing, keepGoingNewBatch)) {
-            var loaded = build(deckFilter, keepGoing, keepGoingNewBatch)
+        return gate.run(LoadKey(deckFilter, keepGoing, keepGoingNewBatch, keepGoingNewTarget)) {
+            var loaded = build(deckFilter, keepGoing, keepGoingNewBatch, keepGoingNewTarget)
             // C-27 rounds (as the server): a drawn entry needs its note and cards first (ReviewQueue.toMaterialize), then
             // a rebuild draws those cards in its place. Another round only if the last one's notes reached `items`, so a
             // mismatch between what was drawn and what shows can never create notes that are not shown.
@@ -150,7 +151,7 @@ class LocalQueueLoader(
                 }
                 // nothing created is not a failure: the entries may have notes by now (another build, a pull)
                 if (created.isEmpty()) break
-                loaded = build(deckFilter, keepGoing, keepGoingNewBatch)
+                loaded = build(deckFilter, keepGoing, keepGoingNewBatch, keepGoingNewTarget)
                 rounds++
                 val noteOf = loaded.input.candidates.associate { it.cardId to it.noteId }
                 if (loaded.queue.items.none { noteOf[it.cardId] in created }) break
@@ -159,9 +160,9 @@ class LocalQueueLoader(
         }
     }
 
-    private data class LoadKey(val deckFilter: String?, val keepGoing: Boolean, val keepGoingNewBatch: Int)
+    private data class LoadKey(val deckFilter: String?, val keepGoing: Boolean, val keepGoingNewBatch: Int, val keepGoingNewTarget: Int?)
 
-    private fun build(deckFilter: String?, keepGoing: Boolean, keepGoingNewBatch: Int): LoadedQueue {
+    private fun build(deckFilter: String?, keepGoing: Boolean, keepGoingNewBatch: Int, keepGoingNewTarget: Int?): LoadedQueue {
         val now = clock()
         val settings = settings()
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
@@ -245,6 +246,7 @@ class LocalQueueLoader(
                 learnAheadMs = LEARN_AHEAD_MS,
                 keepGoing = keepGoing,
                 keepGoingNewBatch = keepGoingNewBatch,
+                keepGoingNewTarget = if (keepGoing) keepGoingNewTarget else null,
                 reviewsUnlimited = settings.reviewsUnlimited,
             ),
             decks = decks,
@@ -493,9 +495,10 @@ private class WordKanjiResolver(
 }
 
 /**
- * When a paired device may materialize deck entries: after a complete pull (`last_sync_at` set by a cycle that pulled
- * until `has_more` was false), with no cycle running, no failed cycle since (a pull cut off mid-way counts as one) and
- * no rebuild pending. An unpaired device has nothing to pull and may always.
+ * When a paired device may materialize deck entries (SYNC.md 8.1 "When a device materializes", SHELL.md 4.3, C-31):
+ * after its first complete pull (`last_sync_at` set by a cycle that pulled until `has_more` was false) and with no
+ * rebuild pending. Nothing else: not whether a cycle is running, has failed or how often, nor being online (L-9). An
+ * unpaired device has nothing to pull and may always.
  */
-fun materializeAllowed(paired: Boolean, syncRunning: Boolean, failures: Int, lastSyncAt: Long?, rebuildPending: Boolean): Boolean =
-    !paired || (!syncRunning && failures == 0 && lastSyncAt != null && !rebuildPending)
+fun materializeAllowed(paired: Boolean, lastSyncAt: Long?, rebuildPending: Boolean): Boolean =
+    !paired || (lastSyncAt != null && !rebuildPending)

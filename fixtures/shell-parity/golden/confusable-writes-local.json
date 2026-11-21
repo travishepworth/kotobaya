@@ -1,0 +1,241 @@
+{
+  "id" : "confusable-writes-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:02.000Z",
+      "note_a" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_a_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "note_b" : {
+        "entry_seq" : 1000470,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000002",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_b_id" : "0193a1b2-0001-7000-8000-000000000002",
+      "reason" : "meaning",
+      "status" : "confirmed",
+      "updated_at" : "2026-11-20T10:00:02.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "created_at" : "2026-11-20T10:00:02.000Z",
+        "note_a" : {
+          "entry_seq" : 1000360,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_a_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "note_b" : {
+          "entry_seq" : 1000470,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_b_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "reason" : "meaning",
+        "status" : "confirmed",
+        "updated_at" : "2026-11-20T10:00:02.000Z"
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "created_at" : "2026-11-20T10:00:02.000Z",
+        "note_a" : {
+          "entry_seq" : 1000360,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_a_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "note_b" : {
+          "entry_seq" : 1000470,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_b_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "reason" : "meaning",
+        "status" : "confirmed",
+        "updated_at" : "2026-11-20T10:00:02.000Z"
+      } ]
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:02.000Z",
+      "note_a" : {
+        "entry_seq" : 1000360,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000001",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_a_id" : "0193a1b2-0001-7000-8000-000000000001",
+      "note_b" : {
+        "entry_seq" : 1000470,
+        "fields" : { },
+        "grammar_point_id" : null,
+        "id" : "0193a1b2-0001-7000-8000-000000000002",
+        "kanji_literal" : null,
+        "mnemonic" : "",
+        "note_type_id" : "00000000-0000-7000-8000-000000000101",
+        "source_sentence" : "",
+        "tags" : [ ],
+        "type" : "vocab"
+      },
+      "note_b_id" : "0193a1b2-0001-7000-8000-000000000002",
+      "reason" : "meaning",
+      "status" : "rejected",
+      "updated_at" : "2026-11-20T10:00:04.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "created_at" : "2026-11-20T10:00:02.000Z",
+        "note_a" : {
+          "entry_seq" : 1000360,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000001",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_a_id" : "0193a1b2-0001-7000-8000-000000000001",
+        "note_b" : {
+          "entry_seq" : 1000470,
+          "fields" : { },
+          "grammar_point_id" : null,
+          "id" : "0193a1b2-0001-7000-8000-000000000002",
+          "kanji_literal" : null,
+          "mnemonic" : "",
+          "note_type_id" : "00000000-0000-7000-8000-000000000101",
+          "source_sentence" : "",
+          "tags" : [ ],
+          "type" : "vocab"
+        },
+        "note_b_id" : "0193a1b2-0001-7000-8000-000000000002",
+        "reason" : "meaning",
+        "status" : "rejected",
+        "updated_at" : "2026-11-20T10:00:04.000Z"
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/note_b_id"
+      } ],
+      "instance" : "/api/v1/confusables/0193a1b2-0001-7000-8000-000000000001/0193a1b2-0001-7000-8000-000000000001/meaning",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 404,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "not_found",
+      "instance" : "/api/v1/confusables/0193a1b2-0001-7000-8000-000000000001/0193a1b2-0001-7000-8000-00000000dead/meaning",
+      "status" : 404,
+      "type" : "urn:kotobaya:problem:not_found"
+    }
+  } ]
+}

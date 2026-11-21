@@ -25,11 +25,16 @@ class HttpSpeechResolver(
     private val token: () -> String?,
     private val http: OkHttpClient,
 ) : SpeechResolver {
-    override fun resolve(pairs: List<WantedAudio.Pair>): List<SpeechAnswer>? {
+    override fun resolve(pairs: List<WantedAudio.Pair>): List<SpeechAnswer>? = resolve(pairs, urgent = false)
+
+    /** [urgent] (at most 20 pairs) runs the jobs before every non-urgent one (the card on screen). */
+    fun resolve(pairs: List<WantedAudio.Pair>, urgent: Boolean): List<SpeechAnswer>? {
         val base = baseUrl()?.trimEnd('/') ?: return null
         val tok = token() ?: return null
         val items = pairs.map { p -> JsonObject(linkedMapOf("text" to JsonString(p.text), "voice" to JsonString(p.voice))) }
-        val body = DefaultCanonicalJson.encode(JsonObject(linkedMapOf("items" to JsonArray(items))))
+        val members = linkedMapOf<String, kotobaya.contracts.sync.JsonValue>("items" to JsonArray(items))
+        if (urgent) members["urgent"] = kotobaya.contracts.sync.JsonBool(true)
+        val body = DefaultCanonicalJson.encode(JsonObject(members))
         val req = try {
             Request.Builder().url("$base/tts/resolve").header("Authorization", "Bearer $tok").header("Accept", "application/json")
                 .post(body.toRequestBody("application/json".toMediaType())).build()
@@ -56,6 +61,7 @@ class HttpSpeechResolver(
                     status = (m["status"] as? JsonString)?.value ?: "failed",
                     blobHash = (m["blob_hash"] as? JsonString)?.value,
                     durationMs = (m["duration_ms"] as? JsonNumber)?.value?.toLong(),
+                    retryAfterMs = (m["retry_after_ms"] as? JsonNumber)?.value?.toLong(),
                 )
             }
         }

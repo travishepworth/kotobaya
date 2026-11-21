@@ -432,3 +432,49 @@ Three choices most worth a second look:
 3. **With keep going the "to review" part is the whole backlog**, not the capped number, so the
    header still adds up to the bar in that mode. The single "ready now" number of widget and
    notifications is unchanged.
+
+## C-31 changes: keep going in batches, fixed loop invariants, one presenter (ADR-051, ADR-052)
+
+What was decided:
+- **Keep going now comes in batches the size of your daily goal.** Pressing it serves that many
+  new cards (plus whatever falls due meanwhile), then the "done" screen returns, with the button
+  again if new cards remain. The client says how far the batch goes with one number
+  (`keepGoingNewTarget` = cards introduced today + the goal); the core stops drawing new cards
+  there. Without that number keep going behaves exactly as before.
+- **A batch you leave is not owed.** The number lives only in the open review screen. Leave it
+  (Home, back, restart, new day) and it is gone: Home and the header show no new cards once
+  today's goal is met, and the next press starts a fresh full batch.
+- **A card that comes due is always next**, in a batch too: a learning card first, then a due
+  review, then new cards.
+- **The Keep going button means "pressing this shows a card now".** It is offered on every end
+  screen except the final "nothing left anywhere" one, and while waiting for a learning timer,
+  also when you were already keeping going.
+- **The loop's rules are now written as eight invariants (I1 … I8)** that a randomised test checks
+  after every step of thousands of simulated sessions, e.g. "if the header shows something to
+  study, the screen is not an end screen" and "an end screen means every number is zero".
+- **One presenter** (`LoopPresenter`) turns the last loop state plus the answers not yet reflected
+  in it into the screen and the four header numbers. Web and phone show only its output. The
+  "Refresh" dead-end screen is gone; in its place is a short "settling" state that resolves by
+  itself.
+- Nothing is stored; no op, table or setting changed; old callers get old results.
+
+Alternatives rejected:
+- **Putting the new loop state into every answer response** (`loop` in `answerReview`). It would
+  make each grade tap wait for a full queue evaluation, which is what ADR-050 removes, and the
+  browser's outbox answers have no response yet at the moment the header must update.
+- A server-side keep-going session (the server remembers the batch). It needs storage, sync and
+  expiry for something one number in the request expresses.
+- A batch counter ("cards left in this batch") instead of a target. A target is absolute, so a
+  repeated or reordered request cannot serve the batch twice.
+- Letting each client project the header itself. That is how the header came to disagree with
+  the screen.
+
+Three choices most worth a second look:
+1. **Batch size = the daily goal, one per press** (ADR-052). With a goal of 40 a press is 40 more
+   cards; with a goal of 0 it is one card per press. To go back to the endless stream the client
+   simply omits the number.
+2. **After a batch you left, Home says "done", not "13 new cards left".** That is the stated rule;
+   it also means the only way to continue a batch is to press Keep going again (a full batch).
+3. **A review that falls due mid-batch waits behind at most one word's kanji cards** when that
+   word's unit is half-answered (the existing "never split a kanji unit" rule). Learning cards
+   never wait.

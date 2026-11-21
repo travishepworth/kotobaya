@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "t": "res",
+  "id": "7b1e3c52-9d0a-4f6e-8a51-2f4c8d1e9a11",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "kotobaya-local": "1",
+    "kotobaya-cached-at": "2026-11-20T10:00:05.300Z",
+    "x-request-id": "0193a1b2-7000-7000-8000-00000000e020"
+  },
+  "body": "{\"items\":[],\"next_cursor\":null}"
+}

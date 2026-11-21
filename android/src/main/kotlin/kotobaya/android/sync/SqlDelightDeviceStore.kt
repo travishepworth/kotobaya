@@ -3,6 +3,8 @@ package kotobaya.android.sync
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import kotobaya.contracts.Uuid
 import kotobaya.db.app.AppDatabase
 import kotobaya.sync.client.store.DeviceStore
@@ -32,6 +34,11 @@ import kotobaya.sync.client.store.SyncStateTable
  * learning tables use statements on [driver] (the contract `.sq` files hold only DDL, so there are
  * no generated queries for them).
  *
+ * Write wait (C-31, SYNC.md 6.1 "Device scheduling", SHELL.md L-9): outermost transactions of this store take one
+ * fair in-process writer lock before touching the connection, waiting at most [writeWaitMs] (5 s). A writer that
+ * gets no turn by then throws [StoreBusyException] having changed nothing. Fair = first come, first served: a local
+ * write that queued while a pull sub-page held the lock goes before the pull's next sub-page.
+ *
  * Thread use: a transaction belongs to the thread that opened it; the block never suspends.
  * [onCommit] is called after each outermost commit (the status repository refreshes on it).
  *
@@ -45,10 +52,16 @@ import kotobaya.sync.client.store.SyncStateTable
 class SqlDelightDeviceStore(
     private val driver: SqlDriver,
     private val db: AppDatabase = AppDatabase(driver),
+    /** How long an outermost [transaction] waits for its turn to write (SHELL.md L-9: 5 s). */
+    private val writeWaitMs: Long = WRITE_WAIT_MS,
 ) : DeviceStore<SqlLearningTables> {
     private val schema: LearningSchema by lazy { LearningSchema.read(driver) }
     private val active = ThreadLocal<Tx?>()
     private val commitListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val writer = ReentrantLock(true)
+
+    /** Writers queued for their turn now (diagnostics and tests). */
+    fun waitingWriters(): Int = writer.queueLength
 
     /** Registers [listener], called (on the committing thread) after every outermost commit. */
     fun onCommit(listener: () -> Unit) {
@@ -68,17 +81,27 @@ class SqlDelightDeviceStore(
 
     private fun <R> run(notify: Boolean, block: (StoreTransaction<SqlLearningTables>) -> R): R {
         active.get()?.let { return block(it) }
-        val tx = Tx(readOnly = false)
-        // re-assert durability on the connection about to write (cannot change inside a transaction)
-        driver.execute(null, "PRAGMA synchronous = FULL", 0)
+        if (!writer.tryLock(writeWaitMs, TimeUnit.MILLISECONDS)) throw StoreBusyException(writeWaitMs)
         val result = try {
-            active.set(tx)
-            db.transactionWithResult { block(tx) }
+            val tx = Tx(readOnly = false)
+            // re-assert durability on the connection about to write (cannot change inside a transaction)
+            driver.execute(null, "PRAGMA synchronous = FULL", 0)
+            try {
+                active.set(tx)
+                db.transactionWithResult { block(tx) }
+            } finally {
+                active.set(null)
+            }
         } finally {
-            active.set(null)
+            writer.unlock()
         }
         if (notify) for (l in commitListeners) runCatching { l() }
         return result
+    }
+
+    companion object {
+        /** SHELL.md L-9 / SYNC.md 6.1: the longest a local write waits for the write connection. */
+        const val WRITE_WAIT_MS: Long = 5_000
     }
 
     private inner class Tx(private val readOnly: Boolean) : StoreTransaction<SqlLearningTables> {
@@ -99,6 +122,12 @@ class SqlDelightDeviceStore(
         }
     }
 }
+
+/**
+ * An outermost [SqlDelightDeviceStore.transaction] did not get its turn to write within its bound (SHELL.md L-9: 5 s);
+ * nothing was written. The shell answers it as `503 shell_rebuilding` with `Retry-After: 2`.
+ */
+class StoreBusyException(waitedMs: Long) : IllegalStateException("the write connection stayed busy for $waitedMs ms; nothing was written")
 
 /** A write attempted inside [SqlDelightDeviceStore.read]: outside a transaction it would autocommit on its own. */
 internal fun readOnlyWrite(): Nothing = throw IllegalStateException("write inside SqlDelightDeviceStore.read; use transaction")

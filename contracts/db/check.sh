@@ -126,7 +126,7 @@ def sqlite_columns(path):
     return {t: {r[1] for r in db.execute(f"PRAGMA table_info({t})")} for t in tables}
 
 # Tables that exist only on the device.
-DEVICE_ONLY_TABLES = {"pending_op", "sync_state", "blob_cache"}
+DEVICE_ONLY_TABLES = {"pending_op", "sync_state", "blob_cache", "response_cache"}  # response_cache: C-31 (SCHEMA.md 5.3)
 # Server tables deliberately absent from the device.
 SERVER_ONLY_TABLES = {"device", "api_token", "change", "job", "blob", "parse_override", "server_state",
                       "jpdb_vocab", "jpdb_vocab_media",

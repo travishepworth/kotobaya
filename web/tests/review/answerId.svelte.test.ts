@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // BUG-14a: the answer id is per press. A card that comes back (relearning) must not reuse the previous id,
-// but a retry of a failed POST for the same press must.
+// but a retry of a failed POST for the same press must (C8: the outbox resends it by itself).
 import { flushSync } from 'svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QueueItem } from '../../src/lib/api/generated';
@@ -20,7 +20,7 @@ vi.mock('../../src/lib/review/api', () => ({
 	settingsApi: {}
 }));
 
-import { ReviewPage } from '../../src/lib/state/review.svelte';
+import { ReviewPage, resetOutboxForTests } from '../../src/lib/state/review.svelte';
 
 const item = { card: { id: 'card-1', presetId: 'p' }, reviewType: 'schedule' } as unknown as QueueItem;
 const button = { rating: 3 } as never;
@@ -42,7 +42,10 @@ function setup(): { page: ReviewPage; ids: string[]; dispose: () => void } {
 }
 
 describe('review answer id', () => {
-	beforeEach(() => vi.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		resetOutboxForTests();
+	});
 
 	it('sends a different id when the same card is served again', async () => {
 		const { page, ids, dispose } = setup();
@@ -62,10 +65,17 @@ describe('review answer id', () => {
 		api.answerReview.mockRejectedValueOnce(new Error('network'));
 		page.flip();
 		const first = page.answerId;
-		await page.grade(button);
-		expect(page.answerId).toBe(first);
-		await page.retryAnswer(); // RC-WEB: a regrade is locked; Retry resends
-		expect(ids).toEqual([first]);
+		vi.useFakeTimers();
+		try {
+			const done = page.grade(button);
+			await vi.advanceTimersByTimeAsync(1000); // the outbox retries after 1 s
+			await done;
+		} finally {
+			vi.useRealTimers();
+		}
+		expect(ids).toEqual([first]); // the failed attempt is not recorded by the mock; the retry used the same id
+		expect(api.answerReview).toHaveBeenCalledTimes(2);
+		expect(api.answerReview.mock.calls[0][0].reviewAnswerRequest.id).toBe(first);
 		dispose();
 	});
 

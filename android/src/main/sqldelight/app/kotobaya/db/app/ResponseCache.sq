@@ -1,0 +1,40 @@
+-- LF-A2 (C-31): queries of the shell's response cache (contracts/api/shell/SHELL.md 4.4, rules K-1 .. K-4).
+-- The table is the contract's (Local.sq); only queries live here.
+
+rcGet:
+SELECT * FROM response_cache WHERE key = ?;
+
+rcUpsert:
+INSERT OR REPLACE INTO response_cache (key, op, path, query, status, content_type, body, size_bytes, etag, fetched_at, last_used_at, stale)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+rcTouch:
+UPDATE response_cache SET last_used_at = ? WHERE key = ?;
+
+rcConfirm:
+UPDATE response_cache SET fetched_at = ?, stale = ? WHERE key = ?;
+
+rcDelete:
+DELETE FROM response_cache WHERE key = ?;
+
+rcDeleteAll:
+DELETE FROM response_cache;
+
+rcMarkAllStale:
+UPDATE response_cache SET stale = 1;
+
+rcMarkOpsStale:
+UPDATE response_cache SET stale = 1 WHERE op IN ?;
+
+rcTotalSize:
+SELECT CAST(coalesce(sum(size_bytes), 0) AS INTEGER) FROM response_cache;
+
+rcByLeastRecentlyUsed:
+SELECT key, size_bytes FROM response_cache ORDER BY last_used_at ASC, key ASC;
+
+rcStaleByMostRecentlyUsed:
+SELECT key, op, path, query FROM response_cache WHERE stale = 1 ORDER BY last_used_at DESC, key ASC;
+
+-- K-4 warm pass: getDeckCoverage for every live deck of type media or list, most recently updated first.
+rcWarmDecks:
+SELECT id FROM deck WHERE deleted_at IS NULL AND type IN ('media', 'list') ORDER BY updated_at DESC, id ASC;

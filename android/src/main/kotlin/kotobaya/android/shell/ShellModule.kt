@@ -64,7 +64,7 @@ import org.koin.core.qualifier.named
 import app.cash.sqldelight.db.SqlDriver
 import kotobaya.android.dict.InstalledDictionary
 import kotobaya.android.shell.api.actions.CardQuery
-import kotobaya.android.shell.api.actions.LocalCardQuery
+import kotobaya.android.search.ReplicaCardQuery
 import kotobaya.db.app.AppDatabase
 
 /** The Android side of the [ShellGate]: pairing from `TokenStore`, L-8 from `sync_state`, readiness from `SyncBootstrap`. */
@@ -104,15 +104,15 @@ object ShellEventHub {
         transport?.send(event)
     }
 
-    /** The `SyncCoordinator` outcome hook. */
+    /** The `SyncCoordinator` outcome hook. With no [events] (no page yet) the K-4 stale marks still reach the DB (LF-A2b). */
     fun onSyncOutcome(outcome: SyncOutcome) {
-        events?.onSyncOutcome(outcome)
+        events?.onSyncOutcome(outcome) ?: ShellEvents.applyCacheMarks(outcome, ShellEvents.dbStaleMarks())
         dict?.poke()
     }
 
-    /** The `LocalWrites` after-commit hook. */
+    /** The `LocalWrites` after-commit hook; the same DB fallback as [onSyncOutcome]. */
     fun onLocalWrite() {
-        events?.onLocalWrite()
+        events?.onLocalWrite() ?: runCatching { ShellEvents.dbStaleMarks()?.onReplicaChanged() }
     }
 }
 
@@ -172,7 +172,7 @@ val shellFeature = FeatureEntry(
                 .also { it.start(); ShellEventHub.dict = it }
         }
         // SHELL-L4: the `bulkCards` `query` selector over the replica (the app driver, as the legacy card search)
-        single<CardQuery> { LocalCardQuery(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), get<InstalledDictionary>()) }
+        single<CardQuery> { ReplicaCardQuery(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), get<InstalledDictionary>()) }
         single<LocalWrites<SqlLearningTables>> {
             val koin = getKoin()
             LocalWrites(get<SqlDelightDeviceStore>(), get<SyncClient>().minter) {

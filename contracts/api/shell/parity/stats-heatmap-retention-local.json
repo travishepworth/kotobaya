@@ -1,0 +1,359 @@
+{
+  "id": "stats-heatmap-retention-local",
+  "title": "getStatsHeatmap and getStatsRetention from review_log in the replica (C-31)",
+  "covers": [
+    "stats.heatmap_local",
+    "stats.retention_local"
+  ],
+  "narrative": [
+    "Two kana-only words. All seeded reviews carry utc_offset_min 0 and are logged at 10:00 UTC, far from any day boundary.",
+    "2026-11-11: both cards introduced with Easy (two learning rows). 2026-11-17: card 1 scheduled Good, card 2 scheduled Again, then its relearning step Good (learning row). 2026-11-19: card 1 scheduled Good, undone one second later; then a manual set_due row.",
+    "Step 0: the heatmap has two days: 11-11 with 2 reviews (2 new cards) and 11-17 with 3 reviews (1 Again). 11-19 is absent: the undone row and the manual row do not count.",
+    "Step 1: retention counts scheduled rows only (not learning, not manual, not undone): 2 in total, 1 passed, 0.5; one group vocab/meaning.",
+    "Step 2: grouped by day there is one group (11-17).",
+    "Step 3: a range without reviews answers an empty days list, not 404.",
+    "Steps 4-6: from after to, and a range over 3660 days, are 422 on both sides.",
+    "The golden pins the remaining members (time_ms, young/mature split, keys of the day group)."
+  ],
+  "clock_ms": 1795168800000,
+  "device_id": "01931f3e-0000-7000-8000-0000000000d4",
+  "dict_entries": [
+    1000360,
+    1000470
+  ],
+  "settings": {},
+  "seed": {
+    "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+    "log": [
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000001",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1c4e67501-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000001",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000360
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000002",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000010",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1c4e67501-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000010",
+          "note_id": "0193a1b2-0001-7000-8000-000000000001",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000003",
+        "op_type": "note.created",
+        "op_version": 1,
+        "entity_type": "note",
+        "entity_id": "0193a1b2-0001-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1c4e67502-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0001-7000-8000-000000000002",
+          "note_type_id": "00000000-0000-7000-8000-000000000101",
+          "entry_seq": 1000470
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000004",
+        "op_type": "card.created",
+        "op_version": 1,
+        "entity_type": "card",
+        "entity_id": "0193a1b2-0002-7000-8000-000000000020",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1c4e67502-0001-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0002-7000-8000-000000000020",
+          "note_id": "0193a1b2-0001-7000-8000-000000000002",
+          "kind": "meaning"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000005",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000001",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ca0cd100-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000001",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1794391200000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 4,
+          "button": "easy",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000006",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000002",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1ca0dbb60-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000002",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "reviewed_at": 1794391260000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 4,
+          "button": "easy",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000007",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000003",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f2f900-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000003",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1794909600000,
+          "utc_offset_min": 0,
+          "review_type": "scheduled",
+          "rating": 3,
+          "button": "good",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000008",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000004",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f3e360-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000004",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "reviewed_at": 1794909660000,
+          "utc_offset_min": 0,
+          "review_type": "scheduled",
+          "rating": 1,
+          "button": "again",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000009",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000005",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1e8f4cdc0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000005",
+          "card_id": "0193a1b2-0002-7000-8000-000000000020",
+          "reviewed_at": 1794909720000,
+          "utc_offset_min": 0,
+          "review_type": "learning",
+          "rating": 3,
+          "button": "good",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000010",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000006",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb100-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000006",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1795082400000,
+          "utc_offset_min": 0,
+          "review_type": "scheduled",
+          "rating": 3,
+          "button": "good",
+          "duration_ms": 3000
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000011",
+        "op_type": "review.undone",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000006",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb4e8-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "review_id": "0193a1b2-0003-7000-8000-000000000006"
+        }
+      },
+      {
+        "op_id": "0193a1b2-00ff-7002-8000-000000000012",
+        "op_type": "review.logged",
+        "op_version": 1,
+        "entity_type": "review_log",
+        "entity_id": "0193a1b2-0003-7000-8000-000000000007",
+        "device_id": "01931f3e-0000-7000-8000-0000000000a1",
+        "hlc": "01a1f33fb8d0-0000-01931f3e-0000-7000-8000-0000000000a1",
+        "payload": {
+          "id": "0193a1b2-0003-7000-8000-000000000007",
+          "card_id": "0193a1b2-0002-7000-8000-000000000010",
+          "reviewed_at": 1795082402000,
+          "utc_offset_min": 0,
+          "review_type": "manual",
+          "rating": null,
+          "manual_action": "set_due",
+          "manual_due_at": 1795600800000
+        }
+      }
+    ]
+  },
+  "operations": [
+    "getStatsHeatmap",
+    "getStatsRetention"
+  ],
+  "steps": [
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/heatmap",
+        "query": "from=2026-11-01&to=2026-11-20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/days": 2
+        },
+        "body": {
+          "/from": "2026-11-01",
+          "/to": "2026-11-20",
+          "/days/0/date": "2026-11-11",
+          "/days/0/reviews": 2,
+          "/days/0/new_cards": 2,
+          "/days/1/date": "2026-11-17",
+          "/days/1/reviews": 3,
+          "/days/1/again": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/retention",
+        "query": "from=2026-11-01&to=2026-11-20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/groups": 1
+        },
+        "body": {
+          "/group_by": "card_kind",
+          "/overall/total": 2,
+          "/overall/passed": 1,
+          "/overall/retention": 0.5,
+          "/groups/0/key": "vocab/meaning",
+          "/groups/0/total": 2
+        }
+      }
+    },
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/retention",
+        "query": "from=2026-11-01&to=2026-11-20&group_by=day",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "lengths": {
+          "/groups": 1
+        },
+        "body": {
+          "/group_by": "day",
+          "/groups/0/total": 2,
+          "/groups/0/passed": 1
+        }
+      }
+    },
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/heatmap",
+        "query": "from=2026-11-18&to=2026-11-20",
+        "body": null
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "/days": []
+        }
+      }
+    },
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/heatmap",
+        "query": "from=2026-11-20&to=2026-11-01",
+        "body": null
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/retention",
+        "query": "from=2026-11-20&to=2026-11-01",
+        "body": null
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    },
+    {
+      "at_ms": 1795168801000,
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/stats/heatmap",
+        "query": "from=2010-01-01&to=2026-11-20",
+        "body": null
+      },
+      "expect": {
+        "status": 422,
+        "problem_code": "validation_failed"
+      }
+    }
+  ]
+}

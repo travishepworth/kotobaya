@@ -52,13 +52,7 @@ class RevokedTokenTest {
     private val engine = SyncEngine(store, HttpSyncTransport({ base }, { tokens.token }, { null }), applier, clock)
 
     private val engineSync = object : ProxySync {
-        override suspend fun push() {
-            engine.pushAll()
-        }
-
-        override suspend fun pull() {
-            engine.pullAll()
-        }
+        override fun requestPull(seq: Long) = Unit
 
         override fun pullCursor(): Long = store.transaction { it.bookkeeping.pullSeq }
     }
@@ -81,14 +75,14 @@ class RevokedTokenTest {
         assertEquals(listOf(PendingState.PENDING), before.map { it.state })
 
         val problem = """{"type":"urn:kotobaya:problem:unauthenticated","title":"Authentication required","status":401,"code":"unauthenticated","request_id":"s"}"""
-        repeat(2) {
+        repeat(1) {
             server.enqueue(MockResponse().setResponseCode(401).setBody(problem).setHeader("Content-Type", "application/problem+json"))
         }
         val upstream = ServerUpstream({ base }, { tokens.token }, { true }, engineSync)
-        val res = upstream.forward(ShellRequest("GET", "/api/v1/stats/summary"), ApiOperations.byId.getValue("getStatsSummary"), "r1")
+        val res = upstream.forward(ShellRequest("GET", "/api/v1/jobs"), ApiOperations.byId.getValue("listJobs"), "r1")
 
-        assertEquals("/api/v1/sync/push", server.takeRequest().path) // P-2 push, refused
-        assertEquals("/api/v1/stats/summary", server.takeRequest().path)
+        assertEquals("/api/v1/jobs", server.takeRequest().path) // C-31 P-2: no push first
+        assertEquals(1, server.requestCount)
         assertEquals(401, res.status)
         assertEquals(problem, res.body)
         assertNull(res.headers["kotobaya-local"])

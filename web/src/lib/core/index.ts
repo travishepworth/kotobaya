@@ -19,12 +19,16 @@ import {
 	JsField,
 	JsFurigana,
 	JsKanji,
+	JsLoopInput,
 	JsNoteType,
+	JsPendingAnswer,
 	JsPreset,
 	JsRenderInput,
 	JsSearchVocabulary,
 	JsTemplate,
+	JsUntilStopParts,
 	kotobayaCore,
+	presentLoop as corePresentLoop,
 	type CoreJs
 } from '@kotobaya/core';
 
@@ -372,4 +376,71 @@ export function previewIntervals(
 			intervalMs: r.intervalMs,
 			state: r.state as CardState
 		}));
+}
+
+/* ---------- review loop presenter (C-31, ADR-051) ---------- */
+
+/** `loop.phase` wire values (an unknown value is mapped by the caller first, openapi C4). */
+export type LoopPhaseWire = 'reviewing' | 'waiting' | 'goal_reached' | 'done_for_today' | 'empty';
+
+/** Core `LoopScreen.wire`: what the review surface shows. */
+export type LoopScreen = 'card' | 'settling' | 'waiting' | 'goal_reached' | 'done_for_today' | 'empty';
+
+/** Core `QueueItemKind` (wire, lower case): the header part a card is counted in. */
+export type QueueItemKind = 'learning' | 'review' | 'new';
+
+/** `loop.until_stop_parts`: learning ready now, learning later today, reviews, new cards. */
+export interface UntilStopParts {
+	learning: number;
+	later: number;
+	review: number;
+	new: number;
+}
+
+/** Core `PendingAnswer`: an answer the applied `loop` does not reflect yet. */
+export interface PendingLoopAnswer {
+	kind: QueueItemKind;
+	/** 1 … 4. */
+	rating: number;
+	/** `card.state` after the answer (its response, else the scheduler preview), or null when unknown. */
+	resultingState: CardState | null;
+	/** `card.due_at` after the answer (epoch ms), or null when unknown. */
+	dueAt: number | null;
+}
+
+export interface LoopPresentationInput {
+	/** `loop.phase` and `loop.until_stop_parts` of the last applied response. */
+	state: { phase: LoopPhaseWire; untilStopParts: UntilStopParts };
+	/** Oldest first; empty when none. */
+	pending: PendingLoopAnswer[];
+	/** The client holds a card it can show now. */
+	hasLocalCard: boolean;
+	/** That card's kind; null iff `hasLocalCard` is false. */
+	localHeadKind: QueueItemKind | null;
+	/** `day_ends_at` of the response `state` came from (epoch ms). */
+	dayEndsAt: number;
+}
+
+/** Core `LoopPresentation`: render exactly this (screen, header parts, bar remainder). */
+export interface LoopPresentation {
+	screen: LoopScreen;
+	parts: UntilStopParts;
+	untilStop: number;
+}
+
+/** Core `LoopPresenter.present` (openapi `getReviewQueue` rule C7). Pure; throws only on invalid host input. */
+export function presentLoop(input: LoopPresentationInput): LoopPresentation {
+	const p = input.state.untilStopParts;
+	const out = corePresentLoop(
+		new JsLoopInput(input.state.phase, new JsUntilStopParts(p.learning, p.later, p.review, p.new)),
+		input.pending.map((a) => new JsPendingAnswer(a.kind, a.rating, a.resultingState, a.dueAt)),
+		input.hasLocalCard,
+		input.localHeadKind,
+		input.dayEndsAt
+	);
+	return {
+		screen: out.screen as LoopScreen,
+		parts: { learning: out.parts.learning, later: out.parts.later, review: out.parts.review, new: out.parts.new },
+		untilStop: out.untilStop
+	};
 }

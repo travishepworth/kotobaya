@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { needsConnectionFor } from './access';
+	import NeedsConnectionHint from './NeedsConnectionHint.svelte';
 	// "Saw something weird": mark the grammar in a sentence, attach it to a new or existing grammar point and
 	// test a draft detection rule. A dialog (bottom sheet on phones) over the dictionary or the reader.
 	import Banner from './Banner.svelte';
@@ -74,9 +76,10 @@
 			<Button
 				variant="outline"
 				loading={vm.busy}
-				disabled={!vm.rule.trim() || (vm.mode === 'existing' && !vm.chosen)}
+				disabled={!vm.rule.trim() || (vm.mode === 'existing' && !vm.chosen) || needsConnectionFor('testGrammarRules')}
 				onclick={() => void vm.test()}>{tg('gc.test')}</Button
 			>
+			<NeedsConnectionHint op="testGrammarRules" />
 		</div>
 		{#if vm.testResult}
 			<div class="results">

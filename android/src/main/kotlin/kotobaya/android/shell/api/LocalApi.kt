@@ -2,13 +2,22 @@ package kotobaya.android.shell.api
 
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import kotobaya.android.shell.cache.ResponseCache
+import kotobaya.android.sync.StoreBusyException
 import kotobaya.android.shell.api.actions.routes as actionsRoutes
 import kotobaya.android.shell.api.browse.routes as browseRoutes
+import kotobaya.android.shell.api.cards.routes as cardsRoutes
+import kotobaya.android.shell.api.confusables.routes as confusablesRoutes
 import kotobaya.android.shell.api.decks.routes as decksRoutes
 import kotobaya.android.shell.api.device.routes as deviceRoutes
+import kotobaya.android.shell.api.grammar.routes as grammarRoutes
 import kotobaya.android.shell.api.identity.routes as identityRoutes
+import kotobaya.android.shell.api.media.routes as mediaRoutes
 import kotobaya.android.shell.api.mining.routes as miningRoutes
+import kotobaya.android.shell.api.notetypes.routes as noteTypesRoutes
+import kotobaya.android.shell.api.presets.routes as presetsRoutes
 import kotobaya.android.shell.api.review.routes as reviewRoutes
+import kotobaya.android.shell.api.stats.routes as statsRoutes
 import kotobaya.android.shell.api.struggle.routes as struggleRoutes
 
 /** The shell's state the dispatcher's gates read (SHELL.md 2.5, 3.1, L-8). */
@@ -23,7 +32,11 @@ interface ShellGate {
     suspend fun awaitReady()
 }
 
-/** Forwards a request to the server with the device token (rules P-1 … P-3). SHELL-A5 provides the real one. */
+/**
+ * Forwards a request to the server with the device token (rules P-1 … P-3). SHELL-A5 provides the real one. Called for
+ * `proxy` operations, the forwarded request of rule L-9, and the response cache's background fetches (K-2, K-3);
+ * never on the path of a `cached` request.
+ */
 fun interface Upstream {
     suspend fun forward(request: ShellRequest, operation: ApiOperation, requestId: String): ShellResponse
 }
@@ -37,7 +50,8 @@ object OfflineUpstream : Upstream {
 /** Every group's routes. Each L ticket fills only its own group's `Routes.kt`. */
 object LocalRoutes {
     val all: List<LocalRoute>
-        get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes
+        get() = identityRoutes + reviewRoutes + actionsRoutes + miningRoutes + browseRoutes + decksRoutes + struggleRoutes + deviceRoutes + statsRoutes +
+            cardsRoutes + presetsRoutes + noteTypesRoutes + confusablesRoutes + grammarRoutes + mediaRoutes
 }
 
 /**
@@ -48,9 +62,15 @@ object LocalRoutes {
  * 3. not paired, except `getShellInfo` / `pairShell` → `401`;
  * 4. `hidden` → `403 insufficient_scope`;
  * 5. `proxy` → [Upstream];
- * 6. otherwise the readiness gate (20 s, then `503 shell_rebuilding`), the rebuild gate (L-8),
+ * 6. `cached` (C-31) → [ResponseCache] (rules K-1 … K-4): a hit or `503 shell_uncached` at once, no gate; with no
+ *    cache (kernel tests without services) always `503 shell_uncached` and nothing is fetched;
+ * 7. otherwise the readiness gate (20 s, then `503 shell_rebuilding`), the rebuild gate (L-8),
  *    then the handler. A handler returning [Fallthrough] is forwarded through [Upstream]; an
  *    operation with no registered handler yet is forwarded too (`shell.yaml` operations: `404`).
+ *    Both are the transition until every `local` handler exists (LF-A3 … LF-A8); `UiPathNeverTouchesNetworkTest`
+ *    lists the operations that still do it.
+ * After a `2xx` of `unpairShell` / `pairShell` the response cache is emptied (K-1: entries belong to the pairing); after
+ * a proxied `2xx` parse-override write its dependent entries are marked stale (K-4).
  * Every response the shell produces carries `kotobaya-local: 1` and `x-request-id`; a [ShellResponse.forwarded] one
  * (the server's answer, possibly with the overlay recomputed) carries only `x-request-id` (3.3).
  */
@@ -62,8 +82,11 @@ class LocalApi(
     private val newRequestId: () -> String,
     private val readyTimeoutMs: Long = READY_TIMEOUT_MS,
     private val logError: (String, Throwable) -> Unit = { _, _ -> },
+    /** The `cached` class (LF-A2). Default: the production cache over [services]; null when they lack its parts. */
+    cache: ResponseCache? = ResponseCache.fromServices(services, upstream, newRequestId, logError),
 ) {
     private val routesById: Map<String, LocalRoute>
+    private val responseCache: ResponseCache? = cache
 
     init {
         val map = LinkedHashMap<String, LocalRoute>()
@@ -100,6 +123,7 @@ class LocalApi(
         when (op.opClass) {
             OpClass.HIDDEN -> return problem(Problems.insufficientScope(op.requiredScope))
             OpClass.PROXY -> return forward(request, op, requestId)
+            OpClass.CACHED -> return answerCached(request, op, requestId)
             else -> Unit
         }
         val route = routesById[op.operationId]
@@ -119,10 +143,13 @@ class LocalApi(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
+            // LF-A1b: the write connection stayed busy past its bound (StoreBusyException); nothing was written, so 503 shell_rebuilding + Retry-After like L-8 and the SPA retries
+            if (generateSequence(e) { it.cause }.take(8).any { it is StoreBusyException }) return problem(Problems.shellRebuilding())
             logError("${op.operationId} failed (request $requestId)", e)
             return problem(Problems.internal())
         }
         if (response === Fallthrough) return forward(request, op, requestId)
+        if (op.operationId in PAIRING_CHANGES && response.status in 200..299) responseCache?.clear()
         val headers = LinkedHashMap<String, String>()
         response.headers.forEach { (k, v) -> headers[k.lowercase()] = v }
         if (response.forwarded) headers.remove(ShellHeaders.LOCAL) else headers[ShellHeaders.LOCAL] = "1"
@@ -130,18 +157,38 @@ class LocalApi(
         return response.copy(headers = headers)
     }
 
-    private suspend fun forward(request: ShellRequest, op: ApiOperation, requestId: String): ShellResponse = try {
-        upstream.forward(request, op, requestId)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Throwable) {
-        logError("forwarding ${op.operationId} failed (request $requestId)", e)
-        Problems.internal().toResponse(request.path, requestId)
+    private suspend fun forward(request: ShellRequest, op: ApiOperation, requestId: String): ShellResponse {
+        val response = try {
+            upstream.forward(request, op, requestId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logError("forwarding ${op.operationId} failed (request $requestId)", e)
+            return Problems.internal().toResponse(request.path, requestId)
+        }
+        if (op.operationId in ResponseCache.PARSE_OVERRIDE_WRITES && response.status in 200..299) responseCache?.onParseOverrideWritten()
+        return response
+    }
+
+    /** Rules K-2 / K-3: from the response cache only; the background fetch it may start is never awaited (L-9). */
+    private fun answerCached(request: ShellRequest, op: ApiOperation, requestId: String): ShellResponse {
+        val response = try {
+            responseCache?.answer(request, op, requestId) ?: ResponseCache.uncached().toResponse(request.path, requestId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logError("${op.operationId} failed (request $requestId)", e)
+            return Problems.internal().toResponse(request.path, requestId)
+        }
+        val headers = LinkedHashMap(response.headers)
+        headers[ShellHeaders.LOCAL] = "1"
+        headers[ShellHeaders.REQUEST_ID] = requestId
+        return response.copy(headers = headers)
     }
 
     companion object {
         /** `LOCAL_API_VERSION` (SHELL.md 7.2). */
-        const val LOCAL_API_VERSION: Int = 2
+        const val LOCAL_API_VERSION: Int = 3
 
         const val MAX_BODY_BYTES: Long = 4L * 1024 * 1024
         const val READY_TIMEOUT_MS: Long = 20_000
@@ -149,6 +196,9 @@ class LocalApi(
 
         /** Answered while unpaired (SHELL.md 3.1 step 3). */
         val UNPAIRED_ALLOWED: Set<String> = setOf("getShellInfo", "pairShell", "getDisplayPrefs", "updateDisplayPrefs")
+
+        /** A `2xx` of these empties the response cache (K-1). */
+        val PAIRING_CHANGES: Set<String> = setOf("unpairShell", "pairShell")
 
         /** Exempt from the readiness gate (2.5) and the rebuild gate (L-8). */
         val GATE_EXEMPT: Set<String> = setOf("getShellInfo", "pairShell", "unpairShell", "getSyncStatus", "syncNow")

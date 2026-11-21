@@ -7,8 +7,6 @@ import kotobaya.android.shell.api.LocalCall
 import kotobaya.android.shell.api.Problem
 import kotobaya.android.shell.api.ProblemException
 import kotobaya.android.shell.api.ShellResponse
-import kotobaya.android.shell.api.actions.CardQuery
-import kotobaya.android.shell.api.actions.CardQueryResult
 import kotobaya.android.shell.api.actions.isNullish
 import kotobaya.android.shell.api.actions.jsonObj
 import kotobaya.android.shell.api.actions.pageLimit
@@ -69,13 +67,12 @@ internal fun invalidQuery(errors: List<Pair<String, Int>>): Problem {
 }
 
 /**
- * `listCards` (SHELL.md L-1): the card search language over the replica through [CardQuery] (core parser and SQL
- * compiler, live smart decks, residual check, dictionary forms: the same selection `bulkCards` acts on), then sorted
- * by `sort` (ties by id ascending, NULL last) and paged with an opaque keyset cursor `(sort value, id)`: a card
- * created or changed between two pages never makes another card repeat or vanish. Parse errors are `422
- * invalid_query` with `errors[0].position`. A query the device cannot select exactly as the server would (a text
- * term matching more dictionary entries than the device's guard trusts) is forwarded ([Fallthrough]). Retired kinds
- * (ADR-035) are listed like any card.
+ * `listCards` (SHELL.md L-1): the card search language over the replica ([cardsMatching]: core parser and SQL
+ * compiler, live smart decks, residual check, dictionary forms by L-7 steps 1-2: the same selection `bulkCards` acts
+ * on), then sorted by `sort` (ties by id ascending, NULL last) and paged with an opaque keyset cursor `(sort value,
+ * id)`: a card created or changed between two pages never makes another card repeat or vanish. Parse errors are `422
+ * invalid_query` with `errors[0].position`. Every query is answered on the device (C-31, L-9): there is no
+ * dictionary-size guard and no forward. Retired kinds (ADR-035) are listed like any card.
  */
 internal fun listCards(call: LocalCall): ShellResponse {
     val q = call.query("query", "sort", "limit", "cursor")
@@ -91,13 +88,8 @@ internal fun listCards(call: LocalCall): ShellResponse {
     val after = q.first("cursor")?.let { c -> decodeCursor(c, hash).also { if (it == null) e.add("/cursor", "invalid_value", "Malformed or foreign cursor.") } }
     e.throwIfAny()
 
-    val selector = runCatching { call.services.get<CardQuery>() }.getOrNull() ?: return Fallthrough
     val now = call.services.get<ShellIdentity>().nowMs()
-    val ids = when (val r = selector.select(query.orEmpty(), now)) {
-        is CardQueryResult.Invalid -> throw ProblemException(invalidQuery(r.errors))
-        is CardQueryResult.Forward -> return Fallthrough
-        is CardQueryResult.Ids -> r.ids
-    }
+    val ids = call.services.cardsMatching(query.orEmpty(), now) ?: return Fallthrough
     val order = cardOrder(sortParam.startsWith("-"))
     val body = call.services.get<SqlDelightDeviceStore>().read { tx ->
         val t = tx.learning

@@ -245,7 +245,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_review_queue**
-> ReviewQueue get_review_queue(limit=limit, deck_id=deck_id, kinds=kinds, keep_going=keep_going)
+> ReviewQueue get_review_queue(limit=limit, deck_id=deck_id, kinds=kinds, keep_going=keep_going, keep_going_new_target=keep_going_new_target)
 
 The next cards to review, built by the shared core's queue builder.
 
@@ -303,11 +303,15 @@ Phases (`loop.phase`; first match wins; order amended by ADR-049):
    `loop.later_today.next_due_at` and resume then (rule C4). Offer Keep going iff
    `loop.keep_going_available`. No card is served early.
 3. `goal_reached` (only with `scheduler.reviews_unlimited` = true) / `done_for_today`
-   (only with it false): only for `keep_going=false`; nothing is ready under the limits,
-   **nothing falls due later today**, and `keep_going=true` would return at least one
-   card. Offer Keep going; it never leads to a dead end. Which of the two is chosen by
-   the setting, not by which limit was hit.
-4. `empty`: nothing now, nothing with keep going, nothing later today.
+   (only with it false): nothing is served, **nothing falls due later today**, and
+   pressing Keep going would return at least one card. Offer Keep going; it never leads
+   to a dead end. Which of the two is chosen by the setting, not by which limit was hit.
+   With `keep_going=false` this is "nothing is ready under the limits". C-31 (ADR-052):
+   it is also the answer to `keep_going=true` **with** `keep_going_new_target` once the
+   target is reached and no review is due: the batch is done and the stop screen is back
+   (with `keep_going=true` and no target it cannot occur).
+4. `empty`: nothing now, nothing with keep going, nothing later today. The only end
+   screen without Keep going (ADR-051).
 `goal_reached`, `done_for_today` and `empty` are the **stop screens**: they appear only
 when nothing is left for today (`ready.total` = 0, `later_today.count` = 0,
 `until_stop` = 0). (Before ADR-049 rules 2 and 3 were the other way round, so the stop
@@ -338,6 +342,28 @@ Client rules (normative for web, the shell SPA and the CLI):
   `goal_reached` / `done_for_today` again before any card over the quota is served.
   Per client, never synced, not an op, not a setting. (Replaces ADR-037's "persisted for
   the study day".)
+  **One goal-sized batch per press (C-31, ADR-052; replaces ADR-039's "within one visit
+  it stays an endless stream").** When the user presses Keep going the client computes
+  `T = loop.new.today + pendingNew + max(1, loop.new.goal)` from the response on screen,
+  with `pendingNew` = the pending answers of rule C7 whose item kind was `new` (answers
+  that response does not count yet, e.g. still in the outbox of rule C8), so that the
+  batch is a full goal and not short by them. The button is only shown on the
+  presenter's `waiting` and stop screens, which require an empty pending list, so
+  `pendingNew` is 0 there; the term is what keeps `T` right for a client that offers
+  the button elsewhere. It sends
+  `keep_going=true&keep_going_new_target=T` on every fetch of the visit until the next
+  press. The server then introduces new cards only up to `T`; when `T` is reached and
+  nothing is due, the response is `goal_reached` / `done_for_today` again with
+  `loop.keep_going_available` true while new cards remain (`empty` when none do), and a
+  press computes the next `T` from that response. `T` lives exactly as long as the flag:
+  in memory, one visit, never persisted, dropped when the visit ends. The cards of a
+  batch the user did not get to are **not owed**: after the visit every fetch is a normal
+  one, whose new cards are bounded by `max(0, loop.new.goal - loop.new.today)`, so Home
+  and the header show no new cards once the goal is met, however far the batch got.
+  Example: goal 20 met, press (`T` = 40), 7 new cards answered, leave: Home shows 0 new
+  (plus the learning steps of those 7); back in Review, press: `T` = 27 + 20 = 47, a
+  fresh batch of 20. A card that comes due during a batch (a learning step, a review)
+  is served before the next new card.
 - **C3 Display.** The headline "ready now" number of a surface that shows **one**
   number (widget, notification, CLI status line, a badge) is **always**
   `loop.ready.total`, with or without keep going, so every such surface shows the same
@@ -375,10 +401,13 @@ Client rules (normative for web, the shell SPA and the CLI):
   and shows no negative time (it stays at 0:00 until the response arrives). New clients never read `counts`,
   `more_available` or `next_learning_due_at`. An unknown `phase` value is treated as
   `reviewing` when `items` is non-empty and as `empty` otherwise.
-- **C5 Materialization retries** (C-27): `reviewing` with empty `items` and
-  `to_materialize > 0` (the three rounds ran out, or the caller is read-only): a caller
-  with `review` or `write` fetches again (at most 3 times in a row); a read-only caller
-  shows that new cards exist but cannot be created by it.
+- **C5 Materialization retries** (C-27; amended by C-31): `reviewing` with empty `items`
+  and `to_materialize > 0` (the three rounds ran out, or the caller is read-only): a
+  caller with `review` or `write` fetches again (at most 3 times in a row, then once
+  every 5 s while the screen is open); a read-only caller shows that new cards exist
+  but cannot be created by it. **There is no "pending" screen** (a card-less state with
+  only a Refresh button): while it retries the client shows the presenter's `settling`
+  screen (C7), which keeps the header and retries by itself.
 - **C6 Refresh at the next due, in every phase (ADR-049).** Every surface that shows a
   number or a state from `loop` and stays on screen (Home, the review screen, the CLI
   status line, a widget where the platform allows a timer) schedules **one** fetch at
@@ -392,6 +421,66 @@ Client rules (normative for web, the shell SPA and the CLI):
   On the review screen C1 already covers the time between cards; C6 adds the fetch
   while a card is on screen only for the header numbers and MUST NOT replace the card
   being shown.
+- **C7 Render the presenter's output only (C-31, ADR-051).** Web and the shell SPA
+  decide the review screen, the four header numbers and the progress bar's remainder by
+  calling the core `LoopPresenter.present(state, pending, hasLocalCard, localHeadKind,
+  dayEndsAt)` (contract `kotobaya.contracts.queue.LoopPresenter`, exported by
+  `@kotobaya/core`) and render its `screen`, `parts` and `untilStop`. Inputs: `state` =
+  `loop` of the latest response applied; `dayEndsAt` = that response's `day_ends_at`;
+  `pending` = every answer given since that response's request was sent whose effect it
+  therefore does not show (kind of the item, rating, and the `card.state` / `card.due_at`
+  of the answer's response, or of the core scheduler preview while the response is
+  outstanding); `hasLocalCard` / `localHeadKind` = whether the client holds a card to
+  show and its `QueueItem.kind`. No client derives a screen from `loop.phase` and
+  `items` itself, adds or subtracts header numbers, or shows an end screen while an
+  answer is pending or a card is held. Screens: `card`; `settling` (no card held but one
+  is expected: keep the header, show no grade buttons and no Refresh-only state, fetch
+  at once and again whenever a pending answer is acknowledged; in a browser that is
+  offline say "saving your answers" after 10 s); `waiting`, `goal_reached`,
+  `done_for_today`, `empty` as in C4. On those four the Keep going button is
+  `loop.keep_going_available` and the countdown `loop.later_today.next_due_at` of the
+  same `state`. Home, widgets and the CLI status line have no pending answers and no
+  held card; for them the presenter returns `loop.until_stop_parts` and the phase
+  unchanged, so C3 holds as written. The CLI may keep rendering `loop` directly (it
+  answers synchronously and holds no page).
+- **C8 Persisted outbox (C-31, ADR-050; browsers without a local replica, i.e. desktop
+  web; not the shell, where an answer is applied locally before its response).** A
+  grade tap never waits for the network. The client (1) writes the
+  `ReviewAnswerRequest` — with its client `id` and with `reviewed_at` set to the time of
+  the tap — to the IndexedDB store `kotobaya.outbox` (key: `id`; insertion order kept),
+  (2) shows the next held card at once, (3) sends the outbox in order, one request at a
+  time. On page load the outbox is sent first, in order; the server's per-`id`
+  idempotency makes a repeat safe (`200` with the stored review). Retryable failures —
+  no response, `429`, `5xx` — leave the entry in place and retry with backoff (1 s,
+  doubling, at most 30 s; at once when the browser reports online); the card is **not**
+  put back in front of the user and grading is never locked. **A `422` whose `errors[]`
+  has an element with `pointer` `/reviewed_at`** (`in_future`: this browser's clock is
+  more than 5 minutes ahead; `before_floor` / `before_card`: it is far behind) is
+  **not** final: the entry stays, its `reviewed_at` is removed (in the store too) and
+  it is sent again at once with the same `id`; the server then uses its own clock.
+  From then until the page is reloaded the client sends every entry without
+  `reviewed_at` (one wrong clock would otherwise cost one extra round trip per
+  answer). The review is logged at the time it reaches the server instead of the time
+  of the tap: for an answer that waited offline that is later than the truth, which is
+  the accepted price of never dropping it. An entry already sent without `reviewed_at`
+  that is refused `422` again falls under the next sentence. Final refusals — `404`,
+  `409 card_not_reviewable`, `410 gone`, and a `422` with **no** error at
+  `/reviewed_at` — remove the entry and show one toast;
+  `401` stops sending and keeps the outbox until the user has logged in again. An
+  entry is removed only on a `2xx` or a final refusal. Example: clock 20 minutes
+  ahead, 30 answers: the first answer is `422 in_future` at `/reviewed_at`, is resent
+  without the property and accepted; the other 29 are sent without it; none is lost. The client keeps at least 10
+  cards ahead (it fetches with `limit=30` when fewer than 10 unanswered cards are
+  held), merges a fetched page into what it holds instead of discarding either, and
+  drops from a fetched page every card that has an entry in the outbox (the server has
+  not seen that answer yet and would serve the card again). Outbox entries are the
+  `pending` list of C7. Edge cases: two tabs share the store and may both send an
+  entry (harmless: same `id`; each removes it on its own `2xx`); an entry sent hours or
+  days after the tap is still accepted (the `reviewed_at` bounds do not depend on when
+  it arrives) and is logged at the time of the tap; an answer for a card deleted or
+  suspended elsewhere is the `410` / `409` above; clearing site data loses unsent
+  answers (the only way to lose one), so while the outbox is not empty and the browser
+  is offline the header shows an "n answers not saved yet" hint.
 - A client that sends `kinds` may get `reviewing` with empty `items` (the ready cards
   are of a kind it excluded): for that filter there is nothing to show; `loop` still
   describes the whole queue.
@@ -411,9 +500,12 @@ fetch; a client with `write` that wants it sooner calls `resolveSpeech`. Nothing
 `new_cards_per_day` / `reviews_per_day`) are lifted, at most about `limit` new cards are
 drawn per request (a kanji group may overshoot), and the order is ready learning,
 then **all** due reviews (most overdue first), then new cards - no mix: with a review cap
-the backlog is cleared first, then new cards follow without end; with
-`scheduler.reviews_unlimited` new cards follow without end and a review that becomes due
-is slotted in next. Everything else (eligibility, sibling burying, deck priority and
+the backlog is cleared first, then new cards follow; with
+`scheduler.reviews_unlimited` new cards follow and a review that becomes due
+is slotted in next. Without `keep_going_new_target` the new cards follow without end
+(C-26); with it they stop when today's introductions reach the target (C-31, ADR-052:
+`QueueLimits.keepGoingNewTarget`, rule 6 "Target"; rule C2 says how a client chooses
+it). A learning card whose step has elapsed is always first. Everything else (eligibility, sibling burying, deck priority and
 order, disabled decks, learning) is unchanged.
 Cards not due before `day_ends_at` are never returned (no study-ahead). It is a stateless
 per-request flag: nothing is stored, no op is emitted, and the client keeps sending it
@@ -586,10 +678,11 @@ with kotobaya_client.ApiClient(configuration) as api_client:
     deck_id = '01931f40-2000-7000-8000-000000000d01' # str | Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (`404` otherwise). (optional)
     kinds = ["new","learning","review"] # List[str] | Which queue sections to include, comma-separated. Default all three. (optional) (default to ["new","learning","review"])
     keep_going = False # bool | C-26 (additive). `true` = keep going past today's limits (see the description; core `QueueBuilder` rule 6, with `keepGoingNewBatch = limit`). Default `false` = the normal queue. Scope (ADR-039, rule C2 in the description): one review visit of one client, held in memory; every new visit, home screen and status fetch sends `false`. Per client, never synced. Only the literal values `true` and `false` are accepted; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going` and `code = invalid_value`. Echoed as `loop.keep_going`. Older servers ignore the parameter (they return the normal queue and no `more_available`).  (optional) (default to False)
+    keep_going_new_target = 80 # int | C-31 (additive; ADR-051, ADR-052). The number of new cards introduced today (`loop.new.today`) up to which this keep-going request may introduce new cards: core `QueueLimits.keepGoingNewTarget`. Absent = no target (the endless keep going of C-26). **Ignored unless `keep_going=true`** (it is still validated), so a normal request never serves or counts a new card beyond today's goal. A value at or below `loop.new.today` (already reached, also `0`) introduces no new card: due learning cards and due reviews are still served, and when there are none the phase is `goal_reached` / `done_for_today` (new cards remain) or `empty`. Clients send `loop.new.today + max(1, loop.new.goal)` of the response on which Keep going was pressed and repeat that same value on every fetch until the next press (rule C2); they never persist it. Constraints: a decimal integer `0` … `2147483647`, no sign, no fraction; anything else is `422 validation_failed` with `errors[0].pointer = /keep_going_new_target` and `code = invalid_value` (not a number) or `out_of_range`. Not echoed in the response. A server older than C-31 answers `422` (`unknown_field`) to it; server and web deploy from one pin, and the shell declares support by `LOCAL_API_VERSION` 3. Examples: goal 40, 40 introduced, press → `80`; goal 0, 5 introduced → `6`.  (optional)
 
     try:
         # The next cards to review, built by the shared core's queue builder.
-        api_response = api_instance.get_review_queue(limit=limit, deck_id=deck_id, kinds=kinds, keep_going=keep_going)
+        api_response = api_instance.get_review_queue(limit=limit, deck_id=deck_id, kinds=kinds, keep_going=keep_going, keep_going_new_target=keep_going_new_target)
         print("The response of ReviewApi->get_review_queue:\n")
         pprint(api_response)
     except Exception as e:
@@ -607,6 +700,7 @@ Name | Type | Description  | Notes
  **deck_id** | **str**| Restrict new cards to this deck and reviews to cards whose note or entry is an item of it. Must be a live deck (&#x60;404&#x60; otherwise). | [optional] 
  **kinds** | [**List[str]**](str.md)| Which queue sections to include, comma-separated. Default all three. | [optional] [default to [&quot;new&quot;,&quot;learning&quot;,&quot;review&quot;]]
  **keep_going** | **bool**| C-26 (additive). &#x60;true&#x60; &#x3D; keep going past today&#39;s limits (see the description; core &#x60;QueueBuilder&#x60; rule 6, with &#x60;keepGoingNewBatch &#x3D; limit&#x60;). Default &#x60;false&#x60; &#x3D; the normal queue. Scope (ADR-039, rule C2 in the description): one review visit of one client, held in memory; every new visit, home screen and status fetch sends &#x60;false&#x60;. Per client, never synced. Only the literal values &#x60;true&#x60; and &#x60;false&#x60; are accepted; anything else is &#x60;422 validation_failed&#x60; with &#x60;errors[0].pointer &#x3D; /keep_going&#x60; and &#x60;code &#x3D; invalid_value&#x60;. Echoed as &#x60;loop.keep_going&#x60;. Older servers ignore the parameter (they return the normal queue and no &#x60;more_available&#x60;).  | [optional] [default to False]
+ **keep_going_new_target** | **int**| C-31 (additive; ADR-051, ADR-052). The number of new cards introduced today (&#x60;loop.new.today&#x60;) up to which this keep-going request may introduce new cards: core &#x60;QueueLimits.keepGoingNewTarget&#x60;. Absent &#x3D; no target (the endless keep going of C-26). **Ignored unless &#x60;keep_going&#x3D;true&#x60;** (it is still validated), so a normal request never serves or counts a new card beyond today&#39;s goal. A value at or below &#x60;loop.new.today&#x60; (already reached, also &#x60;0&#x60;) introduces no new card: due learning cards and due reviews are still served, and when there are none the phase is &#x60;goal_reached&#x60; / &#x60;done_for_today&#x60; (new cards remain) or &#x60;empty&#x60;. Clients send &#x60;loop.new.today + max(1, loop.new.goal)&#x60; of the response on which Keep going was pressed and repeat that same value on every fetch until the next press (rule C2); they never persist it. Constraints: a decimal integer &#x60;0&#x60; … &#x60;2147483647&#x60;, no sign, no fraction; anything else is &#x60;422 validation_failed&#x60; with &#x60;errors[0].pointer &#x3D; /keep_going_new_target&#x60; and &#x60;code &#x3D; invalid_value&#x60; (not a number) or &#x60;out_of_range&#x60;. Not echoed in the response. A server older than C-31 answers &#x60;422&#x60; (&#x60;unknown_field&#x60;) to it; server and web deploy from one pin, and the shell declares support by &#x60;LOCAL_API_VERSION&#x60; 3. Examples: goal 40, 40 introduced, press → &#x60;80&#x60;; goal 0, 5 introduced → &#x60;6&#x60;.  | [optional] 
 
 ### Return type
 

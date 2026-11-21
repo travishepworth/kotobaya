@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { uploadsOffered } from '../../lib/ui/access';
+	import { sh } from '../../lib/ui/shellMessages';
 	// jpdb history import as a stepper: Upload → Import (live progress) → Review (every counter, every unmapped item)
 	// → Done. Nothing dropped is hidden.
 	import { onDestroy } from 'svelte';
@@ -45,7 +47,9 @@
 		/>
 	</div>
 
-	{#if vm.job === null}
+	{#if vm.job === null && !uploadsOffered()}
+		<p class="muted">{sh('shell.uploads.unavailable')}</p>
+	{:else if vm.job === null}
 		<form
 			class="upload"
 			onsubmit={(e) => {
@@ -71,6 +75,7 @@
 		</form>
 	{:else if isRunning(vm.job)}
 		<Panel>
+			{#if vm.watch.waiting}<p class="muted" role="status">{sh('shell.job.waiting')}</p>{/if}
 			<div class="running" role="status">
 				<p class="big kb-num">{Math.round(vm.job.progress * 100)}%</p>
 				<ProgressBar value={Math.round(vm.job.progress * 100)} max={100} label={ti('imp.step.import')} />

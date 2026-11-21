@@ -11,6 +11,7 @@
 	import NeedsConnection from '../lib/ui/NeedsConnection.svelte';
 	import SyncChip from '../lib/ui/SyncChip.svelte';
 	import { needsConnection, visibleNav } from '../lib/ui/access';
+	import FirstSync from '../lib/ui/FirstSync.svelte';
 	import ToastHost from '../lib/ui/ToastHost.svelte';
 	import type { NavItem } from '../lib/ui/kinds';
 	import { ut } from '../lib/ui/messages';
@@ -18,7 +19,8 @@
 	import { initTheme, reportTheme } from '../lib/ui/theme.svelte';
 	
 	import { canLogout, logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
-	import { shell } from '../lib/state/shell.svelte';
+	import { isFirstSyncPending, shell } from '../lib/state/shell.svelte';
+	import { startOutbox } from '../lib/state/review.svelte';
 
 	let { children } = $props();
 
@@ -47,6 +49,8 @@
 	const onLogin = $derived(path.startsWith('/login'));
 	// The server revoked this phone's token: local use continues, and /login is the Pair screen with a way back.
 	const repairing = $derived(shell.present && shell.info?.authRequired === true && onLogin);
+	// SHELL.md 10.18: the one full-screen wait for the network, until the first sync completes (never on /login).
+	const firstSyncing = $derived(!onLogin && isFirstSyncPending());
 	// Mode rule: a route that only the server can answer, while the phone is offline.
 	const offlineGate = $derived(shell.present && needsConnection(path, shell.online));
 	// The styleguide frames its own shells; it renders bare.
@@ -95,6 +99,11 @@
 		reportBackState(backEnv());
 	});
 
+	// C8: on page load the outbox is sent first, on any screen (stored answers of an earlier page life go out now).
+	$effect(() => {
+		if (session.status === 'in') void startOutbox();
+	});
+
 	// Live-update stream while logged in; screens subscribe on their own for specific events.
 	$effect(() => {
 		if (session.status !== 'in') return;
@@ -113,6 +122,8 @@
 	<main id="main">{@render children()}</main>
 {:else if session.status === 'in' && bare}
 	{@render children()}
+{:else if session.status === 'in' && firstSyncing}
+	<FirstSync />
 {:else if session.status === 'in'}
 	<AppShell items={nav} {current} brand={ut('app.name')} {immersive} actions={shellActions}>
 		<main id="main">

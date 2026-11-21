@@ -80,7 +80,7 @@ internal class OpRules(private val dsl: DSLContext) {
 
     /**
      * `invalid_value`, then `invalid_target`, then `immutable` (5.3 order). [pushed] = the op came in
-     * a push (the server's own ops skip the pushed-only rules, e.g. `deck.deleted` on a media deck,
+     * a push (the server's own ops skip the pushed-only rules, e.g. `deck.deleted` on a media deck whose media is live,
      * and get the extra uniqueness guards of server-created media/list decks and media).
      */
     fun values(op: Op, pushed: Boolean): Rejection? =
@@ -150,7 +150,11 @@ internal class OpRules(private val dsl: DSLContext) {
     private fun invalidTarget(op: Op, pushed: Boolean): Pair<String, String?>? {
         val p = op.payload
         return when (op.opType) {
-            DECK_DELETED -> if (pushed && deckType(p.reqStr("id")) == "media") "delete the media instead of its deck" to "media" else null
+            DECK_DELETED -> if (pushed && deckType(p.reqStr("id")) == "media" && !mediaOfDeckTombstoned(p.reqStr("id"))) {
+                "delete the media instead of its deck" to "media"
+            } else {
+                null
+            }
             DECK_ITEM_PUT, DECK_ITEM_REMOVED -> deckType(p.reqStr("deck_id")).let { t ->
                 when (t) {
                     "user" -> null
@@ -185,6 +189,15 @@ internal class OpRules(private val dsl: DSLContext) {
 
     private fun liveDeck(cond: String, v: String): Boolean =
         dsl.fetchExists(dsl.selectOne().from("app.deck").where("$cond and deleted_at is null", v))
+
+    /**
+     * C-32: whether the media deck [deckId]'s media is tombstoned now (an earlier op of the same push
+     * batch counts: ops are applied one by one, SYNC.md 5.2). A missing media row counts as live.
+     */
+    private fun mediaOfDeckTombstoned(deckId: String): Boolean = dsl.fetchExists(
+        dsl.selectOne().from("app.deck d").join("app.media m").on("m.id = d.media_id")
+            .where("d.id = ?::uuid and m.deleted_at is not null", deckId),
+    )
 
     private fun deckType(id: String): String? = dsl.fetchValue("select type from app.deck where id = ?::uuid", id) as String?
 

@@ -16,12 +16,14 @@ export const KEEP_GOING_IDLE_MS = 10 * 60_000;
 // ADR-039: Keep going lasts one review visit. Held in memory only: gone on app restart and cleared when the
 // review screen is left (ReviewPage.dispose), so it stays on across answers within a visit and never longer.
 let day: string | null = null;
+/** C-31 (ADR-052): the batch's new-card target `T`, in memory with the flag and cleared with it. Null: no target. */
+let newTarget: number | null = null;
 /** When the last answer (or the Keep going press) happened; the idle clock runs from here. */
 let lastActivity = 0;
 
 /** Clears keep going when it has been idle for KEEP_GOING_IDLE_MS. */
 export function expireKeepGoingIfIdle(): void {
-	if (day !== null && Date.now() - lastActivity >= KEEP_GOING_IDLE_MS) day = null;
+	if (day !== null && Date.now() - lastActivity >= KEEP_GOING_IDLE_MS) clearKeepGoing();
 }
 
 /** The study day keep going was started on, or null when it is off (or has gone idle). */
@@ -30,14 +32,21 @@ export function keepGoingDay(): string | null {
 	return day;
 }
 
+/** The `keep_going_new_target` every fetch of this visit sends with the flag (null: send none). */
+export function keepGoingNewTarget(): number | null {
+	expireKeepGoingIfIdle();
+	return day !== null ? newTarget : null;
+}
+
 /** The flag every `getReviewQueue` of this client sends. */
 export function keepGoingFlag(): boolean {
 	return keepGoingDay() !== null;
 }
 
 /** Keep going was pressed on a response of `studyDay`. */
-export function startKeepGoing(studyDay: Date): void {
+export function startKeepGoing(studyDay: Date, target: number | null = null): void {
 	day = studyDayString(studyDay);
+	newTarget = target;
 	lastActivity = Date.now();
 }
 
@@ -49,17 +58,18 @@ export function touchKeepGoing(): void {
 
 export function clearKeepGoing(): void {
 	day = null;
+	newTarget = null;
 }
 
 /**
  * Fetch with the persisted flag. When keep going is stored for another study day than the response's, it is
  * dropped and the queue fetched again with `keep_going=false` (the mismatching response is discarded).
  */
-export async function fetchWithKeepGoing(get: (keepGoing: boolean) => Promise<ReviewQueue>): Promise<ReviewQueue> {
+export async function fetchWithKeepGoing(get: (keepGoing: boolean, newTarget: number | null) => Promise<ReviewQueue>): Promise<ReviewQueue> {
 	const day = keepGoingDay();
-	const q = await get(day !== null);
+	const q = await get(day !== null, keepGoingNewTarget());
 	if (day === null || day === studyDayString(q.studyDay)) return q;
 	// Only drop what this fetch read: a Keep going pressed meanwhile (another tab, same day) stays.
 	if (keepGoingDay() === day) clearKeepGoing();
-	return get(keepGoingFlag());
+	return get(keepGoingFlag(), keepGoingNewTarget());
 }

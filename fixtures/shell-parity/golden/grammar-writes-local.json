@@ -1,0 +1,239 @@
+{
+  "id" : "grammar-writes-local",
+  "steps" : [ {
+    "status" : 201,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "detection_rules" : [ ],
+      "example_count" : 0,
+      "explanation" : "",
+      "id" : "0193b000-0008-7000-8000-000000000001",
+      "is_stub" : false,
+      "jlpt" : 2,
+      "language" : "ja",
+      "links" : [ ],
+      "meaning" : "",
+      "note_id" : null,
+      "notes" : "",
+      "pattern" : "〜ざるを得ない",
+      "related_ids" : [ ],
+      "title" : "ざるを得ない",
+      "updated_at" : "2026-11-20T10:00:01.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "detection_rules" : [ ],
+      "example_count" : 0,
+      "explanation" : "",
+      "id" : "0193b000-0008-7000-8000-000000000001",
+      "is_stub" : false,
+      "jlpt" : 2,
+      "language" : "ja",
+      "links" : [ ],
+      "meaning" : "",
+      "note_id" : null,
+      "notes" : "",
+      "pattern" : "〜ざるを得ない",
+      "related_ids" : [ ],
+      "title" : "ざるを得ない",
+      "updated_at" : "2026-11-20T10:00:01.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "detection_rules" : [ ],
+      "example_count" : 0,
+      "explanation" : "",
+      "id" : "0193b000-0008-7000-8000-000000000001",
+      "is_stub" : false,
+      "jlpt" : null,
+      "language" : "ja",
+      "links" : [ ],
+      "meaning" : "cannot help but",
+      "note_id" : null,
+      "notes" : "",
+      "pattern" : "〜ざるを得ない",
+      "related_ids" : [ ],
+      "title" : "ざるを得ない",
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "detection_rules" : [ ],
+      "example_count" : 0,
+      "explanation" : "",
+      "id" : "0193b000-0008-7000-8000-000000000001",
+      "is_stub" : false,
+      "jlpt" : null,
+      "language" : "ja",
+      "links" : [ ],
+      "meaning" : "cannot help but",
+      "note_id" : null,
+      "notes" : "",
+      "pattern" : "〜ざるを得ない",
+      "related_ids" : [ ],
+      "title" : "ざるを得ない",
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "created_at" : "2026-11-20T10:00:01.000Z",
+        "deleted_at" : null,
+        "detection_rules" : [ ],
+        "example_count" : 0,
+        "explanation" : "",
+        "id" : "0193b000-0008-7000-8000-000000000001",
+        "is_stub" : false,
+        "jlpt" : null,
+        "language" : "ja",
+        "links" : [ ],
+        "meaning" : "cannot help but",
+        "note_id" : null,
+        "notes" : "",
+        "pattern" : "〜ざるを得ない",
+        "related_ids" : [ ],
+        "title" : "ざるを得ない",
+        "updated_at" : "2026-11-20T10:00:03.000Z"
+      } ],
+      "next_cursor" : null
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:05.000Z",
+      "end_offset" : 5,
+      "grammar_point_id" : "0193b000-0008-7000-8000-000000000001",
+      "media_id" : null,
+      "origin" : "manual",
+      "rule_index" : null,
+      "sentence_id" : "0193b000-0009-7000-8000-000000000001",
+      "start_offset" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:05.000Z",
+      "end_offset" : 5,
+      "grammar_point_id" : "0193b000-0008-7000-8000-000000000001",
+      "media_id" : null,
+      "origin" : "manual",
+      "rule_index" : null,
+      "sentence_id" : "0193b000-0009-7000-8000-000000000001",
+      "start_offset" : 0
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "created_at" : "2026-11-20T10:00:01.000Z",
+      "deleted_at" : null,
+      "detection_rules" : [ ],
+      "example_count" : 0,
+      "explanation" : "",
+      "id" : "0193b000-0008-7000-8000-000000000001",
+      "is_stub" : false,
+      "jlpt" : null,
+      "language" : "ja",
+      "links" : [ ],
+      "meaning" : "cannot help but",
+      "note_id" : null,
+      "notes" : "",
+      "pattern" : "〜ざるを得ない",
+      "related_ids" : [ ],
+      "title" : "ざるを得ない",
+      "updated_at" : "2026-11-20T10:00:03.000Z"
+    }
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "required",
+        "pointer" : "/title"
+      } ],
+      "instance" : "/api/v1/grammar",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 204,
+    "headers" : { },
+    "body" : null
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/grammar/0193b000-0008-7000-8000-000000000001",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 410,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "gone",
+      "instance" : "/api/v1/grammar/0193b000-0008-7000-8000-000000000001/spans/0193b000-0009-7000-8000-000000000001/0/5",
+      "status" : 410,
+      "type" : "urn:kotobaya:problem:gone"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ ],
+      "next_cursor" : null
+    }
+  } ]
+}

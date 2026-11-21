@@ -6,6 +6,7 @@ import kotobaya.android.shell.api.LocalRoute
 val routes: List<LocalRoute> = listOf(
     // SHELL-L4: bulk card actions (BulkRoute.kt)
     LocalRoute("bulkCards", "POST", "/api/v1/cards/bulk") { call -> bulkCards(call) },
+    LocalRoute("bulkScheduleCards", "POST", "/api/v1/cards/bulk/schedule") { call -> bulkScheduleCards(call) },
     // word status (WordStatusRoutes.kt)
     LocalRoute("getWordStatus", "GET", "/api/v1/words/{seq}/status") { call -> getWordStatus(call) },
     LocalRoute("setWordStatus", "PUT", "/api/v1/words/{seq}/status") { call -> setWordStatus(call) },

@@ -36,16 +36,14 @@ class MiningFollowUpsTest {
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 
     @Test
-    fun forwardedAnswersCarryNoLocalHeaderShellOnesDo() {
+    fun dictionaryAnswersAreShellOnesAndNeverForwarded() {
         val d = device(withDictionary = false)
-        val offline = d.get("/api/v1/dict/search", "q=x")
-        assertEquals(503, offline.status)
-        assertEquals("1", offline.headers["kotobaya-local"])
         d.server = FakeServer { 200 to obj("items" to JsonArray(emptyList()), "next_cursor" to JsonNull) }
-        val online = d.get("/api/v1/dict/search", "q=x")
-        assertEquals(200, online.status)
-        assertNull(online.headers["kotobaya-local"], "a forwarded (merged) answer is not the shell's")
-        assertNotNull(online.headers["x-request-id"])
+        val r = d.get("/api/v1/dict/search", "q=x")
+        assertEquals(503, r.status)
+        assertEquals("1", r.headers["kotobaya-local"])
+        assertNotNull(r.headers["x-request-id"])
+        assertTrue(d.forwarded.isEmpty())
     }
 
     @Test

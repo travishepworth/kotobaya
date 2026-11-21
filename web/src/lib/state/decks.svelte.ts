@@ -4,7 +4,9 @@ import { goto } from '$app/navigation';
 import type { Coverage, Deck, DeckItem, DeckListCatalogueEntry, WordStatusValue } from '../api/generated';
 import { readProblem, ResponseError } from '../api/client';
 import { NoteTypesApi, NotesApi, WordsApi } from '../api/generated';
-import { apiConfig } from '../api/client';
+import { apiConfig, quietApiConfig } from '../api/client';
+import { DecksApi } from '../api/generated';
+import { isUncached, revalidateOn } from './swr';
 import { decksApi } from '../decks/api';
 import { emptyDraft, parseNumbers, toCreate, toDraft, toPatch, type DeckDraft } from '../decks/draft';
 import { td, type DeckMessageKey } from '../decks/messages';
@@ -72,22 +74,34 @@ export class DeckCoverageState {
 	}
 }
 
-/** /decks */
+// A background list: failures show inline (and `503 shell_uncached` as a placeholder), never as a toast.
+const quietDecksApi = new DecksApi(quietApiConfig);
+
+/** /decks. Keeps its items while it refetches (stale-while-revalidate): the skeleton shows on the first load only. */
 export class DecksListPage {
 	items = $state<Deck[]>([]);
 	loaded = $state(false);
-	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	/** The last load failed; the view shows the error state and offers `retry`. Never set while items are shown. */
 	loadFailed = $state(false);
+	/** `503 shell_uncached` and nothing to show yet: "not downloaded yet", resolved by `cache.updated`. */
+	uncached = $state(false);
+	#hasData = false;
 
 	start(): void {
-		this.loaded = false;
-		this.loadFailed = false;
+		if (!this.#hasData) {
+			this.loaded = false;
+			this.loadFailed = false;
+		}
 		void (async () => {
 			try {
-				const all = (await decksApi.listDecks({})).items;
+				const all = (await quietDecksApi.listDecks({})).items;
 				this.items = [...all].sort(compareDeckDrawOrder);
-			} catch {
-				this.loadFailed = true; // the client already toasted
+				this.#hasData = true;
+				this.loadFailed = false;
+				this.uncached = false;
+			} catch (e) {
+				if (await isUncached(e)) this.uncached = !this.#hasData;
+				else if (!this.#hasData) this.loadFailed = true;
 			} finally {
 				this.loaded = true;
 			}
@@ -97,7 +111,10 @@ export class DecksListPage {
 	retry(): void {
 		this.start();
 	}
-
+	/** Refetch on `sync.changed` (debounced) and on `cache.updated` for `listDecks`. Returns the unsubscribe. */
+	watch(): () => void {
+		return revalidateOn(['listDecks'], () => this.start());
+	}
 }
 
 /** The server rejected a smart-deck query (422 invalid_query): its detail, else null. */

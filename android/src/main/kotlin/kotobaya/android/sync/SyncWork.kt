@@ -11,6 +11,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
@@ -24,8 +25,10 @@ import org.koin.core.context.GlobalContext
  * and need a connected network:
  *
  * - [PERIODIC]: every 15 minutes (the platform minimum), kept if already scheduled.
- * - [NOW]: an expedited one-shot after local changes (falls back to a normal one-shot when out of
- *   quota); appended after a running one so a change made during a cycle is pushed by the next.
+ * - [NOW]: an expedited one-shot (falls back to a normal one-shot when out of quota); appended after
+ *   a running one.
+ * - [LOCAL]: the delayed backstop of a debounced local change (C-31, [requestDebounced]; one not yet started, chained
+ *   behind a running one); the in-process debounce of [SyncTriggers.localChange] normally runs the cycle first and cancels it.
  * - [RETRY]: the one-shot after a failed cycle, delayed by T303a's [kotobaya.sync.client.protocol.SyncBackoff]
  *   (5 s doubling to 15 min, jitter); replaced by each new failure, cancelled by a success.
  *   WorkManager's own backoff is not used (its minimum is 10 s and its cap 5 h, not the contract's).
@@ -34,7 +37,11 @@ object SyncWork {
     const val PERIODIC: String = "kotobaya-sync-periodic"
     const val NOW: String = "kotobaya-sync-now"
     const val RETRY: String = "kotobaya-sync-retry"
+    const val LOCAL: String = "kotobaya-sync-local"
     const val PERIOD_MINUTES: Long = 15
+
+    /** The backstop's delay: the debounce's maximum wait plus the trailing edge (SYNC.md 6.1). */
+    const val DEBOUNCED_DELAY_MS: Long = SyncTriggers.LOCAL_CHANGE_MAX_WAIT_MS + SyncTriggers.LOCAL_CHANGE_QUIET_MS
 
     private fun constraints(): Constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
@@ -51,6 +58,30 @@ object SyncWork {
             .setConstraints(constraints())
             .build()
         wm.enqueueUniqueWork(NOW, ExistingWorkPolicy.APPEND_OR_REPLACE, req)
+    }
+
+    /**
+     * The process-death backstop of a debounced local change ([SyncTriggers.localChange], SYNC.md 6.1): one delayed
+     * one-shot, [DEBOUNCED_DELAY_MS] after the first change it covers. A backstop that has not started yet covers the
+     * new change too (later changes do not push it back). One that is RUNNING may have pushed before the change, so a
+     * new one is chained behind it (APPEND_OR_REPLACE, LF-A1b): KEEP would swallow the change. Blocks on WorkManager's
+     * state; call it off the main thread. While the process lives the in-process timer runs the cycle first and
+     * [cancelDebounced] removes the request.
+     */
+    fun requestDebounced(wm: WorkManager) {
+        synchronized(this) {
+            val live = wm.getWorkInfosForUniqueWork(LOCAL).get().filter { !it.state.isFinished }
+            if (live.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED }) return
+            val req = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setInitialDelay(DEBOUNCED_DELAY_MS, TimeUnit.MILLISECONDS)
+                .setConstraints(constraints())
+                .build()
+            wm.enqueueUniqueWork(LOCAL, ExistingWorkPolicy.APPEND_OR_REPLACE, req).result.get()
+        }
+    }
+
+    fun cancelDebounced(wm: WorkManager) {
+        wm.cancelUniqueWork(LOCAL)
     }
 
     fun scheduleRetry(wm: WorkManager, delayMs: Long) {

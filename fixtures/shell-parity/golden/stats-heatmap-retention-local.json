@@ -1,0 +1,141 @@
+{
+  "id" : "stats-heatmap-retention-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "days" : [ {
+        "again" : 0,
+        "date" : "2026-11-11",
+        "new_cards" : 2,
+        "reviews" : 2,
+        "time_ms" : 6000
+      }, {
+        "again" : 1,
+        "date" : "2026-11-17",
+        "new_cards" : 0,
+        "reviews" : 3,
+        "time_ms" : 9000
+      } ],
+      "from" : "2026-11-01",
+      "to" : "2026-11-20"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "from" : "2026-11-01",
+      "group_by" : "card_kind",
+      "groups" : [ {
+        "key" : "vocab/meaning",
+        "mature_passed" : 0,
+        "mature_total" : 0,
+        "passed" : 1,
+        "retention" : 0.5,
+        "total" : 2,
+        "young_passed" : 1,
+        "young_total" : 2
+      } ],
+      "overall" : {
+        "key" : "all",
+        "mature_passed" : 0,
+        "mature_total" : 0,
+        "passed" : 1,
+        "retention" : 0.5,
+        "total" : 2,
+        "young_passed" : 1,
+        "young_total" : 2
+      },
+      "to" : "2026-11-20"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "from" : "2026-11-01",
+      "group_by" : "day",
+      "groups" : [ {
+        "key" : "2026-11-17",
+        "mature_passed" : 0,
+        "mature_total" : 0,
+        "passed" : 1,
+        "retention" : 0.5,
+        "total" : 2,
+        "young_passed" : 1,
+        "young_total" : 2
+      } ],
+      "overall" : {
+        "key" : "all",
+        "mature_passed" : 0,
+        "mature_total" : 0,
+        "passed" : 1,
+        "retention" : 0.5,
+        "total" : 2,
+        "young_passed" : 1,
+        "young_total" : 2
+      },
+      "to" : "2026-11-20"
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "days" : [ ],
+      "from" : "2026-11-18",
+      "to" : "2026-11-20"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "out_of_range",
+        "pointer" : "/from"
+      } ],
+      "instance" : "/api/v1/stats/heatmap",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "out_of_range",
+        "pointer" : "/from"
+      } ],
+      "instance" : "/api/v1/stats/retention",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "out_of_range",
+        "pointer" : "/from"
+      } ],
+      "instance" : "/api/v1/stats/heatmap",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  } ]
+}

@@ -59,6 +59,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
         deckFilter: String? = null,
         keepGoing: Boolean = false,
         keepGoingNewBatch: Int = QueueLimits.DEFAULT_KEEP_GOING_NEW_BATCH,
+        keepGoingNewTarget: Int? = null,
     ): LoadedQueue {
         val day = studyDayOf(nowMs, settings.timezone, settings.dayRolloverHour).day
         val readingEnabled = kotobaya.cards.ReadingSetting.load(dsl)
@@ -158,6 +159,7 @@ internal class QueueLoader(private val dsl: DSLContext) {
                 learnAheadMs = LEARN_AHEAD_MS, // 0: ADR-033, no learn-ahead
                 keepGoing = keepGoing,
                 keepGoingNewBatch = keepGoingNewBatch,
+                keepGoingNewTarget = keepGoingNewTarget,
                 reviewsUnlimited = settings.reviewsUnlimited,
             ),
             decks = decks,

@@ -2,6 +2,7 @@
 // `ReviewLoop.evaluate`). Nothing here counts cards or decides a phase; this file only reads the wire.
 import type { ReviewLoop, ReviewQueue } from '../api/generated';
 import { ReviewLoopPhaseEnum } from '../api/generated';
+import { presentLoop } from '../core/index';
 
 export type LoopPhase = ReviewLoopPhaseEnum;
 export type { ReviewLoop };
@@ -84,4 +85,18 @@ export function loopParts(loop: ReviewLoop): LoopParts {
 export function keepGoingAvailable(view: LoopView): boolean {
 	const a = view.loop.keepGoingAvailable;
 	return a ?? (view.phase === 'goal_reached' || view.phase === 'done_for_today');
+}
+
+/**
+ * ADR-051: the presenter's parts for a surface with no pending answers and no local card (Home): the response's
+ * `until_stop_parts` unchanged.
+ */
+export function presentedParts(view: LoopView): LoopParts {
+	return presentLoop({
+		state: { phase: view.phase, untilStopParts: loopParts(view.loop) },
+		pending: [],
+		hasLocalCard: false,
+		localHeadKind: null,
+		dayEndsAt: 0 // unused without pending answers (Home holds none)
+	}).parts;
 }

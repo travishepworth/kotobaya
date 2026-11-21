@@ -109,16 +109,16 @@ class DispatchTest {
 
     @Test
     fun proxyWithTheDefaultUpstreamAnswers503ShellOffline() {
-        val r = run(get("/api/v1/stats/summary"))
+        val r = run(get("/api/v1/jobs"))
         assertProblem(r, 503, "shell_offline")
-        assertEquals("/api/v1/stats/summary", str(body(r), "instance"))
+        assertEquals("/api/v1/jobs", str(body(r), "instance"))
     }
 
     @Test
     fun proxyIsForwardedAndNotMarkedLocal() {
-        val r = run(get("/api/v1/stats/summary"), api(recordingUpstream))
+        val r = run(get("/api/v1/jobs"), api(recordingUpstream))
         assertEquals(200, r.status)
-        assertEquals(listOf("getStatsSummary"), forwarded)
+        assertEquals(listOf("listJobs"), forwarded)
         assertNull(r.headers["kotobaya-local"])
     }
 
@@ -127,7 +127,7 @@ class DispatchTest {
         gate.paired = false
         assertProblem(run(get("/api/v1/meta")), 401, "unauthenticated")
         assertProblem(run(get("/api/v1/tokens")), 401, "unauthenticated") // 401 comes before 403
-        assertProblem(run(get("/api/v1/stats/summary")), 401, "unauthenticated")
+        assertProblem(run(get("/api/v1/jobs")), 401, "unauthenticated")
         assertProblem(run(send("POST", "/shell/v1/unpair", "{}")), 401, "unauthenticated")
         assertEquals(200, run(get("/shell/v1/info")).status)
         // pairShell has no handler yet (SHELL-A6): it reaches the "not available" 404, never the 401
@@ -230,7 +230,7 @@ class DispatchTest {
         assertProblem(r, 503, "shell_rebuilding")
         assertEquals("2", r.headers["retry-after"])
         assertEquals(200, run(get("/shell/v1/info")).status)
-        assertProblem(run(get("/api/v1/stats/summary")), 503, "shell_offline") // proxy is not gated
+        assertProblem(run(get("/api/v1/jobs")), 503, "shell_offline") // proxy is not gated
     }
 
     @Test

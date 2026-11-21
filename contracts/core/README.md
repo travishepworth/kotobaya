@@ -263,6 +263,10 @@ going for "one visit" and to count `newShownThisSession`. All of that is gone.
 - **Materialization (C-27).** Materialize exactly `LoopResult.queue.toMaterialize` (the served
   build) and re-evaluate; never the other build's entries. A count-only caller (widget) does not
   materialize.
+- **Keep-going target (C-31, ADR-052).** `QueueLimits.keepGoingNewTarget`: the local API passes
+  the request's `keep_going_new_target` when `keep_going=true`, else `null`; native count-only
+  callers always pass `null` (with `keepGoing = false`). Native code never computes or stores a
+  target. See "C-31" at the end of this file.
 - **Keep going scope (normative; `QueueBuilder` rule 6 "Scope", ADR-039).** One review visit of
   one client, held in memory: `keepGoing = true` only on the builds of the visit in which the
   user pressed Keep going; every new visit, restart, study-day change and 10 minutes without an
@@ -319,7 +323,12 @@ flips re-derive op by op and in a batch); `BatchApplyEquivalenceTest` logs flip 
 
 Materialization is defined once, here, and every platform does exactly this: the server inside
 `GET /review/queue` (openapi `getReviewQueue`, as the server device), a device locally through its
-op path. Clients of the API never create these notes. Since ADR-040 it creates **two** things:
+op path. **When a device materializes (C-31, ADR-050; normative):** iff it is paired, its first
+complete pull has finished (`sync_state.last_sync_at` is set) and no rebuild is pending
+(`sync_state.rebuild_pending` unset). Never conditioned on a sync cycle that is running, has
+failed or is backing off, nor on connectivity (SYNC.md 8.1 "When a device materializes", SHELL.md
+4.3 `getReviewQueue`). A loader that withholds materialization for any other reason is wrong: it
+produces `REVIEWING` with no item, the state ADR-051 forbids on the phone. Clients of the API never create these notes. Since ADR-040 it creates **two** things:
 kanji notes for the words a build draws (existing notes and deck entries alike, whatever a deck's
 `add_kanji` says) and, as before, the notes of drawn deck entries.
 
@@ -631,3 +640,76 @@ Implementation ticket CORE-30 (`kotobaya.queue.DefaultReviewLoop`), tests first:
 - The existing tests that expect `GOAL_REACHED` / `DONE_FOR_TODAY` with `laterToday > 0` are
   changed to `WAITING`, not kept (the old ADR-037 edge case "a learning card falls due during
   goal_reached" becomes "…during waiting").
+
+## C-31: keep-going target, fixed loop invariants, loop presenter (ADR-051, ADR-052)
+
+Contract: `queue/QueueBuilder.kt` (`QueueLimits.keepGoingNewTarget`, rule 6 "Target" and "Scope"),
+`queue/ReviewLoop.kt` (phase rule 3, `keepGoingAvailable`, `untilStop` with a target, invariants
+I1 … I8, worked examples W3, W4, X1, X2, X3), new `queue/LoopPresenter.kt` (`LoopPresenter`,
+`LoopPresentation`, `LoopScreen`, `PendingAnswer`). Design: `plan/tickets/LF-DESIGN.md` section 8.
+
+| Core member | Input | Output on the wire / in the client |
+|---|---|---|
+| `QueueLimits.keepGoingNewTarget: Int?` (default `null`; last constructor parameter) | API query `keep_going_new_target` (only with `keep_going=true`) | — |
+| `ReviewLoop` phase rule 3 without `!keepGoing`; K∞ / K_T | — | `loop.phase` may be `goal_reached` / `done_for_today` with `loop.keep_going = true` when a target was sent |
+| `LoopState.keepGoingAvailable` = served queue empty and K∞ non-empty | — | `loop.keep_going_available` |
+| `LoopState.untilStop` / `untilStopParts.new` with a target = new cards left to the target | — | `loop.until_stop`, `loop.until_stop_parts.new` |
+| `LoopPresenter.present(state, pending, hasLocalCard, localHeadKind, dayEndsAt): LoopPresentation` | `loop`, `day_ends_at`, the client's pending answers and held card | review screen, header parts, progress bar (openapi rule C7); exported by `@kotobaya/core` |
+
+Compatibility: nothing was removed. `keepGoingNewTarget` has a default and is the **last**
+constructor parameter of `QueueLimits`, so positional callers compile; with `null` every result is
+the pre-C-31 result bit for bit (the property tests of C-30 stay as they are, including
+`keepGoingAvailable == (!keepGoing && legacy.moreAvailable)`, which now reads "when the target is
+null"). No op, no table, no setting, no `SCHEDULER_VERSION` change: the loop and the presenter are
+pure views.
+
+**What it replaces of ADR-039** (one sentence each, nothing else): "within one visit keep going is
+an endless stream" → with a target, one goal-sized batch per press and then the stop screen
+again; "the stop screens only without keep going" → also with keep going once the target is
+reached; "`keepGoingAvailable` is false in every keep-going evaluation" → false only while a card
+is served or nothing is left. Kept from ADR-039: the flag (and now the target) lives in memory for
+one review visit and is dropped when the visit ends; an unfinished batch is not owed afterwards
+(ADR-052 b; invariant I8).
+
+**Signature note.** The ticket named `present(state, pending, hasLocalCard, localHeadKind)`. The
+contract adds a fifth parameter, `dayEndsAt`, because "does this pending learning card come back
+today" needs the end of the study day and neither `LoopState` nor `PendingAnswer` carries it; the
+alternative (clients compare `dueAt` with `day_ends_at` themselves) is exactly the client-side
+arithmetic the presenter exists to remove.
+
+Implementation ticket CORE-31 (`kotobaya.queue.DefaultQueueBuilder` rule 6 "Target",
+`DefaultReviewLoop`, new `kotobaya.queue.DefaultLoopPresenter`, `CoreJs` export), **tests first**:
+
+- `ReviewLoopTest` (jvm + js), one test per worked example with the numbers of the KDoc: **W3**
+  steps 1-6 (goal 40/40, target 80: `(0,0,0,40)`; mid-batch `(1,3,0,15)` with the due learning
+  card first; target reached → `GOAL_REACHED` with `keepGoing = true`, `keepGoingAvailable = true`;
+  pool exhausted before the target → `EMPTY`), the capped twin ending in `DONE_FOR_TODAY`; **W4**
+  (order: due learning, open group, review, new); **X1** steps 1-5 (exit mid-batch: Home has
+  `parts.new == 0`; the next press gives `(0,0,0,20)`); **X2** (target already exceeded); **X3**
+  (`newPerDay = 0`: one card per press).
+- `QueueBuilderTest`: rule 6 "Target" example (`T = 4`: `N1 N2`, then `N2`, then empty; `T` below
+  `iToday`: empty; `T = null`: all five; a due review first); a unit of three with
+  `targetRemaining 1` leads with one kanji; `targetRemaining 0` draws nothing; a normal build
+  ignores the target (same `ReviewQueue` for every target value).
+- `LoopPresenterTest` (jvm + js): **P1 … P10** with the numbers of the KDoc, and each edge case
+  listed there (held card with a terminal state, more pending answers than counted, `dayEndsAt`
+  in the past, unknown `resultingState` per kind and rating, `localHeadKind == null`).
+- `ReviewLoopInvariantFuzzTest` (jvm + js; seeded; at least 2 000 runs of at most 60 steps; the
+  seed is printed on failure): the generator and the steps of `ReviewLoop` KDoc "Fuzz test
+  shape"; after every step **I1 … I8** and the presenter's **P-I1 … P-I4** plus its consistency
+  bound. This is the test ADR-051 asks for; it must fail if phase rule 2 and 3 are swapped
+  back, if `keepGoingAvailable` is computed from the served build, or if a normal build reads
+  the target.
+- Existing tests: none changes its expectation (every existing caller passes no target).
+
+Named exception (attempt 2): the **open-unit exception to ADR-052 (a)** — the remaining cards of
+a half-answered kanji unit are served before a review that has become due, never before a due
+learning card (`QueueBuilder` rule 6 "Target", `ReviewLoop` W4, I5). I8 **includes**
+`kanjiToMaterialize`: `|NEW items| + |toMaterialize| + |kanjiToMaterialize| <= max(0, newGoal −
+newToday)` without keep going. The client's target is `newToday + pendingNew + max(1, newGoal)`
+(`pendingNew` = pending answers of kind NEW; 0 on every presenter screen that shows the button).
+
+Edge cases the KDoc fixes and the tests above cover: target already exceeded; `new_per_day = 0`;
+pool smaller than the batch; a card coming due mid-batch; the visit ending mid-batch; a keep-going
+`WAITING` that offers the button; day rollover (the client drops flag and target, C2); duplicate or
+out-of-order pending answers; clock skew (the presenter reads no clock).

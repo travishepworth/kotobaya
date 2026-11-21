@@ -14,8 +14,13 @@ import java.security.SecureRandom
 import kotlin.random.asKotlinRandom
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotobaya.android.db.GuardedDriver
 import kotobaya.android.di.FeatureEntry
@@ -70,6 +75,7 @@ class SyncClient(
     val applier: DeviceOpApplier<SqlLearningTables> = DeviceOpApplier(cache, startup)
     val engine: SyncEngine<SqlLearningTables> = SyncEngine(
         store, transport, applier, clock,
+        pullChunkOps = PULL_SUB_PAGE_OPS,
         onPullProgress = { p ->
             onPullProgress(p)
             yield() // between chunks: cancellation point, and other work on the dispatcher runs
@@ -78,6 +84,15 @@ class SyncClient(
     val rebuild: Rebuild<SqlLearningTables> = Rebuild(store, engine, applier)
     val cycle: DeviceSyncCycle<SqlLearningTables> = DeviceSyncCycle(store, engine, rebuild, startup)
     val minter: OpMinter<SqlLearningTables> = OpMinter(store, applier, clock, UuidV7Source(SecureRandom().asKotlinRandom()))
+
+    companion object {
+        /**
+         * SYNC.md 6.1 "Device scheduling" (C-31): a pulled page is applied in sub-pages of at most 50 ops, the engine
+         * yields between them and the store's fair writer lock lets a waiting local write go first, so a local change
+         * waits for at most one sub-page.
+         */
+        const val PULL_SUB_PAGE_OPS: Int = 50
+    }
 }
 
 /** The backoff count in `sync_state` (device-local key, never synced), so a new process continues it. */
@@ -95,19 +110,74 @@ class StoreFailureCounter(private val store: SqlDelightDeviceStore) : FailureCou
 /**
  * How other features ask for a sync (SYNC.md 6.1: after a review session, after local changes, on
  * demand). Never blocks the caller.
+ *
+ * [localChange] is debounced (SYNC.md 6.1 "Local-change trigger, debounced", SHELL.md L-2, C-31): a cycle starts
+ * [quietMs] (2 s) after the last local change and at most [maxWaitMs] (10 s) after the first change no cycle has
+ * started for. If a cycle is running when the timer fires, the debounced cycle starts after it (never joins it), so a
+ * change made during a cycle is pushed by the next one. Process death: every change also keeps one delayed
+ * WorkManager request ([SyncWork.requestDebounced], via [LocalChangeBackstop]); a debounced cycle that completed with
+ * no change after it cancels it. The cycle uses [SyncTrigger.REVIEW_SESSION]: a `LOCAL_CHANGE` value belongs in
+ * SyncCoordinator.kt.
  */
 class SyncTriggers(
     private val coordinator: SyncCoordinator,
     private val scope: CoroutineScope,
     private val workManager: () -> WorkManager?,
+    /** A monotonic clock in ms (the debounce timer's). */
+    private val nowMs: () -> Long = { System.nanoTime() / 1_000_000 },
+    private val quietMs: Long = LOCAL_CHANGE_QUIET_MS,
+    private val maxWaitMs: Long = LOCAL_CHANGE_MAX_WAIT_MS,
+    /** Whether the outbox still holds `pending` rows (a cycle that ended before seeing a change: run once more). */
+    private val hasPending: () -> Boolean = { false },
+    /** The process-death backstop of a local change (production: [SyncWork.LOCAL] through [workManager]). */
+    private val backstop: LocalChangeBackstop = WorkManagerBackstop(workManager, scope),
 ) {
+    private val lock = Any()
+
+    /** When the first local change no cycle has started for was made; null if none. */
+    private var firstUncovered: Long? = null
+    private var timer: Job? = null
+    private var changes = 0L
+
     /** After a review session (T304b): sync now in-process. */
     fun reviewSessionEnded() = background(SyncTrigger.REVIEW_SESSION)
 
-    /** After any local change: an expedited one-shot, so it is pushed even if the app goes away. */
+    /** After any local change: schedules a debounced cycle (see the class comment). Never blocks. */
     fun localChange() {
-        runCatching { workManager()?.let(SyncWork::requestNow) }
+        synchronized(lock) {
+            val now = nowMs()
+            changes++
+            val first = firstUncovered ?: now.also { firstUncovered = it }
+            val wait = (minOf(now + quietMs, first + maxWaitMs) - now).coerceAtLeast(0)
+            timer?.cancel()
+            // lazy: [timer] is set before the coroutine can look at it
+            timer = scope.launch(start = CoroutineStart.LAZY) { delay(wait); fire() }.also { it.start() }
+        }
+        // LF-A1b: after the change is counted. A finishing cycle decides and cancels the backstop under [lock], so either
+        // it saw this change (and keeps the backstop) or its cancel was issued before this request (which re-enqueues).
+        runCatching { backstop.request() }
     }
+
+    private suspend fun fire() {
+        val self = currentCoroutineContext()[Job]
+        val seen = synchronized(lock) {
+            // a newer change replaced this timer just as it fired: that one decides
+            if (timer !== self) return
+            firstUncovered = null
+            timer = null
+            changes
+        }
+        // started after the running cycle, never joined to it: the running one may have pushed before the change
+        coordinator.running.first { !it }
+        var outcome = coordinator.sync(SyncTrigger.REVIEW_SESSION)
+        if (outcome.completed() && runCatching(hasPending).getOrDefault(false)) outcome = coordinator.sync(SyncTrigger.REVIEW_SESSION)
+        if (outcome.completed()) {
+            // decided and issued under [lock] (LF-A1b): a change counted after this check requests its backstop after it
+            synchronized(lock) { if (changes == seen) runCatching { backstop.cancel() } }
+        }
+    }
+
+    private fun SyncOutcome.completed(): Boolean = (this as? SyncOutcome.Ran)?.result is CycleResult.Completed
 
     /** The user's 'sync now' (T303e); returns the outcome. */
     suspend fun syncNow(): SyncOutcome = coordinator.sync(SyncTrigger.MANUAL)
@@ -115,6 +185,39 @@ class SyncTriggers(
     /** Fire-and-forget sync for [trigger]. */
     fun background(trigger: SyncTrigger) {
         scope.launch { coordinator.sync(trigger) }
+    }
+
+    companion object {
+        /** SYNC.md 6.1 "Local-change trigger, debounced": trailing edge. */
+        const val LOCAL_CHANGE_QUIET_MS: Long = 2_000
+
+        /** SYNC.md 6.1 "Local-change trigger, debounced": maximum wait after the first uncovered change. */
+        const val LOCAL_CHANGE_MAX_WAIT_MS: Long = 10_000
+    }
+}
+
+/** The process-death backstop of [SyncTriggers.localChange] (SYNC.md 6.1): one delayed sync request. */
+interface LocalChangeBackstop {
+    /** Makes sure a not-yet-started backstop covers the change just committed. Never blocks. */
+    fun request()
+
+    /** A cycle covered every change: drops the backstop. */
+    fun cancel()
+}
+
+/**
+ * [SyncWork.requestDebounced] (on [scope]: it reads WorkManager's state) / [SyncWork.cancelDebounced] (enqueues only);
+ * nothing when there is no WorkManager. Both go through WorkManager's serial task executor, so a cancel issued before
+ * a request is applied before it.
+ */
+class WorkManagerBackstop(private val workManager: () -> WorkManager?, private val scope: CoroutineScope) : LocalChangeBackstop {
+    override fun request() {
+        val wm = workManager() ?: return
+        scope.launch { runCatching { SyncWork.requestDebounced(wm) } }
+    }
+
+    override fun cancel() {
+        workManager()?.let(SyncWork::cancelDebounced)
     }
 }
 
@@ -258,7 +361,11 @@ val syncModule = module {
     }
     single {
         val ctx = androidContext()
-        SyncTriggers(get(), get(SYNC_SCOPE)) { runCatching { WorkManager.getInstance(ctx) }.getOrNull() }
+        val store = get<SqlDelightDeviceStore>()
+        SyncTriggers(
+            get(), get(SYNC_SCOPE), { runCatching { WorkManager.getInstance(ctx) }.getOrNull() },
+            hasPending = { store.read { it.outbox.count(kotobaya.sync.client.store.PendingState.PENDING) > 0 } },
+        )
     }
     // Replaces push's no-op default: a `sync.changed` push runs a sync.
     single<PushSyncTrigger> {

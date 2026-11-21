@@ -13,7 +13,7 @@ import kotobaya.android.dict.KanjiDetail
 import kotobaya.android.dict.PackageSource
 import kotobaya.android.shell.api.LocalApi
 import kotobaya.android.shell.api.actions.CardQuery
-import kotobaya.android.shell.api.actions.LocalCardQuery
+import kotobaya.android.search.ReplicaCardQuery
 import kotobaya.android.shell.api.LocalRoute
 import kotobaya.android.shell.api.LocalWrites
 import kotobaya.android.shell.api.OfflineUpstream
@@ -252,7 +252,7 @@ class ParityDevice(
     private val dueTrigger = DueTrigger(background = { it.run() }) { listOf(DueListener { dueChanges++ }) }
 
     /** SHELL-L4: the `bulkCards` `query` selector over the device's own replica (as production binds it). */
-    val cardQuery: CardQuery = LocalCardQuery(driver, database, installedDictionary)
+    val cardQuery: CardQuery = ReplicaCardQuery(driver, database, installedDictionary)
 
     private val services = MapServices(
         mapOf(
