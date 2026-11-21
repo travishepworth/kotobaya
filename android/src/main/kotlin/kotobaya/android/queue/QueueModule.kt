@@ -2,11 +2,7 @@ package kotobaya.android.queue
 
 import kotobaya.android.di.FeatureEntry
 import kotobaya.sync.client.store.bookkeeping
-import org.koin.core.qualifier.named
 import org.koin.dsl.module
-
-/** Cache of dictionary headwords by entry seq, dropped whenever the installed dictionary's generation changes. */
-private val HEADWORDS = named("queueHeadwords")
 
 /** Koin wiring of the queue loader (system clock; tests construct the loader directly). */
 val queueFeature = FeatureEntry(
@@ -14,24 +10,27 @@ val queueFeature = FeatureEntry(
     module = module {
         // AND-PERF: one gate for every loader, so home, widget, notifications and review conflate their builds
         single { LoadGate() }
-        single(HEADWORDS) {
+        // PERF-LF: one process-wide cache of dictionary headwords by entry seq (also the shell's queue and summary)
+        single {
             val koin = getKoin()
             fun dict() = koin.getOrNull<kotobaya.android.dict.InstalledDictionary>()
             HeadwordCache(
                 generation = { dict()?.let { d -> runCatching { d.generation }.getOrNull() } ?: 0L },
                 lookup = { seq -> dict()?.let { d -> runCatching { d.entry(seq)?.headword }.getOrNull() } },
+                batch = { seqs -> dict()?.let { d -> runCatching { d.headwords(seqs) }.getOrNull() }.orEmpty() },
             )
         }
         single { KanjiSource(get<kotobaya.android.dict.InstalledDictionary>()) }
         factory {
             val koin = getKoin()
-            val headwords = get<HeadwordCache>(HEADWORDS)
+            val headwords = get<HeadwordCache>()
             LocalQueueLoader(
                 get(),
                 System::currentTimeMillis,
                 // C-27: a deck note has fields {}; its expressionKanji come from the dictionary headword, as the
                 // PendingEntry.expressionKanji it was drawn with
                 headwordOf = headwords::headword,
+                prefetchHeadwords = headwords::prefetch,
                 awaitReady = {
                     // readers wait for the startup replay (SYNC.md 10.5); the sync module may be absent in tests
                     koin.getOrNull<kotobaya.android.sync.SyncBootstrap>()?.ready?.takeUnless { it.isCompleted }

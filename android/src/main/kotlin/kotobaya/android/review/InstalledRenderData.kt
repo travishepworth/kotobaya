@@ -15,7 +15,40 @@ import kotobaya.contracts.render.KanjiData
  * that card instead of failing the whole session.
  */
 class InstalledRenderData(private val dict: InstalledDictionary) : DictionaryLookup, KanjiLookup {
-    override fun lookup(entrySeq: Long): DictionaryData? = guarded("entry") { dict.entry(entrySeq)?.let(::dictionaryData) }
+    private class Slot(val generation: Long) {
+        val entries = java.util.concurrent.ConcurrentHashMap<Long, java.util.Optional<DictionaryData>>()
+    }
+
+    @Volatile private var slot = Slot(Long.MIN_VALUE)
+
+    /**
+     * PERF-LF: answers (hits and misses) are kept for the dictionary's generation (a package install or a sidecar write
+     * changes it): the queue plans every pending deck entry through this on every build, one full entry read (three
+     * queries and a JSON parse behind the dictionary's one connection) per entry before. A failed read is not kept.
+     */
+    override fun lookup(entrySeq: Long): DictionaryData? {
+        val g = runCatching { dict.generation }.getOrDefault(Long.MIN_VALUE)
+        var s = slot
+        if (s.generation != g) {
+            s = Slot(g)
+            slot = s
+        }
+        s.entries[entrySeq]?.let { return it.orElse(null) }
+        var failed = false
+        val d = guarded("entry") {
+            try {
+                dict.entry(entrySeq)?.let(::dictionaryData)
+            } catch (e: RuntimeException) {
+                failed = true
+                throw e
+            }
+        }
+        if (!failed) {
+            if (s.entries.size >= MAX_CACHED) s.entries.clear()
+            s.entries[entrySeq] = java.util.Optional.ofNullable(d)
+        }
+        return d
+    }
 
     override fun lookup(literal: String): KanjiData? = guarded("kanji") { dict.kanji(literal)?.let(::kanjiData) }
 
@@ -27,6 +60,8 @@ class InstalledRenderData(private val dict: InstalledDictionary) : DictionaryLoo
     }
 
     companion object {
+        private const val MAX_CACHED = 50_000
+
         /** First-sense glosses and the headword reading's pitch, as the server's queue and the note matcher use. */
         fun dictionaryData(d: DictEntryDetail): DictionaryData {
             val glosses = d.senses.optJSONObject(0)?.optJSONArray("gloss")?.let { gl ->

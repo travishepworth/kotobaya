@@ -109,6 +109,23 @@ class InstalledDictionary(
         return out
     }
 
+    /**
+     * PERF-LF: the headword of many entries in chunked `IN` reads of one narrow column (the queue needs the headword of
+     * every vocab note whose `expression` field is empty, e.g. jpdb imports and deck notes); entries the package lacks
+     * come from the sidecar cache. An absent key = a miss. Same values as `entry(seq)?.headword`.
+     */
+    fun headwords(seqs: Collection<Long>): Map<Long, String> {
+        val out = HashMap<Long, String>()
+        for (chunk in seqs.distinct().chunked(PRESENT_CHUNK)) {
+            withDb { db ->
+                db.rawQuery("SELECT seq, headword FROM dict_entry WHERE seq IN " + chunk.joinToString(",", "(", ")") { "?" }, chunk.map { it.toString() }.toTypedArray())
+                    .use { c -> while (c.moveToNext()) c.getString(1)?.let { out[c.getLong(0)] = it } }
+            }
+        }
+        for (seq in seqs) if (seq !in out) cache?.entry(seq)?.let { out[seq] = it.headword }
+        return out
+    }
+
     /** Grade and frequency rank of many kanji (package, then sidecar cache); an absent key = a miss. */
     fun kanjiFacts(literals: Collection<String>): Map<String, Pair<Int?, Int?>> {
         val out = HashMap<String, Pair<Int?, Int?>>()

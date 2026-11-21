@@ -6,6 +6,7 @@ import kotobaya.android.media.WordAudioLookup
 import kotobaya.android.queue.EntryMaterializer
 import kotobaya.android.queue.EntryPlan
 import kotobaya.android.queue.EntryRef
+import kotobaya.android.queue.HeadwordCache
 import kotobaya.android.queue.KanjiSource
 import kotobaya.android.queue.LoadGate
 import kotobaya.android.queue.LoadedQueue
@@ -18,6 +19,7 @@ import kotobaya.android.shell.api.LocalCall
 import kotobaya.android.shell.api.ProblemException
 import kotobaya.android.shell.api.Problems
 import kotobaya.android.shell.api.ShellResponse
+import kotobaya.android.shell.api.ShellServices
 import kotobaya.android.shell.api.get
 import kotobaya.android.shell.api.identity.ShellIdentity
 import kotobaya.android.shell.api.identity.timestamp
@@ -110,12 +112,13 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
     }
     // ADR-042: the process-wide cache when the app provides one (the loader runs on every answer), else per request
     val kanji = runCatching { services.get<KanjiSource>() }.getOrNull() ?: KanjiSource(dict)
-    val headwords = HashMap<Long, String?>() // per-request cache
+    val headwords = shellHeadwords(services, dict)
     val loader = LocalQueueLoader(
         db = db,
         // one instant for the whole request, as the server's `nowMs`
         clock = { now },
-        headwordOf = { seq -> headwords.getOrPut(seq) { runCatching { dict.entry(seq)?.headword }.getOrNull() } },
+        headwordOf = headwords::headword,
+        prefetchHeadwords = headwords::prefetch,
         // a gate of its own: a build of another caller (native screens, another request) is never served for this one
         gate = LoadGate(),
         materializer = materializer,
@@ -127,6 +130,18 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
     val settings = QueueSettings.from(db.localQueueQueries.schedulerSettings().executeAsList().associate { it.key to it.value_ })
     return ShellResponse.json(render(r, now, loaded, settings, store, dict, kanji, runCatching { services.get<WordAudioLookup>() }.getOrNull()))
 }
+
+/**
+ * PERF-LF: the app's process-wide [HeadwordCache] (Koin), so a build reads no dictionary headword it read before (the
+ * shell used a per-request map: one full dictionary entry read per vocab note with empty fields on every call, behind
+ * the dictionary's one connection); a request-scoped one over [dict] where the app provides none (tests).
+ */
+internal fun shellHeadwords(services: ShellServices, dict: InstalledDictionary): HeadwordCache =
+    runCatching { services.get<HeadwordCache>() }.getOrNull() ?: HeadwordCache(
+        generation = { runCatching { dict.generation }.getOrDefault(0L) },
+        lookup = { seq -> runCatching { dict.entry(seq)?.headword }.getOrNull() },
+        batch = { seqs -> runCatching { dict.headwords(seqs) }.getOrDefault(emptyMap()) },
+    )
 
 private fun render(
     r: QueueRequest,

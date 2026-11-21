@@ -43,7 +43,12 @@ class HomeLoadBenchmarkTest {
         DurableDriver.open(app)
     }
     private val now = System.getenv("PERF_LF_NOW")?.toLong() ?: 1_795_000_000_000L // 2026-11-18T11:06:40Z
-    private val device = ParityDevice("01931f3e-0000-7000-8000-0000000000d4", now, LocalRoutes.all, dictDir = ParityTemp.next("perf-dict"), driver = driver)
+    /** A real dictionary package (built from a backup's `ref` schema by the worker, outside the repository). */
+    private val realDict: String? = System.getenv("PERF_LF_DICT")
+    private val device = ParityDevice(
+        "01931f3e-0000-7000-8000-0000000000d4", now, LocalRoutes.all, dictDir = ParityTemp.next("perf-dict"), driver = driver,
+        withDictionary = realDict == null,
+    ).also { d -> realDict?.let { java.io.File(it).copyTo(d.dictStore.installed.also { f -> f.parentFile?.mkdirs() }, overwrite = true) } }
     private val seeded = if (realReplica != null) ReplicaScale.counts(driver) else ReplicaScale.seed(driver, device.store, now)
 
     @AfterTest
@@ -54,7 +59,7 @@ class HomeLoadBenchmarkTest {
 
     private class Call(val name: String, val path: String, val query: String)
 
-    private val queue = Call("getReviewQueue", "/api/v1/review/queue", "limit=1")
+    private val queue = Call("getReviewQueue", "/api/v1/review/queue", "limit=30")
     private val others = listOf(
         Call("listDecks", "/api/v1/decks", ""),
         Call("listHotWords", "/api/v1/words/hot", "limit=50"),

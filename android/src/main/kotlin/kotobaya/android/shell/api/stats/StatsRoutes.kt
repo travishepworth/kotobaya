@@ -116,11 +116,12 @@ private fun summaryLoader(call: LocalCall, db: AppDatabase, now: Long): LocalQue
     val services = call.services
     val dict = services.get<InstalledDictionary>()
     val kanji = runCatching { services.get<KanjiSource>() }.getOrNull() ?: KanjiSource(dict)
-    val headwords = HashMap<Long, String?>()
+    val headwords = kotobaya.android.shell.api.review.shellHeadwords(services, dict)
     return LocalQueueLoader(
         db = db,
         clock = { now },
-        headwordOf = { seq -> headwords.getOrPut(seq) { runCatching { dict.entry(seq)?.headword }.getOrNull() } },
+        headwordOf = headwords::headword,
+        prefetchHeadwords = headwords::prefetch,
         gate = LoadGate(),
         materializer = ShellEntryMaterializer(services.get<EntryMaterializer>()) { false },
         kanji = kanji,

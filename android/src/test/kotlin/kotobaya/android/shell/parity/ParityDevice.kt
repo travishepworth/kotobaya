@@ -273,6 +273,9 @@ class ParityDevice(
             DueTrigger::class to dueTrigger,
             CardQuery::class to cardQuery,
             Upstream::class to upstream,
+            // PERF-LF: the process-wide dictionary caches production binds (QueueModule)
+            kotobaya.android.queue.KanjiSource::class to kotobaya.android.queue.KanjiSource(installedDictionary),
+            kotobaya.android.queue.HeadwordCache::class to kotobaya.android.shell.api.review.shellHeadwords(ShellServices.None, installedDictionary),
         ),
     )
 

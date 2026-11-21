@@ -108,6 +108,8 @@ class LocalQueueLoader(
     private val clock: () -> Long,
     private val smartDecks: SmartDeckResolver = SmartDeckResolver { _, _, _ -> emptyList() },
     private val headwordOf: (Long) -> String? = { null },
+    /** PERF-LF: loads the headwords [headwordOf] will be asked for, in one batch per build (a process cache: nothing after the first). */
+    private val prefetchHeadwords: (Collection<Long>) -> Unit = {},
     /** Blocks until the startup replay (SYNC.md 10.5) has committed; no-op by default (T304b: SyncBootstrap.ready). */
     private val awaitReady: () -> Unit = {},
     /** AND-PERF: conflates concurrent builds; Koin shares one gate between every loader of the app database. */
@@ -200,6 +202,8 @@ class LocalQueueLoader(
         // required ones with no kanji note, evaluated by core KanjiRequirement over the dictionary
         val resolver = WordKanjiResolver(settings, q.kanjiNoteLiterals().executeAsList().mapNotNullTo(HashSet()) { it }, kanji, materializer)
         val fieldsOf = rows.asSequence().filter { it.type == NoteBaseType.VOCAB.wire }.associate { it.note_id to (it.entry_seq to it.fields) }
+        // the notes whose expression comes from the dictionary (fields `{}`: jpdb imports, deck notes) or may (blank field)
+        prefetchHeadwords(fieldsOf.values.mapNotNullTo(HashSet()) { (seq, fields) -> seq?.takeIf { !fields.contains("\"expression\":\"") || fields.contains("\"expression\":\"\"") } })
         for (c in candidates) if (c.noteBaseType == NoteBaseType.VOCAB && !resolver.has(c.noteId)) {
             val (seq, fields) = fieldsOf.getValue(c.noteId)
             resolver.evaluate(c.noteId, seq, expressionOf(fields, seq))
