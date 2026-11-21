@@ -77,6 +77,7 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
+| PERF-GATE | writer (sonnet) | 1 | t/PERF-GATE-device-timing | 2026-11-21 |
 
 
 ## Queued
