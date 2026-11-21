@@ -59,19 +59,46 @@ JOIN card c ON c.id = r.card_id
 WHERE r.undone_at IS NULL AND r.review_type = 'scheduled' AND r.reviewed_at >= :lo AND r.reviewed_at < :hi
 ORDER BY root;
 
--- PERF-LF (getStatsRetention in one pass instead of three reads per replay root): every card's kind, preset and note
--- type (the group key `type/kind` and the preset of a root).
+-- PERF-LF: the per-root history cache of the stats (StatsHistoryCache). A replay root is a card not merged away, or a
+-- merge survivor; its members are the root itself (while not merged away) and every card merged into it, exactly the
+-- member set of statsDayRows' `introduced` lookup and of the replay.
+
+-- Every card's kind, preset and note type (the retention group key `type/kind` and the preset of a root).
 statsCardInfo:
 SELECT c.id, c.kind, c.preset_id, n.type
 FROM card c
 JOIN note n ON n.id = c.note_id;
 
--- PERF-LF: every non-undone review_log row with its replay root (the card, or its merge survivor), grouped by root: the
--- history the replay of each root folds (a root's own rows only while it is not merged away, and the rows of the cards
--- merged into it, as the per-root reads did). Grouped in Kotlin.
+-- statsCardInfo of some cards.
+statsCardInfoOf:
+SELECT c.id, c.kind, c.preset_id, n.type
+FROM card c
+JOIN note n ON n.id = c.note_id
+WHERE c.id IN :ids;
+
+-- Every non-undone review_log row with its replay root (grouped in Kotlin).
 statsReplayRows:
 SELECT COALESCE(c.merged_into_id, c.id) AS root, r.id, r.hlc, r.reviewed_at, r.utc_offset_min, r.review_type, r.rating,
-       r.manual_action, r.manual_due_at, r.import_source
+       r.manual_action, r.manual_due_at, r.import_source, COALESCE(r.duration_ms, 0) AS duration_ms
 FROM review_log r
 JOIN card c ON c.id = r.card_id
 WHERE r.undone_at IS NULL;
+
+-- statsReplayRows of some roots (pass the same ids twice): the rows of the roots themselves and of the cards merged into them.
+statsReplayRowsOf:
+SELECT COALESCE(c.merged_into_id, c.id) AS root, r.id, r.hlc, r.reviewed_at, r.utc_offset_min, r.review_type, r.rating,
+       r.manual_action, r.manual_due_at, r.import_source, COALESCE(r.duration_ms, 0) AS duration_ms
+FROM card c
+JOIN review_log r ON r.card_id = c.id
+WHERE ((c.id IN :roots AND c.merged_into_id IS NULL) OR c.merged_into_id IN :survivors) AND r.undone_at IS NULL;
+
+-- The replay roots of some review_log rows.
+statsRootsOfReviews:
+SELECT DISTINCT COALESCE(c.merged_into_id, c.id) AS root
+FROM review_log r
+JOIN card c ON c.id = r.card_id
+WHERE r.id IN :ids;
+
+-- Some cards with the survivor they are merged into (both roots may have changed).
+statsCardMergeOf:
+SELECT id, merged_into_id FROM card WHERE id IN :ids;

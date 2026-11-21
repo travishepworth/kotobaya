@@ -104,7 +104,7 @@ class SqlDelightDeviceStore(
             writer.unlock()
         }
         // after the commit (see ReplicaVersions); a rolled-back transaction threw above and changed nothing
-        if (untracked || changes.tables.isNotEmpty()) versions.committed(changes.tables, changes.cardKeys, untracked)
+        if (untracked || changes.tables.isNotEmpty()) versions.committed(changes, untracked)
         if (notify) for (l in commitListeners) runCatching { l() }
         return result
     }

@@ -17,12 +17,17 @@ internal object ReplicaScale {
     private const val KANJI_TYPE = "00000000-0000-7000-8000-000000000102"
     private const val SERVER = "00000000-0000-7000-8000-000000000001"
 
+    /**
+     * Defaults: the row counts of the user's real replica (first sync of the 0.1.31 backup, 2026-11-21): 9 842 notes
+     * (7 621 vocab, 2 221 kanji), 10 950 cards (~90% started, ~8% due today), 81 640 reviews, 46 778 deck items (four list
+     * decks of 8-11k items), ~300 cards failed in the last 14 days.
+     */
     data class Size(
-        val vocabNotes: Int = 6_000,
-        val kanjiNotes: Int = 1_200,
-        val reviewsPerStartedCard: Int = 6,
-        val listDecks: Int = 3,
-        val listDeckItems: Int = 4_000,
+        val vocabNotes: Int = 7_600,
+        val kanjiNotes: Int = 2_200,
+        val reviewsPerStartedCard: Int = 8,
+        val listDecks: Int = 4,
+        val listDeckItems: Int = 11_000,
         val minedDeckItems: Int = 1_500,
     )
 
@@ -108,7 +113,7 @@ internal object ReplicaScale {
                 }
                 val isStarted = lastId != null
                 // due: spread from 30 days overdue-ish to 120 days ahead; ~3% due today
-                val due = if (!isStarted) null else now + (rnd.nextLong(150 * DAY) - 30 * DAY).let { if (rnd.nextInt(30) == 0) -rnd.nextLong(DAY) else it.coerceAtLeast(DAY / 2) }
+                val due = if (!isStarted) null else now + (rnd.nextLong(150 * DAY) - 30 * DAY).let { if (rnd.nextInt(12) == 0) -rnd.nextLong(DAY) else it.coerceAtLeast(DAY / 2) }
                 driver.execute(
                     null,
                     "INSERT INTO card (id, note_id, kind, state, stability, difficulty, due_at, interval_days, last_review_at, last_review_id, reps, lapses, created_at, updated_at) " +
@@ -128,18 +133,18 @@ internal object ReplicaScale {
                 val id = uuid(0x20, i)
                 val created = start + rnd.nextLong(700 * DAY)
                 note(id, KANJI_TYPE, "kanji", null, kanji[i], """{"literal":"${kanji[i]}","keyword":"k$i"}""", created)
-                card(uuid(0x21, i), id, "keyword", created, started = rnd.nextInt(10) < 8, failRecently = false)
+                card(uuid(0x21, i), id, "keyword", created, started = rnd.nextInt(10) < 9, failRecently = false)
             }
             for (i in 0 until size.vocabNotes) {
                 val id = uuid(0x10, i)
                 val created = start + rnd.nextLong(720 * DAY)
                 val expr = kanji[rnd.nextInt(kanji.size)] + kanji[rnd.nextInt(kanji.size)]
                 note(id, VOCAB_TYPE, "vocab", 1_500_000L + i, null, """{"expression":"$expr","reading":"よみ$i","meaning":"meaning $i"}""", created)
-                // ~70% of vocab notes started; recent failures on ~4% of them (the hot lists)
-                val started = rnd.nextInt(10) < 7
+                // ~90% of vocab notes started; recent failures on ~4% of them (the hot lists)
+                val started = rnd.nextInt(10) < 9
                 val hot = started && rnd.nextInt(25) == 0
                 card(uuid(0x11, i), id, "meaning", created, started, hot)
-                card(uuid(0x12, i), id, "reading", created, started, hot && rnd.nextBoolean())
+                if (rnd.nextInt(20) == 0) card(uuid(0x12, i), id, "reading", created, started, hot && rnd.nextBoolean())
             }
             fun deck(id: String, type: String, name: String, priority: Int) {
                 driver.execute(

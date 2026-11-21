@@ -1,92 +1,101 @@
 package kotobaya.android.sync
 
 import java.util.ArrayDeque
+import kotobaya.contracts.sync.JsonString
+import kotobaya.contracts.sync.JsonValue
 import kotobaya.sync.client.apply.LearningTable
 
 /**
  * PERF-LF: which learning tables changed, so readers can keep what they derived from the replica (the queue loader's
- * per-note facts and deck memberships, Home's lists) until a table they read changes, instead of re-reading the whole
- * replica on every request.
+ * card snapshot and deck memberships, the stats' per-card history) until a table they read changes, instead of
+ * re-reading the whole replica on every request.
  *
- * [SqlDelightDeviceStore] records every committed write transaction here AFTER its commit (a reader that sees a
- * version saw at least the data of that version; reading the version first and the data second can only make it
- * refresh once more, never keep stale data). Writes through [SqlLearningTables] are attributed to their table (and,
- * for [LearningTable.CARD], to their keys); a transaction whose SQLite `total_changes()` shows rows written by anything
- * else (raw statements, e.g. the content installer's `deck_item` rows) bumps every table. Writes outside the store's
- * transactions are not seen: learning data is written only inside them (CLAUDE.md rule 8).
+ * [SqlDelightDeviceStore] records every committed write transaction here AFTER its commit (a reader that reads a
+ * version first and the data second can only refresh once more, never keep stale data under a newer version). Writes
+ * through [SqlLearningTables] are attributed to their table and, for the [KEYED] tables, to their keys; a transaction
+ * whose SQLite `total_changes()` shows rows written by anything else (raw statements, e.g. the content installer's
+ * `deck_item` rows) bumps every table and forgets the keys. Writes outside the store's transactions are not seen:
+ * learning data is written only inside them (CLAUDE.md rule 8).
  */
 class ReplicaVersions {
     private val versions = LongArray(LearningTable.entries.size)
     private var all = 0L
 
-    /** Recent commits that touched `card`: (the card version after it, its card keys or null = unknown / too many). */
-    private val cardLog = ArrayDeque<Pair<Long, Set<String>?>>()
+    /** Per keyed table, recent commits that touched it: (its version after the commit, its keys or null = unknown). */
+    private val logs = KEYED.associateWith { ArrayDeque<Pair<Long, Set<String>?>>() }
 
     /** One number that changes whenever any of [tables] changed (monotonic). */
     @Synchronized
     fun version(vararg tables: LearningTable): Long = all + tables.sumOf { versions[it.ordinal] }
 
-    /** One number for every learning table. */
+    /** The version of [table] alone (for [changedKeys]). */
     @Synchronized
-    fun versionOfAll(): Long = all + versions.sum()
+    fun tableVersion(table: LearningTable): Long = all + versions[table.ordinal]
 
     /** Current `card` version (for [changedCards]). */
-    @Synchronized
-    fun cardVersion(): Long = all + versions[LearningTable.CARD.ordinal]
+    fun cardVersion(): Long = tableVersion(LearningTable.CARD)
+
+    /** [changedKeys] of `card`. */
+    fun changedCards(since: Long): Set<String>? = changedKeys(LearningTable.CARD, since)
 
     /**
-     * The card ids written since [cardVersion] was [since]; null when that is not known exactly (an untracked write, a
-     * table clear, a big batch, or too long ago): the caller reloads everything.
+     * The keys of [table] (one of [KEYED]; the first key column) written since its [tableVersion] was [since]; null when
+     * that is not known exactly (an untracked write, a table clear, a big batch, or too long ago): reload everything.
      */
     @Synchronized
-    fun changedCards(since: Long): Set<String>? {
-        if (since == cardVersion()) return emptySet()
+    fun changedKeys(table: LearningTable, since: Long): Set<String>? {
+        val log = logs[table] ?: return null
+        val now = tableVersion(table)
+        if (since == now) return emptySet()
+        if (since > now) return null
+        // every increment of the table's version has exactly one log entry with that version: the log must reach back
+        // to since + 1, else commits were dropped from it
+        if (log.isEmpty() || log.first().first > since + 1) return null
         val out = HashSet<String>()
-        var covered = false
-        for ((v, keys) in cardLog) {
-            if (v <= since) {
-                covered = true
-                continue
-            }
-            out += keys ?: return null
-        }
-        // the log must reach back to `since` (its oldest entry at or before it), else commits were dropped
-        if (!covered && (cardLog.isEmpty() || cardLog.first().first - 1 > since)) return null
+        for ((v, keys) in log) if (v > since) out += keys ?: return null
         return out
     }
 
-    /** Records one committed transaction. [cardKeys]: card ids written (null = unknown). [untracked]: other rows were written. */
+    /** Records one committed transaction (see [TxChanges]). [untracked]: rows the store's writers did not count were written. */
     @Synchronized
-    internal fun committed(tables: Set<LearningTable>, cardKeys: Set<String>?, untracked: Boolean) {
+    internal fun committed(changes: TxChanges, untracked: Boolean) {
         if (untracked) {
             all++
-            cardLog.addLast(cardVersion() to null)
+            for ((t, log) in logs) log.addLast(tableVersion(t) to null)
         } else {
-            for (t in tables) versions[t.ordinal]++
-            if (LearningTable.CARD in tables) cardLog.addLast(cardVersion() to cardKeys?.takeIf { it.size <= MAX_KEYS })
+            for (t in changes.tables) {
+                versions[t.ordinal]++
+                logs[t]?.addLast(tableVersion(t) to changes.keys(t)?.takeIf { it.size <= MAX_KEYS })
+            }
         }
-        while (cardLog.size > MAX_LOG) cardLog.removeFirst()
+        for (log in logs.values) while (log.size > MAX_LOG) log.removeFirst()
     }
 
-    private companion object {
-        const val MAX_LOG = 512
-        const val MAX_KEYS = 2_000
+    companion object {
+        /** The tables whose written keys are logged. */
+        val KEYED: Set<LearningTable> = setOf(LearningTable.CARD, LearningTable.REVIEW_LOG)
+        private const val MAX_LOG = 1_024
+        private const val MAX_KEYS = 2_000
     }
 }
 
 /** What one write transaction did, collected by its [SqlLearningTables] and outbox / sync_state writers. */
 internal class TxChanges {
     val tables = HashSet<LearningTable>()
-    var cardKeys: MutableSet<String>? = HashSet()
+    private val keys = HashMap<LearningTable, MutableSet<String>?>()
 
     /** Rows the store's own writers changed (compared with SQLite `total_changes()` at commit). */
     var counted = 0L
 
-    fun learning(table: LearningTable, key: String?, rows: Long) {
+    /** [rows] rows of [table] written for [key] (null: a whole-table write). */
+    fun learning(table: LearningTable, key: List<JsonValue>?, rows: Long) {
         tables += table
         counted += rows
-        if (table == LearningTable.CARD) {
-            if (key == null) cardKeys = null else cardKeys?.add(key)
-        }
+        if (table !in ReplicaVersions.KEYED) return
+        val k = (key?.firstOrNull() as? JsonString)?.value
+        if (!keys.containsKey(table)) keys[table] = HashSet()
+        if (k == null) keys[table] = null else keys[table]?.add(k)
     }
+
+    fun keys(table: LearningTable): Set<String>? = if (keys.containsKey(table)) keys[table] else emptySet()
 }

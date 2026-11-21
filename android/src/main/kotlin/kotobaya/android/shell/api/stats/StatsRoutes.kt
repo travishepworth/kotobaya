@@ -76,11 +76,12 @@ internal fun getStatsSummary(call: LocalCall): ShellResponse {
     val store = services.get<SqlDelightDeviceStore>()
     val db = services.get<AppDatabase>()
     val now = services.get<ShellIdentity>().nowMs()
-    val body = store.read { _ ->
+    val body = store.read { tx ->
+        val snap = historyOf(call, db, tx.learning)
         val settings = settingsOf(db)
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour)
         val legacy = summaryLoader(call, db, now).load(deckFilter = null, keepGoing = false, keepGoingNewBatch = SUMMARY_BATCH).state.legacy
-        val today = dayRows(db, day.date, day.date, settings.timezone, settings.dayRolloverHour)
+        val today = dayRows(snap, day.date, day.date, settings.timezone, settings.dayRolloverHour)
         val scheduled = today.filter { it.type == ReviewType.SCHEDULED.wire && it.rating != null }
         val totals = db.statsQueries.statsTotals(settings.leechThreshold.toLong()).executeAsOne()
         val next = db.statsQueries.statsNextDue(now, if (settings.readingEnabled) 1L else 0L).executeAsOne().next_due
@@ -100,7 +101,7 @@ internal fun getStatsSummary(call: LocalCall): ShellResponse {
                 "suspended" to n(totals.suspended),
                 "leeches" to n(totals.leeches),
             ),
-            "streak_days" to n(streak(db, day.date, settings.timezone, settings.dayRolloverHour)),
+            "streak_days" to n(streak(snap, day.date, settings.timezone, settings.dayRolloverHour)),
             "next_due_at" to (next?.let { JsonString(timestamp(it)) } ?: JsonNull),
             "more_available" to JsonBool(legacy.moreAvailable),
         )
@@ -130,40 +131,47 @@ private fun summaryLoader(call: LocalCall, db: AppDatabase, now: Long): LocalQue
 }
 
 /** Consecutive study days with a review, ending today or yesterday; reads newest first and stops at the first gap. */
-private fun streak(db: AppDatabase, today: LocalDate, zone: ZoneId, hour: Int): Int {
-    val query = db.statsQueries.statsStreakRows()
-    return query.execute { cursor ->
-        var last: LocalDate? = null
-        var count = 0
-        while (cursor.next().value) {
-            val r = query.mapper(cursor)
-            val d = studyDayOfReview(r.reviewed_at, r.utc_offset_min?.toInt(), zone, hour)
-            if (d.isAfter(today)) continue
-            val l = last
-            if (l == null) {
-                if (d.isBefore(today.minusDays(1))) break
-                last = d
-                count = 1
-            } else if (!d.isBefore(l)) {
-                continue
-            } else if (d == l.minusDays(1)) {
-                last = d
-                count++
-            } else {
-                break
-            }
+private fun streak(snap: StatsSnapshot, today: LocalDate, zone: ZoneId, hour: Int): Int {
+    var last: LocalDate? = null
+    var count = 0
+    for (r in snap.newestFirst) {
+        val d = studyDayOfReview(r.reviewedAt, r.utcOffsetMin, zone, hour)
+        if (d.isAfter(today)) continue
+        val l = last
+        if (l == null) {
+            if (d.isBefore(today.minusDays(1))) break
+            last = d
+            count = 1
+        } else if (!d.isBefore(l)) {
+            continue
+        } else if (d == l.minusDays(1)) {
+            last = d
+            count++
+        } else {
+            break
         }
-        QueryResult.Value(count)
-    }.value
+    }
+    return count
 }
 
+/**
+ * PERF-LF: the per-root review history ([StatsHistoryCache]: the app's, kept current between calls; a one-off one
+ * where the app provides none).
+ */
+private fun historyOf(call: LocalCall, db: AppDatabase, t: LearningTables): StatsSnapshot =
+    (runCatching { call.services.get<StatsHistoryCache>() }.getOrNull() ?: StatsHistoryCache(null)).snapshot(db, t)
+
 /** Non-undone, non-manual reviews with study day in `[from, to]` (the server's `dayRows`). */
-private fun dayRows(db: AppDatabase, from: LocalDate, to: LocalDate, zone: ZoneId, hour: Int): List<DayRow> {
+private fun dayRows(snap: StatsSnapshot, from: LocalDate, to: LocalDate, zone: ZoneId, hour: Int): List<DayRow> {
     val (lo, hi) = windowMs(from, to)
-    return db.statsQueries.statsDayRows(lo, hi).executeAsList().mapNotNull { r ->
-        val day = studyDayOfReview(r.reviewed_at, r.utc_offset_min?.toInt(), zone, hour)
-        if (day < from || day > to) null else DayRow(day, r.review_type, r.rating?.toInt(), r.duration_ms, r.introduced == true)
+    val out = ArrayList<DayRow>()
+    for (h in snap.roots.values) for (r in h.days) {
+        if (r.reviewedAt < lo || r.reviewedAt >= hi) continue
+        val day = studyDayOfReview(r.reviewedAt, r.utcOffsetMin, zone, hour)
+        if (day < from || day > to) continue
+        out += DayRow(day, r.type, r.rating, r.durationMs, r.introduced)
     }
+    return out
 }
 
 /**
@@ -176,13 +184,13 @@ internal fun getStatsHeatmap(call: LocalCall): ShellResponse {
     val services = call.services
     val db = services.get<AppDatabase>()
     val now = services.get<ShellIdentity>().nowMs()
-    val body = services.get<SqlDelightDeviceStore>().read { _ ->
+    val body = services.get<SqlDelightDeviceStore>().read { tx ->
         val settings = settingsOf(db)
         val e = FieldErrors()
         val range = dayRange(q, studyDayOf(now, settings.timezone, settings.dayRolloverHour).date, e)
         e.throwIfAny()
         val r = checkNotNull(range)
-        val days = dayRows(db, r.from, r.to, settings.timezone, settings.dayRolloverHour)
+        val days = dayRows(historyOf(call, db, tx.learning), r.from, r.to, settings.timezone, settings.dayRolloverHour)
             .groupBy { it.day }.toSortedMap().map { (d, rows) ->
                 obj(
                     "date" to JsonString(d.toString()),
@@ -214,7 +222,7 @@ internal fun getStatsRetention(call: LocalCall): ShellResponse {
         val range = dayRange(q, studyDayOf(now, settings.timezone, settings.dayRolloverHour).date, e)
         e.throwIfAny()
         val r = checkNotNull(range)
-        val rows = scheduledReviews(db, tx.learning, r, settings.timezone, settings.dayRolloverHour)
+        val rows = scheduledReviews(db, historyOf(call, db, tx.learning), r, settings.timezone, settings.dayRolloverHour)
         val keyOf: (ScheduledReview) -> String = when (groupBy) {
             "day" -> { x -> x.day.toString() }
             "week" -> { x -> String.format(Locale.ROOT, "%d-W%02d", x.day.get(IsoFields.WEEK_BASED_YEAR), x.day.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)) }
@@ -249,68 +257,24 @@ private fun group(key: String, rows: List<ScheduledReview>): JsonObject {
 }
 
 /**
- * Scheduled non-undone reviews with study day in [range], each with its card's schedule just before it: the replay set
- * of the card's root (the card and every card merged into it) folded in order with the root's effective preset. A card
- * whose replay is refused (a malformed row) is skipped, as on the server.
- *
- * PERF-LF: three set reads (roots, every card's kind / preset / note type, every non-undone row with its root) instead
- * of a card, note, preset and history read per root (tens of thousands of statements for a year of reviews).
+ * Scheduled non-undone reviews with study day in [range], each with its card's interval just before it (the replay of
+ * the card's root, the card and every card merged into it, folded in order with the root's effective preset: kept in
+ * [StatsHistoryCache]). A root whose replay is refused (a malformed row) is skipped, as on the server; the group key is
+ * the root card's `note type/kind`.
  */
-private fun scheduledReviews(db: AppDatabase, t: LearningTables, range: DayRange, zone: ZoneId, hour: Int): List<ScheduledReview> {
+private fun scheduledReviews(db: AppDatabase, snap: StatsSnapshot, range: DayRange, zone: ZoneId, hour: Int): List<ScheduledReview> {
     val (lo, hi) = windowMs(range.from, range.to)
-    val roots = db.statsQueries.statsScheduledRoots(lo, hi).executeAsList()
-    if (roots.isEmpty()) return emptyList()
-    val wanted = roots.toHashSet()
-    val info = HashMap<String, kotobaya.db.app.StatsCardInfo>()
-    for (c in db.statsQueries.statsCardInfo().executeAsList()) if (c.id in wanted) info[c.id] = c
-    val histories = HashMap<String, MutableList<ReplayReview>>()
-    for (r in db.statsQueries.statsReplayRows().executeAsList()) {
-        if (r.root !in wanted) continue
-        val rv = replayReview(r) ?: continue
-        histories.getOrPut(r.root) { ArrayList() } += rv
-    }
-    val params = HashMap<String, kotobaya.contracts.fsrs.SchedulerParams>()
+    var info: Map<String, String>? = null
     val out = ArrayList<ScheduledReview>()
-    for (root in roots) {
-        val card = info[root] ?: continue
-        val groupKey = "${card.type}/${card.kind}"
-        val p = params.getOrPut(card.preset_id) { FsrsScheduler.paramsOf(CardRows.presetOf(t, mapOf("preset_id" to JsonString(card.preset_id)))) }
-        val found = ArrayList<ScheduledReview>()
-        try {
-            var cache = CardCache(CardSchedule.NEW, null, p.weightsVersion)
-            for (rv in DefaultReplayEngine.replaySet(histories[root].orEmpty())) {
-                val rating = rv.rating
-                if (rv.reviewType == ReviewType.SCHEDULED && rating != null) {
-                    val day = studyDayOfReview(rv.reviewedAt, rv.utcOffsetMin, zone, hour)
-                    if (day >= range.from && day <= range.to) {
-                        found += ScheduledReview(day, rating != Rating.AGAIN, cache.schedule.intervalDays ?: 0, groupKey)
-                    }
-                }
-                cache = DefaultReplayEngine.fold(cache, rv, p)
-            }
-        } catch (e: IllegalArgumentException) {
-            continue
+    for ((root, h) in snap.roots) {
+        if (h.scheduled.none { it.reviewedAt in lo until hi }) continue
+        val keys = info ?: db.statsQueries.statsCardInfo().executeAsList().associate { it.id to "${it.type}/${it.kind}" }.also { info = it }
+        val groupKey = keys[root] ?: continue
+        for (x in h.scheduled) {
+            if (x.reviewedAt < lo || x.reviewedAt >= hi) continue
+            val day = studyDayOfReview(x.reviewedAt, x.utcOffsetMin, zone, hour)
+            if (day >= range.from && day <= range.to) out += ScheduledReview(day, x.passed, x.intervalBefore, groupKey)
         }
-        out += found
     }
     return out
-}
-
-
-private fun replayReview(r: kotobaya.db.app.StatsReplayRows): ReplayReview? {
-    val type = ReviewType.entries.firstOrNull { it.wire == r.review_type } ?: return null
-    val rating = r.rating?.toInt()
-    return ReplayReview(
-        id = r.id,
-        cardId = r.root,
-        hlc = r.hlc,
-        reviewedAt = r.reviewed_at,
-        utcOffsetMin = r.utc_offset_min?.toInt(),
-        reviewType = type,
-        rating = Rating.entries.firstOrNull { it.value == rating },
-        manualAction = ManualAction.entries.firstOrNull { it.wire == r.manual_action },
-        manualDueAt = r.manual_due_at,
-        undoneHlc = null,
-        importSource = r.import_source,
-    )
 }

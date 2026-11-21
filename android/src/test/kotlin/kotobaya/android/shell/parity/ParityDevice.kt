@@ -257,6 +257,9 @@ class ParityDevice(
     /** PERF-LF: the loader's replica cache, as production binds it (one per app database). */
     val queueCache = kotobaya.android.queue.QueueReadCache(store.versions)
 
+    /** PERF-LF: the stats' per-root history cache, as production binds it. */
+    val statsCache = kotobaya.android.shell.api.stats.StatsHistoryCache(store.versions)
+
     private val services = MapServices(
         mapOf(
             SqlDelightDeviceStore::class to store,
@@ -279,6 +282,7 @@ class ParityDevice(
             // PERF-LF: the process-wide dictionary caches production binds (QueueModule)
             kotobaya.android.queue.KanjiSource::class to kotobaya.android.queue.KanjiSource(installedDictionary),
             kotobaya.android.queue.QueueReadCache::class to queueCache,
+            kotobaya.android.shell.api.stats.StatsHistoryCache::class to statsCache,
             kotobaya.android.queue.HeadwordCache::class to kotobaya.android.shell.api.review.shellHeadwords(ShellServices.None, installedDictionary),
         ),
     )

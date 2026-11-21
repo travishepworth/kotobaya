@@ -172,6 +172,8 @@ val shellFeature = FeatureEntry(
                 .also { it.start(); ShellEventHub.dict = it }
         }
         // SHELL-L4: the `bulkCards` `query` selector over the replica (the app driver, as the legacy card search)
+        // PERF-LF: the stats' per-root review history, kept current between calls (ReplicaVersions)
+        single { kotobaya.android.shell.api.stats.StatsHistoryCache(get<SqlDelightDeviceStore>().versions) }
         single<CardQuery> { ReplicaCardQuery(get<SqlDriver>(named("syncAppDriver")), get<AppDatabase>(), get<InstalledDictionary>()) }
         single<LocalWrites<SqlLearningTables>> {
             val koin = getKoin()

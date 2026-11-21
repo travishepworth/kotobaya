@@ -103,9 +103,7 @@ class SqlLearningTables internal constructor(
     private val changes: TxChanges? = null,
 ) : LearningTables {
     private fun changed(table: LearningTable, key: List<JsonValue>?, rows: Long) {
-        val c = changes ?: return
-        c.learning(table, key?.firstOrNull()?.let { (it as? JsonString)?.value }.takeIf { key != null }, rows)
-        if (table == LearningTable.CARD && key == null) c.cardKeys = null
+        changes?.learning(table, key, rows)
     }
 
     override fun get(table: LearningTable, key: List<JsonValue>): Row? {
