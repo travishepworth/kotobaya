@@ -5,8 +5,8 @@ Updated: run 39 (2026-11-21)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## RUN 39 (2026-11-21): RESUMED by user ("continue").
-Merged into t/LF-int this run (pushed 71f43bda): LF-W1, LF-W2, C-32, LF-A8b, LF-W3, LF-W4, LF-X1. All their worktrees/branches removed.
-Running: LF-GOLD (writer-light, goldens; also check grammar title sort server vs android).
+Merged into t/LF-int this run (pushed 71f43bda): LF-W1, LF-W2, C-32, LF-A8b, LF-W3, LF-W4, LF-X1, LF-GOLD. ALL round tickets merged; make test running on t/LF-int. All their worktrees/branches removed.
+Running: make test on t/LF-int.
 LF-int worktree: /tmp/claude-1000/-home-travmonkey-repos-kotobaya/219f69f7-1caa-44e7-b991-357a049dd910/scratchpad/lfint.
 Known on LF-int: server ParityGoldenTest 13 fails + android LocalParity 2 fails -> LF-GOLD fixes.
 Next: when W3/GOLD/X1 merged and ALL modules green on t/LF-int -> merge t/LF-int to main, make test, then ONE release (api+web deploy + APK; user plugs phone in).

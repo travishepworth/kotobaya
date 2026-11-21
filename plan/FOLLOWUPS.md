@@ -544,3 +544,4 @@
 - LF-A8b (review minor): BuiltInSeedsTest parses ../server OpRules.kt by relative path + regex -> use checked-in fixture.
 - LF-A8b (review minor): NoteTypeWrites + presets/notetypes tests outside owned paths (orchestrator-requested) -> note in archived handoff.
 - C-32 (review minor): REST DELETE /decks/{id} returns 409 deck_read_only for a media deck whose media is already deleted (push path now accepts); could return 204 (DeckApi.kt:176).
+- LF-A8b/LF-GOLD: grammar list title sort code-point vs Postgres collation; golden has 1 item so no visible diff — add a multi-item scenario.
