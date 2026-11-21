@@ -1498,3 +1498,4 @@
 2026-11-21T00:00:00Z RELEASE start: pin ffb952de (worktree scratchpad/rel0131); predeploy dump ~/kotobaya-backups/predeploy-api-0.1.31-20261121T012755Z.dump (pg_restore -l ok); building api 0.1.31, web 0.1.36, APK 0.1.41/141
 2026-11-21T00:00:00Z RELEASE: helm rev 46 api 0.1.31 + web 0.1.36 (pin ffb952de) LIVE; health ok, no api errors; values.yaml synced (was stale); APK 0.1.41/141 built, cert ok -> waiting for phone
 2026-11-21T00:00:00Z RELEASE: APK 0.1.41/141 INSTALLED (user 0 + 10); screenshots stopped at user request
+2026-11-21T00:00:00Z BUG APK 0.1.41: local handlers seconds-slow on phone (getReviewQueue 28 s, stats 12.8 s, decks 8 s); Home review box ~20 s. PERF-LF DISPATCH writer-senior (benchmark + fix)
