@@ -1487,3 +1487,4 @@
 2026-11-21T00:00:00Z LF-W3 HANDOFF (366 web); DECIDE: route-level needsConnection gate = existing affordance; writer extends ROUTE_OPS to design §3 remote-only ops (access.ts authorized); per-action inline -> follow-up
 2026-11-21T00:00:00Z LF-W3 HANDOFF r2 (ROUTE_OPS empty: no wholly-remote route; ops.json over design §3); CHECK_GREEN web 368 -> merged + pushed t/LF-int 71f43bda
 2026-11-21T00:00:00Z LF-W4 NEW ticket (per-action needs-connection, putBlob hidden in shell) DISPATCH writer
+2026-11-21T00:00:00Z LF-W4 HANDOFF (jobs.svelte.ts trigger touch accepted); CHECK_GREEN web 371 -> merged + pushed t/LF-int
