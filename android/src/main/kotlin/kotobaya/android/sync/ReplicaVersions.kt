@@ -85,7 +85,15 @@ internal class Touched(val tables: Set<LearningTable>, val keys: Map<LearningTab
  * [prepare] at the start of each outermost store transaction, [drain] at its end (before the commit).
  */
 internal class TouchLog(private val driver: SqlDriver) {
-    fun prepare() {
+    /** False when the log cannot be set up on this connection (then the transaction reports [UNKNOWN]). */
+    fun prepare(): Boolean = try {
+        setUp()
+        true
+    } catch (e: RuntimeException) {
+        false
+    }
+
+    private fun setUp() {
         val exists = driver.executeQuery(null, "SELECT count(*) FROM sqlite_temp_master WHERE type = 'table' AND name = '$TABLE'", { c: SqlCursor ->
             c.next()
             QueryResult.Value((c.getLong(0) ?: 0L) > 0L)
@@ -104,7 +112,17 @@ internal class TouchLog(private val driver: SqlDriver) {
         }
     }
 
-    fun drain(): Touched {
+    /**
+     * What the transaction wrote. If the log cannot be read (a driver whose "transaction" spans several connections, as
+     * a test control does), every learning table counts as changed with unknown keys: readers reload, never go stale.
+     */
+    fun drain(): Touched = try {
+        read()
+    } catch (e: RuntimeException) {
+        UNKNOWN
+    }
+
+    private fun read(): Touched {
         val counts = driver.executeQuery(null, "SELECT tbl, count(DISTINCT k) FROM $TABLE GROUP BY tbl", { c: SqlCursor ->
             val out = HashMap<String, Long>()
             while (c.next().value) out[checkNotNull(c.getString(0))] = c.getLong(1) ?: 0L
@@ -126,7 +144,10 @@ internal class TouchLog(private val driver: SqlDriver) {
         return Touched(tables, keys)
     }
 
-    private companion object {
-        const val TABLE = "perf_replica_touch"
+    companion object {
+        private const val TABLE = "perf_replica_touch"
+
+        /** Every learning table changed, keys unknown: readers reload. */
+        val UNKNOWN: Touched = Touched(LearningTable.entries.toSet(), ReplicaVersions.KEYED.associateWith { null })
     }
 }

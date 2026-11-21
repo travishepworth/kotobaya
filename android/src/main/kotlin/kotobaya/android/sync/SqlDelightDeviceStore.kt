@@ -93,8 +93,8 @@ class SqlDelightDeviceStore(
             try {
                 active.set(tx)
                 db.transactionWithResult {
-                    touch.prepare()
-                    block(tx).also { touched = touch.drain() }
+                    val logged = touch.prepare()
+                    block(tx).also { touched = if (logged) touch.drain() else TouchLog.UNKNOWN }
                 }
             } finally {
                 active.set(null)

@@ -56,7 +56,7 @@ class HomeLoadBenchmarkTest {
         "01931f3e-0000-7000-8000-0000000000d4", now, LocalRoutes.all, dictDir = ParityTemp.next("perf-dict"), driver = driver,
         withDictionary = realDict == null,
     ).also { d -> realDict?.let { java.io.File(it).copyTo(d.dictStore.installed.also { f -> f.parentFile?.mkdirs() }, overwrite = true) } }
-    private val seeded = if (realReplica != null) ReplicaScale.counts(driver) else ReplicaScale.seed(driver, device.store, now)
+    private val seeded = if (realReplica != null) ReplicaScale.counts(driver) else ReplicaScale.seed(driver, device.store, now, dictSeqs = device.dictionary.seqs.sorted())
 
     init {
         // as on the phone: the note change log's triggers on `note` (NotesFeature) write a row per note write

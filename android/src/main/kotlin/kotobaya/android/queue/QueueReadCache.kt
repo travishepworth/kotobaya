@@ -181,9 +181,13 @@ class QueueReadCache(private val versions: ReplicaVersions) {
 
     private class Pending(val deckVersion: Long, val noteVersion: Long, val statusVersion: Long, val rows: List<PendingDeckEntries>)
 
-    /** Least recently used first; one page of one deck each; bounded. */
-    private val pending = object : LinkedHashMap<String, Pending>(32, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pending>?): Boolean = size > MAX_MEMOS
+    /**
+     * Least recently used first; one page of one deck each; bounded. A build pages through a deck until enough of its
+     * entries are in the dictionary, so a deck of mostly unknown entries needs many pages: the bound must hold them all
+     * or every build reads them again.
+     */
+    private val pending = object : LinkedHashMap<String, Pending>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pending>?): Boolean = size > MAX_PENDING_PAGES
     }
 
     /** Every note's entry as of [seqVersion] (the note version), to know the entries a note write touched. */
@@ -267,6 +271,7 @@ class QueueReadCache(private val versions: ReplicaVersions) {
 
     private companion object {
         const val MAX_LOG = 512
+        const val MAX_PENDING_PAGES = 1_024
         const val MAX_PARTIAL = 2_000
         const val IN_CHUNK = 500
         const val MAX_MEMOS = 256

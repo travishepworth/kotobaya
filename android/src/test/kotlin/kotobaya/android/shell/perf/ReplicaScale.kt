@@ -41,7 +41,11 @@ internal object ReplicaScale {
 
     private fun uuid(kind: Int, n: Int): String = "%08x-0000-7000-8000-%012x".format(kind, n)
 
-    fun seed(driver: SqlDriver, store: SqlDelightDeviceStore, now: Long, size: Size = Size(), seed: Int = 42): Seeded {
+    /**
+     * [dictSeqs]: entries the device's dictionary holds; every fifth item of a list deck is one of them (no note yet), so
+     * the queue finds deck entries it can materialize near the top of each deck, as with the real dictionary.
+     */
+    fun seed(driver: SqlDriver, store: SqlDelightDeviceStore, now: Long, size: Size = Size(), seed: Int = 42, dictSeqs: List<Long> = emptyList()): Seeded {
         val rnd = Random(seed)
         var notes = 0
         var cards = 0
@@ -166,7 +170,7 @@ internal object ReplicaScale {
                 deck(id, "list", "List $d", d)
                 // overlapping windows of the vocab entries plus entries with no note yet
                 for (p in 0 until size.listDeckItems) {
-                    val seq = 1_500_000L + d * 1_000 + p
+                    val seq = if (p % 5 == 0 && p / 5 < dictSeqs.size) dictSeqs[p / 5] else 1_500_000L + d * 1_000 + p
                     item(id, "e:$seq", seq, null, p)
                 }
             }
