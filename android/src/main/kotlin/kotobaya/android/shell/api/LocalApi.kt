@@ -253,7 +253,7 @@ class LocalApi(
             "listHotWords", "listHotKanji", "listLeeches", "listDecks",
         )
 
-        const val BACKGROUND_PARALLELISM: Int = 2
+        const val BACKGROUND_PARALLELISM: Int = 1
 
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         private val BACKGROUND: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(BACKGROUND_PARALLELISM)

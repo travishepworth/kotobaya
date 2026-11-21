@@ -245,7 +245,7 @@ class HomeLoadBenchmarkTest {
             single.forEach { (k, v) -> appendLine("  alone      $k: $v ms (after a pulled review: ${changed[k]} ms; after a pulled note: ${noted[k]} ms)") }
             appendLine("  getReviewQueue minting deck entries (keep going): ${minted.joinToString()} ms")
             rounds.last().forEach { (k, v) -> appendLine("  concurrent $k: $v ms") }
-            appendLine("  concurrent getReviewQueue over ${queueTimes.size} calls: p95 ${p95(queueTimes)} ms, max ${queueTimes.max()} ms")
+            appendLine("  concurrent getReviewQueue over ${queueTimes.size} calls: p95 ${p95(queueTimes)} ms, max ${queueTimes.max()} ms (${queueTimes.joinToString()})")
             appendLine("  answerReview p95 ${p95(answered.map { it.first })} ms; next getReviewQueue p95 ${p95(answered.map { it.second })} ms")
         }
         println(report)
