@@ -29,6 +29,7 @@ instead. Never read `fixtures/private/` unless your ticket says so.
   (`contracts` regenerates clients/schemas and fails on drift).
 - `make test` — all modules. `make fmt` — format everything (run it; no lint gate).
 - `make dev-up` / `make dev-down` — compose stack.
+- Deploys and APK installs: follow `deploy/RELEASE.md` step by step (orchestrator/release only).
 Run your module's `make check` before you hand off. It must be green.
 
 ## Tests that must exist (lean mode — everything else is optional)
