@@ -28,6 +28,8 @@ export class StrugglePage {
 	/** `503 shell_uncached` and nothing to show yet: "not downloaded yet", resolved by `cache.updated`. */
 	uncached = $state(false);
 	#hasData = false;
+	/** PERF-SNAP: the data is from the start-up snapshot and no load has replaced it yet ("Updating…"). */
+	stale = $state(false);
 
 	/** PERF-SNAP: drawn at once from the start-up snapshot when there is one; `start` refreshes behind it. */
 	constructor() {
@@ -36,6 +38,7 @@ export class StrugglePage {
 			this.words = snap.words;
 			this.kanji = snap.kanji;
 			this.loaded = true;
+			this.stale = true;
 			this.#hasData = true;
 		}
 	}
@@ -51,6 +54,7 @@ export class StrugglePage {
 				this.words = w.items;
 				this.kanji = k.items;
 				writeSnapshot('struggle', { words: w.items, kanji: k.items });
+				this.stale = false;
 				this.#hasData = true;
 				this.loadFailed = false;
 				this.uncached = false;

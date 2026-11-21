@@ -492,7 +492,8 @@
 					</div>
 				{:else}
 					<div class="swap">
-						<GradeBar options={gradeOptions} ongrade={(_, i) => gradeAt(i)} />
+						<!-- PERF-SNAP: a snapshot card is graded only once the queue fetch confirms it ("Updating…" above). -->
+						<GradeBar options={gradeOptions} ongrade={(_, i) => gradeAt(i)} disabled={s.unconfirmed} />
 					</div>
 				{/if}
 			</div>

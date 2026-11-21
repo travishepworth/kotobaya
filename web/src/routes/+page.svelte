@@ -174,6 +174,7 @@
 							{#snippet action()}<Button variant="tonal" icon="plus" href="/decks/new">{th('home.createDeck')}</Button>{/snippet}
 						</EmptyState>
 					{:else}
+						{#if decks.stale}<p class="pad muted updating" role="status" data-testid="decks-updating">{th('home.updating')}</p>{/if}
 						<div class="rows">
 							{#each topDecks as d (d.id)}
 								<div class="deckrow">
@@ -207,6 +208,7 @@
 					{:else}
 						<Skeleton shape="block" height="3.5rem" />
 					{/if}
+					{#if stats.stale}<p class="muted updating" role="status" data-testid="stats-updating">{th('home.updating')}</p>{/if}
 					<dl class="figures">
 						<div><dt>{th('home.streak')}</dt><dd class="kb-num">{summary?.streakDays ?? '–'}</dd></div>
 						<div><dt>{th('home.retention')}</dt><dd class="kb-num">{pct(stats.retention?.overall.retention)}</dd></div>
@@ -229,6 +231,7 @@
 				</Panel>
 
 				<Panel title={th('home.struggle')} link={{ href: '/struggle', label: th('home.struggleLink') }}>
+					{#if struggle.stale}<p class="muted updating" role="status" data-testid="struggle-updating">{th('home.updating')}</p>{/if}
 					{#if !struggle.loaded}
 						<Skeleton shape="text" count={2} />
 					{:else if struggle.uncached}

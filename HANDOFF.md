@@ -1,27 +1,26 @@
-# HANDOFF PERF-SNAP
+# HANDOFF PERF-SNAP (attempt 2)
 
 STATUS: DONE
 BRANCH: t/PERF-SNAP-instant-home
-CHECK: `make check MODULE=web` → green (381 tests)
+CHECK: `make check MODULE=web` → green (386 tests)
 
 ## Changed (≤ 6 lines)
-- New `web/src/lib/state/snapshot.svelte.ts`: per-principal (`token_id`) snapshot in IDB `kotobaya-snapshot` (memory fallback, format field); sync reads after `loadSnapshot`.
-- `outboxStore.ts`: IDB/memory code made generic (`idbRecordStore`, `memoryRecordStore`); outbox behaviour unchanged.
-- `session.svelte.ts` + layout: `bootSession` reads the snapshot, goes `in` optimistically, then confirms; logout clears snapshot with the outbox.
-- Today/decks/struggle/stats stores seed from the snapshot and save after each successful load; `stale` drives an "Updating…" note.
-- `ReviewPage.start` serves the snapshot queue synchronously (pending outbox cards removed, also after the outbox is read back); first fetch keeps the card on screen and replaces the rest; the queue is saved after every change.
+- `review.svelte.ts`: snapshot card shown at once, grading disabled (`unconfirmed`, GradeBar `disabled`) until first full fetch; kept in front only if in `fresh`, else replaced; no prefetch merge while unconfirmed. `dueFirstAt` set from snapshot.
+- Queue never saved while `keepGoing` (review screen and Home, which saves only `keep_going=false` responses).
+- `today.svelte.ts`: mark (outbox seq + pending) per request; saves items minus `answeredSinceMark` (as fetchQueue).
+- `snapshot.svelte.ts`: queue section with `dayEndsAt <= now` reads as missing. Boot 401 drops snapshot (memory + IDB).
+- Decks/struggle/stats get `stale`; Home shows "Updating…" per panel.
 
 ## Acceptance → tests (`web/tests/state/snapshot.svelte.test.ts`)
-- 30 s delays, Home instant → "Home counts and an enabled Start review render synchronously"
-- First card at once → "the first card shows at once, rendered, and can be graded"
-- Refresh, no blanking → "a refresh replaces the values…", "the review refresh replaces…"
-- Pending card not re-served → "a card answered…", "a stale snapshot listing…"
-- Logout → "logout clears the snapshot…"; "another principal drops the snapshot"
+- 1 → "…not graded until confirmed", "…lists the snapshot card…can be graded", "…does not list the snapshot card…replaced, never graded", "a snapshot of an ended study day is not used"
+- 2 → "Keep going pages are never saved (review screen and Home)"
+- 3 → "Home does not save a card answered (and acknowledged) while its fetch was in flight"
+- 6/7 → Home render test checks all notes; "a 401 at start-up drops the snapshot…"
+- 1–3 guards mutation-checked (tests fail without them).
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Home now fetches `getReviewQueue` with limit 30 (was 1) so it can save the queue page. That makes the Android local handler slower.
-- The session is optimistic when a snapshot exists: Home shows before `/auth/session` answers, and a 401 then redirects to /login.
-- When the snapshot's queue fetch fails, the review keeps the snapshot (marked "Updating…") rather than showing the error page.
+- If the first fetch fails or times out, the snapshot card stays shown but cannot be graded (marked "Updating…"). It unlocks when a later full fetch succeeds.
+- Home still fetches the queue with limit 30 (it was 1).

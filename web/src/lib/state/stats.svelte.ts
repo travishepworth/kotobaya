@@ -81,13 +81,29 @@ export class StatsPage {
 	/** PERF-SNAP: the Home widgets (summary, heatmap, retention) are drawn at once from the start-up snapshot. */
 	constructor() {
 		const snap = readSnapshot('stats');
-		if (snap?.summary) this.summaryP = { data: snap.summary, failed: false, uncached: false };
-		if (snap?.heatmap) this.heatmapP = { data: snap.heatmap, failed: false, uncached: false };
-		if (snap?.retention) this.retentionP = { data: snap.retention, failed: false, uncached: false };
+		const from: StatsPanel[] = [];
+		if (snap?.summary) {
+			this.summaryP = { data: snap.summary, failed: false, uncached: false };
+			from.push('summary');
+		}
+		if (snap?.heatmap) {
+			this.heatmapP = { data: snap.heatmap, failed: false, uncached: false };
+			from.push('heatmap');
+		}
+		if (snap?.retention) {
+			this.retentionP = { data: snap.retention, failed: false, uncached: false };
+			from.push('retention');
+		}
+		this.stalePanels = from;
 	}
+
+	/** PERF-SNAP: panels still showing start-up snapshot data that no load has replaced yet ("Updating…"). */
+	stalePanels = $state<StatsPanel[]>([]);
+	readonly stale = $derived(this.stalePanels.length > 0);
 
 	/** Keep a freshly loaded Home widget in the snapshot (the other panels are not shown on Home). */
 	#keep(panel: StatsPanel, data: unknown): void {
+		if (this.stalePanels.includes(panel)) this.stalePanels = this.stalePanels.filter((p) => p !== panel);
 		if (panel !== 'summary' && panel !== 'heatmap' && panel !== 'retention') return;
 		writeSnapshot('stats', { ...(readSnapshot('stats') ?? {}), [panel]: data } as StatsSnapshot);
 	}
@@ -117,11 +133,8 @@ export class StatsPage {
 		const init: RequestInit = { signal: this.#abort.signal };
 		const run = <T,>(fetch: () => Promise<T>, get: () => Panel<T>, set: (p: Panel<T>) => void): void => {
 			this.#inflight.add(panel);
-			const keep = (p: Panel<T>): void => {
-				set(p);
-				if (p.data !== null && !p.failed && !p.uncached) this.#keep(panel, p.data);
-			};
-			load(fetch, get, keep, init.signal, () => this.#inflight.delete(panel));
+			const keep = (data: T): void => this.#keep(panel, data);
+			load(fetch, get, set, init.signal, () => this.#inflight.delete(panel), keep);
 		};
 		switch (panel) {
 			case 'summary':
@@ -151,12 +164,14 @@ function load<T>(
 	get: () => Panel<T>,
 	set: (p: Panel<T>) => void,
 	signal: AbortSignal | null | undefined,
-	done: () => void
+	done: () => void,
+	loaded: (data: T) => void = () => {}
 ): void {
 	fetch().then(
 		(data) => {
 			done();
 			set({ data, failed: false, uncached: false });
+			loaded(data);
 		},
 		async (e: unknown) => {
 			done();

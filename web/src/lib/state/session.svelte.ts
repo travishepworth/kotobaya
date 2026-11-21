@@ -5,7 +5,7 @@ import { isShellMode } from '../api/shell';
 import { openEventStream } from '../events';
 import { initShell } from './shell.svelte';
 import { clearOutbox } from './review.svelte';
-import { clearSnapshot, loadSnapshot, setSnapshotAccount, snapshotPrincipal } from './snapshot.svelte';
+import { clearSnapshot, dropSnapshot, loadSnapshot, setSnapshotAccount, snapshotPrincipal } from './snapshot.svelte';
 import { t } from '../i18n';
 import { pushToast } from '../toasts.svelte';
 
@@ -40,8 +40,11 @@ export async function refreshSession(snapshotRead: Promise<void> = Promise.resol
 		resumeErrorReports();
 	} catch (e) {
 		// Network errors already raised a toast; anything else means "not logged in".
-		if (e instanceof ResponseError) setOut();
-		else {
+		if (e instanceof ResponseError) {
+			// PERF-SNAP: the principal the snapshot belongs to is no longer valid: drop it (memory and IndexedDB).
+			if (e.response.status === 401) await dropSnapshot().catch(() => {});
+			setOut();
+		} else {
 			await snapshotRead; // offline with a snapshot: still in (optimistically), see `bootSession`
 			if (session.status === 'unknown') setOut();
 		}

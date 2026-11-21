@@ -577,9 +577,20 @@ export async function startOutbox(): Promise<void> {
 	outbox.kick();
 }
 
-/** Card ids with an answer still in the outbox (PERF-SNAP: never served again from the start-up snapshot). */
-export function pendingAnswerCards(): Set<string> {
-	return outbox.answerCards();
+/**
+ * PERF-SNAP: a queue fetch outside the review screen (Home) marks its start with this; `answeredSinceMark` then
+ * gives every card it must not keep: answers still in the outbox at the start, and answers given since (the
+ * server may have built the response before it applied them, even if they are acknowledged by now).
+ */
+export function answerMark(): { seq: number; pending: Set<string> } {
+	return { seq: outbox.seq, pending: outbox.answerCards() };
+}
+
+/** The cards answered since `mark` was taken, plus those pending then or now. */
+export function answeredSinceMark(mark: { seq: number; pending: Set<string> }): Set<string> {
+	const ids = outbox.answeredSince(mark.seq);
+	for (const id of mark.pending) ids.add(id);
+	return ids;
 }
 
 /**
@@ -657,9 +668,10 @@ export class ReviewPage {
 	private abort = new AbortController();
 	/**
 	 * PERF-SNAP: the session was started from the start-up snapshot and no queue fetch has been applied since.
-	 * The first one keeps the card on screen in front (the user may be on its back) and replaces the rest.
+	 * The snapshot card on screen may have been answered elsewhere (or no longer be due): it is shown but cannot be
+	 * graded until the first fetch lists it (then it stays in front); a fetch that does not list it replaces it.
 	 */
-	private fromSnapshot = false;
+	fromSnapshot = $state(false);
 	/** The numbers and cards come from the snapshot and no fetch has replaced them yet: a quiet "updating" note. */
 	stale = $state(false);
 	/**
@@ -705,6 +717,8 @@ export class ReviewPage {
 	readonly isDrill = $derived(this.drillSource !== null);
 	readonly buttons = $derived<GradeButton[]>(this.fiveButtons ? BUTTONS_5 : BUTTONS_4);
 	readonly current = $derived<QueueItem | undefined>(this.items[0]);
+	/** Grading waits for the first fetch to confirm the snapshot card (PERF-SNAP). */
+	readonly unconfirmed = $derived(this.fromSnapshot && !!this.current);
 	/** C8: grading is never locked (a failed answer stays in the outbox). Kept for the view. */
 	readonly gradeLocked = false;
 	/**
@@ -886,6 +900,9 @@ export class ReviewPage {
 		this.items = q.items.filter((i) => !pending.has(i.card.id));
 		this.view = q.view;
 		this.dayEndsAt = q.dayEndsAt;
+		// C1: a learning card coming due while the snapshot is shown is spliced in like after any fetch.
+		this.learningDues = [];
+		this.dueFirstAt = q.view.loop.laterToday.nextDueAt?.getTime() ?? null;
 		// Answers from here on are C7 `pending` against the snapshot's numbers.
 		this.appliedSeq = outbox.seq;
 		outbox.applied.set(this, outbox.seq);
@@ -893,6 +910,7 @@ export class ReviewPage {
 		this.stale = true;
 		this.loaded = true;
 		this.syncCard();
+		this.scheduleDueFetch();
 		void outbox.load().then(() => {
 			if (gen !== this.gen || !this.fromSnapshot) return;
 			const back = outbox.answerCards();
@@ -904,9 +922,12 @@ export class ReviewPage {
 		return true;
 	}
 
-	/** PERF-SNAP: keep the local queue as the snapshot's first page (never a drill, never before a `loop`). */
+	/**
+	 * PERF-SNAP: keep the local queue as the snapshot's first page (never a drill, never before a `loop`, never a
+	 * Keep going page: C2 keep going lasts one visit and is never persisted).
+	 */
 	private persistQueue(): void {
-		if (this.isDrill || !this.view) return;
+		if (this.isDrill || !this.view || this.keepGoing) return;
 		writeQueueSnapshot({ view: this.view, dayEndsAt: this.dayEndsAt, items: this.items });
 	}
 
@@ -957,6 +978,8 @@ export class ReviewPage {
 			// buried a sibling, or a card suspended elsewhere): this response is not merged, and `refill` asks again
 			// at once, so the refill is not lost.
 			if (this.applied !== appliedAtStart) return false;
+			// The snapshot is not confirmed yet: the full fetch on its way decides what stays (PERF-SNAP).
+			if (this.fromSnapshot) return false;
 			// Prefetch: the card on screen, then the server's order, then any local card the server did not list
 			// (an undo or restore may have put one back meanwhile): never removes a local card. The loop numbers
 			// wait for the refresh after the answers.
@@ -969,9 +992,9 @@ export class ReviewPage {
 			return true;
 		}
 		// A card brought back by undo stays in front (the server may still count its answer, or not list it yet).
-		// So does the snapshot card on screen when the first fetch arrives (PERF-SNAP: no swap under the user).
+		// A snapshot card stays only when the server lists it (PERF-SNAP): else it is replaced, never graded.
 		const keepCur =
-			cur && (fresh.some((i) => i.card.id === cur.card.id) || this.undoneCardId === cur.card.id || this.fromSnapshot);
+			cur && (fresh.some((i) => i.card.id === cur.card.id) || (this.undoneCardId === cur.card.id && !this.fromSnapshot));
 		this.items =
 			keepCur
 				? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)]
@@ -1349,7 +1372,7 @@ export class ReviewPage {
 			if (!repeat) this.flip();
 			return true;
 		}
-		if (/^[1-5]$/.test(k) && this.flipped && !this.gradeLocked && Number(k) <= this.buttons.length) {
+		if (/^[1-5]$/.test(k) && this.flipped && !this.gradeLocked && !this.unconfirmed && Number(k) <= this.buttons.length) {
 			const b = this.buttons[Number(k) - 1];
 			if (b && !repeat) void this.grade(b);
 			return true;
@@ -1429,7 +1452,7 @@ export class ReviewPage {
 	 */
 	grade(b: GradeButton): Promise<void> {
 		const item = this.current;
-		if (!item || !this.flipped || this.busy || this.editing) return Promise.resolve();
+		if (!item || !this.flipped || this.busy || this.editing || this.unconfirmed) return Promise.resolve();
 		haptic(b.rating === 1 ? 'reject' : 'confirm');
 		return this.send(item, b);
 	}

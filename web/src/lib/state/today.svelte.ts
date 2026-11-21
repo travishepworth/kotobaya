@@ -5,7 +5,7 @@ import { quietApiConfig } from '../api/client';
 import { ReviewApi } from '../api/generated';
 import { fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
-import { QUEUE_LIMIT, outboxSettled, pendingAnswerCards } from './review.svelte';
+import { QUEUE_LIMIT, answerMark, answeredSinceMark, outboxSettled } from './review.svelte';
 import { readSnapshot, writeQueueSnapshot } from './snapshot.svelte';
 import { isUncached, revalidateOn } from './swr';
 
@@ -62,13 +62,23 @@ export class TodayQueue {
 		try {
 			await outboxSettled(OUTBOX_WAIT_MS);
 			// The review screen's first page: `loop` is shown here, the items are kept for an instant Start review.
-			const q = await fetchWithKeepGoing((keepGoing) => api.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing }, { signal: this.#abort.signal }));
+			let sent = false;
+			let mark = answerMark();
+			const q = await fetchWithKeepGoing((keepGoing) => {
+				sent = keepGoing;
+				mark = answerMark(); // per request: the one whose response is used is the last
+				return api.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing }, { signal: this.#abort.signal });
+			});
 			this.view = loopView(q);
 			this.failed = false;
 			this.uncached = false;
 			this.stale = false;
-			const pending = pendingAnswerCards();
-			writeQueueSnapshot({ view: this.view, dayEndsAt: q.dayEndsAt, items: q.items.filter((i) => !pending.has(i.card.id)) });
+			// C2: a Keep going page lasts one visit and is never kept. Cards answered before or during the request
+			// are not kept either (they would be served again).
+			if (!sent) {
+				const answered = answeredSinceMark(mark);
+				writeQueueSnapshot({ view: this.view, dayEndsAt: q.dayEndsAt, items: q.items.filter((i) => !answered.has(i.card.id)) });
+			}
 			this.#schedule();
 		} catch (e) {
 			if (this.#abort.signal.aborted) return;

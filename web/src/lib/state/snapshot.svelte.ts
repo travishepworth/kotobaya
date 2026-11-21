@@ -116,7 +116,14 @@ export function snapshotPrincipal(): Principal | null {
 
 /** A section of the snapshot, synchronously (null when there is none for the current account). */
 export function readSnapshot<K extends Section>(k: K): Sections[K] | null {
-	return (cache.get(k) as Sections[K] | undefined) ?? null;
+	const v = (cache.get(k) as Sections[K] | undefined) ?? null;
+	// A queue page of a study day that has ended is not today's: treated as missing (its counts and cards are void).
+	if (k === 'queue' && v && studyDayOver(v as QueueSnapshot)) return null;
+	return v;
+}
+
+function studyDayOver(q: QueueSnapshot): boolean {
+	return q.dayEndsAt !== null && q.dayEndsAt.getTime() <= Date.now();
 }
 
 /**
@@ -154,6 +161,14 @@ export function writeSnapshot<K extends Section>(k: K, data: Sections[K]): void 
 /** Write the queue page (at most `SNAPSHOT_QUEUE_MAX` items). */
 export function writeQueueSnapshot(q: QueueSnapshot): void {
 	writeSnapshot('queue', { ...q, items: q.items.slice(0, SNAPSHOT_QUEUE_MAX) });
+}
+
+/**
+ * The session check answered 401 for this principal: its snapshot is dropped (memory and store), so the next
+ * start does not draw a session that no longer exists.
+ */
+export function dropSnapshot(): Promise<void> {
+	return clearSnapshot();
 }
 
 /** Logout: the snapshot belongs to the user who logged out; gone here and in the store. */

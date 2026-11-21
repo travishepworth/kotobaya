@@ -87,6 +87,8 @@ export class DecksListPage {
 	/** `503 shell_uncached` and nothing to show yet: "not downloaded yet", resolved by `cache.updated`. */
 	uncached = $state(false);
 	#hasData = false;
+	/** PERF-SNAP: the data is from the start-up snapshot and no load has replaced it yet ("Updating…"). */
+	stale = $state(false);
 
 	/** PERF-SNAP: drawn at once from the start-up snapshot when there is one; `start` refreshes behind it. */
 	constructor() {
@@ -94,6 +96,7 @@ export class DecksListPage {
 		if (snap) {
 			this.items = snap;
 			this.loaded = true;
+			this.stale = true;
 			this.#hasData = true;
 		}
 	}
@@ -108,6 +111,7 @@ export class DecksListPage {
 				const all = (await quietDecksApi.listDecks({})).items;
 				this.items = [...all].sort(compareDeckDrawOrder);
 				writeSnapshot('decks', this.items);
+				this.stale = false;
 				this.#hasData = true;
 				this.loadFailed = false;
 				this.uncached = false;

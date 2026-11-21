@@ -211,14 +211,20 @@ describe('instant start from the snapshot (PERF-SNAP)', () => {
 		expect(el.textContent).toContain('Core'); // decks from the snapshot
 		expect(el.querySelector('dd')?.textContent).toBe('4'); // streak, from the stats snapshot
 		expect(el.querySelector('[data-testid="home-updating"]')).not.toBeNull();
+		expect(el.querySelector('[data-testid="decks-updating"]')).not.toBeNull();
+		expect(el.querySelector('[data-testid="stats-updating"]')).not.toBeNull();
+		expect(el.querySelector('[data-testid="struggle-updating"]')).not.toBeNull();
 
 		await tick(DELAY + 3000);
 		await booted;
 		flushSync();
 		expect(el.querySelector('[data-testid="home-updating"]')).toBeNull();
+		expect(el.querySelector('[data-testid="decks-updating"]')).toBeNull();
+		expect(el.querySelector('[data-testid="stats-updating"]')).toBeNull();
+		expect(el.querySelector('[data-testid="struggle-updating"]')).toBeNull();
 	});
 
-	it('every API call delayed 30 s: the first card shows at once, rendered, and can be graded', async () => {
+	it('every API call delayed 30 s: the first card shows at once, rendered, but is not graded until confirmed', async () => {
 		await priorLoad(['c1', 'c2']);
 		await reload();
 		answerAll(DELAY, () => queueOf(['c1', 'c2']));
@@ -232,35 +238,113 @@ describe('instant start from the snapshot (PERF-SNAP)', () => {
 		const r = p.rendered;
 		expect(r?.ok && r.card.html).toContain('c1');
 		expect(p.stale).toBe(true);
+		expect(p.unconfirmed).toBe(true);
 		p.flip();
 		void p.grade(good);
-		expect(p.current?.card.id).toBe('c2');
+		expect(p.key('3', false)).toBe(false); // the grade keys do nothing yet
+		expect(p.current?.card.id).toBe('c1'); // no answer: it may have been answered elsewhere
+		expect(api.answerReview).not.toHaveBeenCalled();
 
 		// The fetch times out (30 s): the snapshot stays on screen, still marked as updating, never an error page.
 		await tick(DELAY + 1);
 		expect(p.loadFailed).toBe(false);
 		expect(p.phase).toBe('card');
-		expect(p.current?.card.id).toBe('c2');
+		expect(p.current?.card.id).toBe('c1');
 		expect(p.stale).toBe(true);
 	});
 
-	it('the review refresh replaces the snapshot queue behind the card on screen, without blanking', async () => {
+	it('the first fetch lists the snapshot card: it stays in front, flipped, and can be graded', async () => {
 		await priorLoad(['c1', 'c2', 'c3']);
 		await reload();
-		answerAll(5000, () => queueOf(['c2', 'c9'], 2)); // c1 was answered on another device; c9 is new
+		answerAll(5000, () => queueOf(['c3', 'c1'], 2));
 		const p = createReviewPage();
 		pages.push(p);
 		p.start(null);
-		expect(p.current?.card.id).toBe('c1');
 		p.flip();
 		await tick(2500);
 		expect(p.current?.card.id).toBe('c1'); // still on screen while the queue loads
 		await tick(2500);
 		expect(p.stale).toBe(false);
-		expect(p.current?.card.id).toBe('c1'); // the card being looked at is not swapped away
+		expect(p.unconfirmed).toBe(false);
+		expect(p.current?.card.id).toBe('c1');
 		expect(p.flipped).toBe(true);
-		expect(p.items.map((i) => i.card.id)).toEqual(['c1', 'c2', 'c9']);
+		expect(p.items.map((i) => i.card.id)).toEqual(['c1', 'c3']); // c2 not listed any more: gone
 		expect(p.loop?.ready.total).toBe(2);
+		void p.grade(good);
+		expect(p.current?.card.id).toBe('c3');
+		await tick();
+		expect(api.answerReview).toHaveBeenCalledTimes(1);
+	});
+
+	it('the first fetch does not list the snapshot card (answered on another device): it is replaced, never graded', async () => {
+		await priorLoad(['c1', 'c2', 'c3']);
+		await reload();
+		answerAll(5000, () => queueOf(['c2', 'c9'], 2));
+		const p = createReviewPage();
+		pages.push(p);
+		p.start(null);
+		p.flip();
+		void p.grade(good);
+		await tick(5000);
+		expect(api.answerReview).not.toHaveBeenCalled();
+		expect(p.current?.card.id).toBe('c2');
+		expect(p.flipped).toBe(false);
+		expect(p.items.map((i) => i.card.id)).toEqual(['c2', 'c9']);
+	});
+
+	it('a snapshot of an ended study day is not used', async () => {
+		await priorLoad(['c1']);
+		await reload();
+		vi.setSystemTime(Date.now() + 11 * 3600_000); // past dayEndsAt (+10 h)
+		answerAll(DELAY, () => queueOf(['c7']));
+		expect(readSnapshot('queue')).toBeNull();
+		expect(new TodayQueue().loaded).toBe(false);
+		const p = createReviewPage();
+		pages.push(p);
+		p.start(null);
+		expect(p.loaded).toBe(false);
+		expect(p.current).toBeUndefined();
+	});
+
+	it('Keep going pages are never saved (review screen and Home)', async () => {
+		await priorLoad(['c1', 'c2']);
+		const p = pages[0];
+		answerAll(0, () => queueOf(['k1', 'k2']));
+		await p.keepGoingOn();
+		await tick();
+		expect(p.keepGoing).toBe(true);
+		expect(p.current?.card.id).toBe('k1');
+		expect(readSnapshot('queue')?.items.map((i) => i.card.id)).toEqual(['c1', 'c2']);
+		p.flip();
+		void p.grade(good);
+		await tick();
+		expect(readSnapshot('queue')?.items.map((i) => i.card.id)).toEqual(['c1', 'c2']);
+		const today = new TodayQueue(); // keep going is still on for this visit
+		await today.load();
+		expect(api.getReviewQueue.mock.calls.at(-1)?.[0].keepGoing).toBe(true);
+		expect(readSnapshot('queue')?.items.map((i) => i.card.id)).toEqual(['c1', 'c2']);
+		today.dispose();
+	});
+
+	it('Home does not save a card answered (and acknowledged) while its fetch was in flight', async () => {
+		await priorLoad(['c1', 'c2', 'c3']);
+		const p = pages[0];
+		const full = () => queueOf(['c1', 'c2', 'c3']);
+		// Home's request: built before the answer applied. The review screen's own refresh never answers here.
+		api.getReviewQueue.mockImplementationOnce(() => later(full(), 5000)).mockImplementation(() => new Promise(() => {}));
+		api.answerReview.mockImplementation((r: { reviewAnswerRequest: { id: string; cardId: string } }) =>
+			later({ review: { id: r.reviewAnswerRequest.id }, card: { id: r.reviewAnswerRequest.cardId, state: 'review', dueAt: null } }, 1000)
+		);
+		const today = new TodayQueue();
+		const loading = today.load();
+		await tick();
+		p.flip();
+		void p.grade(good);
+		await tick(1500); // the answer is acknowledged: no longer in the outbox
+		await tick(3500);
+		await loading;
+		expect(readSnapshot('queue')?.items.map((i) => i.card.id)).toEqual(['c2', 'c3']);
+		today.dispose();
 	});
 
 	it('a refresh replaces the values without blanking', async () => {
@@ -365,6 +449,17 @@ describe('per account (PERF-SNAP)', () => {
 		expect(readSnapshot('queue')).toBeNull();
 		await tick();
 		expect((await snapStore.all()).map((r) => r.id)).toEqual(['principal']);
+	});
+
+	it('a 401 at start-up drops the snapshot, in memory and in the store', async () => {
+		await priorLoad(['c1']);
+		await reload();
+		const { ResponseError } = await import('../../src/lib/api/client');
+		api.getPrincipal.mockRejectedValue(new ResponseError(new Response(null, { status: 401 }), 'unauthorized'));
+		await bootSession();
+		expect(session.status).toBe('out');
+		expect(readSnapshot('queue')).toBeNull();
+		expect(await snapStore.all()).toEqual([]);
 	});
 
 	it('no snapshot: nothing is optimistic and Home waits as before', async () => {
