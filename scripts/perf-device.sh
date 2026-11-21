@@ -43,6 +43,8 @@ if [ -n "$FROM_LOG" ]; then
   cp "$FROM_LOG" "$LOG"; VERSION="${VERSION:-unknown}"
 else
   ADB=(adb); [ -n "$SERIAL" ] && ADB=(adb -s "$SERIAL")
+  reset_log_tag() { "${ADB[@]}" shell setprop log.tag.KTB-PERF "" >/dev/null 2>&1 || true; }
+  trap 'reset_log_tag; rm -f "$LOG"' EXIT   # also when a run fails partway (set -e) or is interrupted
   UARG=(); [ -n "$USER_ID" ] && UARG=(--user "$USER_ID")
   VERSION="$("${ADB[@]}" shell dumpsys package "$PKG" | tr -d '\r' | sed -n 's/^ *versionName=//p' | head -1)"
   VERSION="${VERSION:-unknown}"
@@ -58,6 +60,7 @@ else
   start; sleep "${SETTLE:-10}"   # warm runs need the app alive once
   for i in $(seq 1 "$N"); do run cold "$i"; done
   for i in $(seq 1 "$N"); do run warm "$i"; done
+  reset_log_tag
   mkdir -p "$ROOT/plan/perf"
   [ "${KEEP_LOG:-0}" = 1 ] && cp "$LOG" "$ROOT/plan/perf/device-$VERSION-$DAY.log"
   if [ -z "$OUT" ]; then
