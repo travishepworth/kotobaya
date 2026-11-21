@@ -99,7 +99,15 @@ class SqlLearningTables internal constructor(
     private val schema: LearningSchema,
     /** True inside [SqlDelightDeviceStore.read]: every write throws (it would autocommit on its own). */
     private val readOnly: Boolean = false,
+    /** PERF-LF: what this write transaction changed ([ReplicaVersions]); null outside the store. */
+    private val changes: TxChanges? = null,
 ) : LearningTables {
+    private fun changed(table: LearningTable, key: List<JsonValue>?, rows: Long) {
+        val c = changes ?: return
+        c.learning(table, key?.firstOrNull()?.let { (it as? JsonString)?.value }.takeIf { key != null }, rows)
+        if (table == LearningTable.CARD && key == null) c.cardKeys = null
+    }
+
     override fun get(table: LearningTable, key: List<JsonValue>): Row? {
         val (where, keyCols) = keyClause(table, key)
         if (key.any { it == JsonNull }) return null
@@ -125,7 +133,7 @@ class SqlLearningTables internal constructor(
             ) {
                 bindAll(this, 0, setCols, setValues)
                 bindAll(this, setCols.size, keyCols, key)
-            }.value
+            }.value.also { if (it > 0L) changed(table, key, it) }
         }
         if (updated > 0L) return
         driver.execute(
@@ -133,13 +141,15 @@ class SqlLearningTables internal constructor(
             "INSERT INTO ${table.sqlName} (${cols.joinToString { it.name }}) VALUES (${cols.joinToString { "?" }})",
             cols.size,
         ) { bindAll(this, 0, cols, values) }
+        changed(table, key, 1)
     }
 
     override fun delete(table: LearningTable, key: List<JsonValue>) {
         if (readOnly) readOnlyWrite()
         if (key.any { it == JsonNull }) return
         val (where, keyCols) = keyClause(table, key)
-        driver.execute(null, "DELETE FROM ${table.sqlName} WHERE $where", keyCols.size) { bindAll(this, 0, keyCols, key) }
+        val n = driver.execute(null, "DELETE FROM ${table.sqlName} WHERE $where", keyCols.size) { bindAll(this, 0, keyCols, key) }.value
+        changed(table, key, n)
     }
 
     override fun where(table: LearningTable, column: String, value: JsonValue): List<Row> {
@@ -163,7 +173,8 @@ class SqlLearningTables internal constructor(
 
     override fun clear(table: LearningTable) {
         if (readOnly) readOnlyWrite()
-        driver.execute(null, "DELETE FROM ${table.sqlName}", 0)
+        val n = driver.execute(null, "DELETE FROM ${table.sqlName}", 0).value
+        changed(table, null, n)
     }
 
     /** Cards whose cache is the refused cache (SYNC.md 9.4): the durable diagnostic count. */

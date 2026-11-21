@@ -84,8 +84,31 @@ class InstalledDictionary(
     /** The installed release, or null when none is installed. */
     override fun info(): PackageInfo? = withDb { PackageFile.info(it) }
 
-    /** L-7 steps 1-2: the installed package, then the sidecar cache. Never the network. */
-    fun entry(seq: Long): DictEntryDetail? = packageEntry(seq) ?: cache?.entry(seq)
+    /**
+     * L-7 steps 1-2: the installed package, then the sidecar cache. Never the network.
+     *
+     * PERF-LF: the last [ENTRY_CACHE] answers (hits only) are kept for the current [generation]: the queue renders and
+     * Home's hot lists read the same entries over and over, each read three queries and a parse behind this class's one
+     * connection. Callers treat [DictEntryDetail] as read-only.
+     */
+    fun entry(seq: Long): DictEntryDetail? {
+        val g = generation
+        synchronized(recent) {
+            if (recentGeneration != g) {
+                recent.clear()
+                recentGeneration = g
+            }
+            recent[seq]?.let { return it }
+        }
+        val e = packageEntry(seq) ?: cache?.entry(seq) ?: return null
+        synchronized(recent) { if (recentGeneration == g) recent[seq] = e }
+        return e
+    }
+
+    private var recentGeneration = Long.MIN_VALUE
+    private val recent = object : LinkedHashMap<Long, DictEntryDetail>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, DictEntryDetail>?): Boolean = size > ENTRY_CACHE
+    }
 
     /** Changes whenever the installed package or the sidecar cache changes (a cached lookup, hit or miss, is valid for one value). */
     val generation: Long get() = store.generation.value * GENERATION_STEP + (cache?.generation ?: 0L)
@@ -328,6 +351,7 @@ class InstalledDictionary(
     private companion object {
         /** Bind variables per `IN (...)` (SQLite's default limit is 999). */
         const val PRESENT_CHUNK = 500
+        private const val ENTRY_CACHE = 2_048
         private const val GENERATION_STEP = 1_000_003L
         const val NO_RANK = Int.MAX_VALUE
         /** U+10FFFF: sorts after every other code point, so `[key, key + TOP)` is the prefix range. */

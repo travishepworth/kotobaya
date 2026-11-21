@@ -21,6 +21,30 @@ WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL
   AND ((c.suspended = 0 AND (c.state = 'new' OR c.due_at < :dayEnd)) OR (c.state <> 'new' AND n.type IN ('vocab', 'kanji')))
   AND c.last_review_id IS NOT :refusedId;
 
+-- PERF-LF: the superset of queueCandidates the process cache (QueueReadCache) keeps: every live card of a live note
+-- (not merged away, not holding the refused cache), whatever its state, due date or suspension; the day's filter of
+-- queueCandidates is applied in Kotlin (CandidateRow.queueable), so one snapshot serves every day and instant.
+queueCandidatesAll:
+SELECT c.id, c.note_id, c.kind, n.note_type_id, n.type, n.created_at, c.state, c.due_at, c.suspended,
+       c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq,
+       CASE WHEN n.type = 'vocab' THEN n.fields ELSE '{}' END AS fields
+FROM card c
+JOIN note n ON n.id = c.note_id
+LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
+WHERE c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL
+  AND c.last_review_id IS NOT :refusedId;
+
+-- PERF-LF: queueCandidatesAll of some cards (the ones a write touched since the snapshot).
+queueCandidatesOf:
+SELECT c.id, c.note_id, c.kind, n.note_type_id, n.type, n.created_at, c.state, c.due_at, c.suspended,
+       c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq,
+       CASE WHEN n.type = 'vocab' THEN n.fields ELSE '{}' END AS fields
+FROM card c
+JOIN note n ON n.id = c.note_id
+LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
+WHERE c.id IN :ids AND c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL
+  AND c.last_review_id IS NOT :refusedId;
+
 -- ADR-040 (contracts/core README "C-27"): the literal of every kanji note that blocks minting: a live one, or one the
 -- user deleted (deleted, not a merge loser: never re-created). Merge losers do not block.
 kanjiNoteLiterals:

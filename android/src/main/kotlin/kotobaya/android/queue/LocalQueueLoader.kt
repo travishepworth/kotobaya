@@ -32,6 +32,7 @@ import kotobaya.contracts.sync.JsonValue
 import kotobaya.db.app.AppDatabase
 import kotobaya.queue.DefaultReviewLoop
 import kotobaya.sync.DefaultCanonicalJson
+import kotobaya.sync.client.apply.LearningTable
 
 /**
  * The frozen pre-ADR-037 counts (`LoopState.legacy`), kept only for the legacy Compose screens until SHELL-Z1 deletes
@@ -118,6 +119,8 @@ class LocalQueueLoader(
     private val materializer: EntryMaterializer? = null,
     /** ADR-042: dictionary facts for `KanjiRequirement` (form tags, `uk`, kanji grade / rank); none = every word requires nothing. */
     private val kanji: KanjiSource = KanjiSource.NONE,
+    /** PERF-LF: the replica reads kept between builds (production: one per app database); null reads everything per build. */
+    private val cache: QueueReadCache? = null,
 ) {
     private val q get() = db.localQueueQueries
 
@@ -171,7 +174,8 @@ class LocalQueueLoader(
         val liveDecks = q.liveDecks().executeAsList()
         val decks = loadDecks(liveDecks, settings)
 
-        val rows = q.queueCandidates(day.endMs, Reserved.REPLAY_REFUSED_ID).executeAsList()
+        val rows = cache?.candidates(q)?.filter { it.queueable(day.endMs) }
+            ?: q.queueCandidates(day.endMs, Reserved.REPLAY_REFUSED_ID, CandidateRow::of).executeAsList()
         val todayRows = q.todayReviews(day.startMs, now).executeAsList()
         val memberships = memberships(decks, liveDecks.filter { it.type == "smart" }.map { it.id }, rows.associate { it.id to (it.note_id to it.created_at) }, now, day)
         val kindOrders = kindOrders()
@@ -200,7 +204,7 @@ class LocalQueueLoader(
 
         // ADR-040 / ADR-042 (contracts/core README "C-27"): the kanji each vocab note and pending entry requires, and the
         // required ones with no kanji note, evaluated by core KanjiRequirement over the dictionary
-        val resolver = WordKanjiResolver(settings, q.kanjiNoteLiterals().executeAsList().mapNotNullTo(HashSet()) { it }, kanji, materializer)
+        val resolver = WordKanjiResolver(settings, kanjiNoteLiterals(), kanji, materializer)
         val fieldsOf = rows.asSequence().filter { it.type == NoteBaseType.VOCAB.wire }.associate { it.note_id to (it.entry_seq to it.fields) }
         // the notes whose expression comes from the dictionary (fields `{}`: jpdb imports, deck notes) or may (blank field)
         prefetchHeadwords(fieldsOf.values.mapNotNullTo(HashSet()) { (seq, fields) -> seq?.takeIf { !fields.contains("\"expression\":\"") || fields.contains("\"expression\":\"\"") } })
@@ -327,7 +331,7 @@ class LocalQueueLoader(
             val out = ArrayList<PendingEntry>()
             var offset = 0L
             while (out.size < window) {
-                val rows = q.pendingDeckEntries(deck.id, page, offset).executeAsList()
+                val rows = pendingDeckEntries(deck.id, page, offset)
                 val plans = runCatching { m.plan(rows.map { EntryRef(deck.id, checkNotNull(it.entry_seq)) }, settings.burySiblings) }
                     .getOrDefault(emptyMap())
                 for (r in rows) {
@@ -351,6 +355,22 @@ class LocalQueueLoader(
         }
         return entries to expressions
     }
+
+    // PERF-LF: the reads below depend only on the tables named; with a cache they are read again only after one changed
+
+    private fun kanjiNoteLiterals(): Set<String> =
+        memo("kanjiNoteLiterals", LearningTable.NOTE) { q.kanjiNoteLiterals().executeAsList().mapNotNullTo(HashSet()) { it } }
+
+    private fun deckItemMemberships(): List<kotobaya.db.app.DeckItemMemberships> =
+        memo("deckItemMemberships", LearningTable.DECK, LearningTable.DECK_ITEM, LearningTable.NOTE) { q.deckItemMemberships().executeAsList() }
+
+    private fun pendingDeckEntries(deckId: String, page: Long, offset: Long): List<kotobaya.db.app.PendingDeckEntries> =
+        memo("pendingDeckEntries|$deckId|$page|$offset", LearningTable.DECK_ITEM, LearningTable.NOTE, LearningTable.WORD_STATUS) {
+            q.pendingDeckEntries(deckId, page, offset).executeAsList()
+        }
+
+    private fun <T> memo(name: String, vararg tables: LearningTable, load: () -> T): T =
+        cache?.let { c -> c.memo(name, c.version(*tables), load) } ?: load()
 
     /** Index of each card kind in its note type's templates: built-in order for built-in types, else alphabetical (as the server). */
     private fun kindOrders(): Map<String, List<String>> {
@@ -377,7 +397,7 @@ class LocalQueueLoader(
             val old = byDeck[m.deckId]
             if (old == null || compareValuesBy(m, old, DeckMembership::position, DeckMembership::itemKey) < 0) byDeck[m.deckId] = m
         }
-        for (r in q.deckItemMemberships().executeAsList()) {
+        for (r in deckItemMemberships()) {
             if (r.deck_id in liveDeckIds) add(r.note_id, DeckMembership(r.deck_id, r.position, r.item_key))
         }
         for (deckId in smartDeckIds) for (cardId in smartDecks.cardIds(deckId, nowMs, day)) {

@@ -21,6 +21,8 @@ val queueFeature = FeatureEntry(
             )
         }
         single { KanjiSource(get<kotobaya.android.dict.InstalledDictionary>()) }
+        // PERF-LF: the replica reads every loader of the app database shares between builds
+        single { QueueReadCache(get<kotobaya.android.sync.SqlDelightDeviceStore>().versions) }
         factory {
             val koin = getKoin()
             val headwords = get<HeadwordCache>()
@@ -39,6 +41,7 @@ val queueFeature = FeatureEntry(
                 gate = get(),
                 // ADR-042: the dictionary facts, cached for the life of the process
                 kanji = runCatching { koin.get<KanjiSource>() }.getOrDefault(KanjiSource.NONE),
+                cache = runCatching { koin.get<QueueReadCache>() }.getOrNull(),
                 materializer = object : EntryMaterializer {
                     // resolved per call: the notes and sync modules may be absent (tests) and are wired after this one
                     private fun notes() = koin.getOrNull<EntryMaterializer>()

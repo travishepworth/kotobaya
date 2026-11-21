@@ -123,6 +123,7 @@ internal fun getReviewQueue(call: LocalCall): ShellResponse {
         gate = LoadGate(),
         materializer = materializer,
         kanji = kanji,
+        cache = runCatching { services.get<kotobaya.android.queue.QueueReadCache>() }.getOrNull(),
     )
     val loaded = loader.load(deckFilter = r.deckId, keepGoing = r.keepGoing, keepGoingNewBatch = r.limit, keepGoingNewTarget = r.keepGoingNewTarget)
     // ADR-047 / SCHEMA.md 6.6 "Device": 30 s after a build that may have materialized, one prefetch pass (never a call here)

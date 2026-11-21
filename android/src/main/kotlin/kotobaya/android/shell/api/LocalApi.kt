@@ -1,6 +1,9 @@
 package kotobaya.android.shell.api
 
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotobaya.android.shell.cache.ResponseCache
 import kotobaya.android.sync.StoreBusyException
@@ -84,6 +87,12 @@ class LocalApi(
     private val logError: (String, Throwable) -> Unit = { _, _ -> },
     /** The `cached` class (LF-A2). Default: the production cache over [services]; null when they lack its parts. */
     cache: ResponseCache? = ResponseCache.fromServices(services, upstream, newRequestId, logError),
+    /**
+     * PERF-LF: where the [BACKGROUND_LANE] handlers run: at most [BACKGROUND_PARALLELISM] at once, so Home's stats, hot
+     * lists and deck list (all started together with the queue, twice after a sync) can never take every reader
+     * connection, the dictionary and the CPU from the review path. Every other handler runs on the caller's dispatcher.
+     */
+    private val backgroundLane: CoroutineDispatcher = BACKGROUND,
 ) {
     private val routesById: Map<String, LocalRoute>
     private val responseCache: ResponseCache? = cache
@@ -137,7 +146,8 @@ class LocalApi(
             if (gate.isRebuildPending()) return problem(Problems.shellRebuilding())
         }
         val response = try {
-            route.handler(LocalCall(request, op, params, requestId, services))
+            val call = LocalCall(request, op, params, requestId, services)
+            if (op.operationId in BACKGROUND_LANE) withContext(backgroundLane) { route.handler(call) } else route.handler(call)
         } catch (e: ProblemException) {
             return problem(e.problem)
         } catch (e: CancellationException) {
@@ -204,6 +214,20 @@ class LocalApi(
         val GATE_EXEMPT: Set<String> = setOf("getShellInfo", "pairShell", "unpairShell", "getSyncStatus", "syncNow")
 
         private val REQUEST_ID_PATTERN = Regex("^[A-Za-z0-9._-]{1,64}$")
+
+        /**
+         * PERF-LF: the heavy derived reads (whole-history stats, hot lists, deck progress) that Home and the stats page
+         * start in parallel. Never the review path (`getReviewQueue`, `answerReview`, `undoReview`, card reads).
+         */
+        val BACKGROUND_LANE: Set<String> = setOf(
+            "getStatsSummary", "getStatsHeatmap", "getStatsRetention",
+            "listHotWords", "listHotKanji", "listLeeches", "listDecks",
+        )
+
+        const val BACKGROUND_PARALLELISM: Int = 2
+
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        private val BACKGROUND: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(BACKGROUND_PARALLELISM)
 
         internal fun utf8Length(s: String): Long {
             var n = 0L

@@ -254,6 +254,9 @@ class ParityDevice(
     /** SHELL-L4: the `bulkCards` `query` selector over the device's own replica (as production binds it). */
     val cardQuery: CardQuery = ReplicaCardQuery(driver, database, installedDictionary)
 
+    /** PERF-LF: the loader's replica cache, as production binds it (one per app database). */
+    val queueCache = kotobaya.android.queue.QueueReadCache(store.versions)
+
     private val services = MapServices(
         mapOf(
             SqlDelightDeviceStore::class to store,
@@ -275,6 +278,7 @@ class ParityDevice(
             Upstream::class to upstream,
             // PERF-LF: the process-wide dictionary caches production binds (QueueModule)
             kotobaya.android.queue.KanjiSource::class to kotobaya.android.queue.KanjiSource(installedDictionary),
+            kotobaya.android.queue.QueueReadCache::class to queueCache,
             kotobaya.android.queue.HeadwordCache::class to kotobaya.android.shell.api.review.shellHeadwords(ShellServices.None, installedDictionary),
         ),
     )

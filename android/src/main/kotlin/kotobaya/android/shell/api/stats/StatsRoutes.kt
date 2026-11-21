@@ -125,6 +125,7 @@ private fun summaryLoader(call: LocalCall, db: AppDatabase, now: Long): LocalQue
         gate = LoadGate(),
         materializer = ShellEntryMaterializer(services.get<EntryMaterializer>()) { false },
         kanji = kanji,
+        cache = runCatching { services.get<kotobaya.android.queue.QueueReadCache>() }.getOrNull(),
     )
 }
 
@@ -251,19 +252,33 @@ private fun group(key: String, rows: List<ScheduledReview>): JsonObject {
  * Scheduled non-undone reviews with study day in [range], each with its card's schedule just before it: the replay set
  * of the card's root (the card and every card merged into it) folded in order with the root's effective preset. A card
  * whose replay is refused (a malformed row) is skipped, as on the server.
+ *
+ * PERF-LF: three set reads (roots, every card's kind / preset / note type, every non-undone row with its root) instead
+ * of a card, note, preset and history read per root (tens of thousands of statements for a year of reviews).
  */
 private fun scheduledReviews(db: AppDatabase, t: LearningTables, range: DayRange, zone: ZoneId, hour: Int): List<ScheduledReview> {
     val (lo, hi) = windowMs(range.from, range.to)
+    val roots = db.statsQueries.statsScheduledRoots(lo, hi).executeAsList()
+    if (roots.isEmpty()) return emptyList()
+    val wanted = roots.toHashSet()
+    val info = HashMap<String, kotobaya.db.app.StatsCardInfo>()
+    for (c in db.statsQueries.statsCardInfo().executeAsList()) if (c.id in wanted) info[c.id] = c
+    val histories = HashMap<String, MutableList<ReplayReview>>()
+    for (r in db.statsQueries.statsReplayRows().executeAsList()) {
+        if (r.root !in wanted) continue
+        val rv = replayReview(r) ?: continue
+        histories.getOrPut(r.root) { ArrayList() } += rv
+    }
+    val params = HashMap<String, kotobaya.contracts.fsrs.SchedulerParams>()
     val out = ArrayList<ScheduledReview>()
-    for (root in db.statsQueries.statsScheduledRoots(lo, hi).executeAsList()) {
-        val card = CardRows.get(t, LearningTable.CARD, root) ?: continue
-        val note = CardRows.str(card["note_id"])?.let { CardRows.get(t, LearningTable.NOTE, it) } ?: continue
-        val groupKey = "${CardRows.str(note["type"])}/${CardRows.str(card["kind"])}"
-        val params = FsrsScheduler.paramsOf(CardRows.presetOf(t, card))
+    for (root in roots) {
+        val card = info[root] ?: continue
+        val groupKey = "${card.type}/${card.kind}"
+        val p = params.getOrPut(card.preset_id) { FsrsScheduler.paramsOf(CardRows.presetOf(t, mapOf("preset_id" to JsonString(card.preset_id)))) }
         val found = ArrayList<ScheduledReview>()
         try {
-            var cache = CardCache(CardSchedule.NEW, null, params.weightsVersion)
-            for (rv in DefaultReplayEngine.replaySet(history(t, root, card))) {
+            var cache = CardCache(CardSchedule.NEW, null, p.weightsVersion)
+            for (rv in DefaultReplayEngine.replaySet(histories[root].orEmpty())) {
                 val rating = rv.rating
                 if (rv.reviewType == ReviewType.SCHEDULED && rating != null) {
                     val day = studyDayOfReview(rv.reviewedAt, rv.utcOffsetMin, zone, hour)
@@ -271,7 +286,7 @@ private fun scheduledReviews(db: AppDatabase, t: LearningTables, range: DayRange
                         found += ScheduledReview(day, rating != Rating.AGAIN, cache.schedule.intervalDays ?: 0, groupKey)
                     }
                 }
-                cache = DefaultReplayEngine.fold(cache, rv, params)
+                cache = DefaultReplayEngine.fold(cache, rv, p)
             }
         } catch (e: IllegalArgumentException) {
             continue
@@ -281,32 +296,21 @@ private fun scheduledReviews(db: AppDatabase, t: LearningTables, range: DayRange
     return out
 }
 
-/** Every non-undone `review_log` row of the cards whose root is [root] ([rootCard] unless merged away, and its merge losers). */
-private fun history(t: LearningTables, root: String, rootCard: Row): List<ReplayReview> {
-    val ids = ArrayList<String>()
-    if ((rootCard["merged_into_id"] ?: JsonNull) == JsonNull) ids += root
-    t.where(LearningTable.CARD, "merged_into_id", JsonString(root)).mapNotNullTo(ids) { CardRows.str(it["id"]) }
-    return ids.flatMap { id -> t.where(LearningTable.REVIEW_LOG, "card_id", JsonString(id)) }
-        .filter { (it["undone_at"] ?: JsonNull) == JsonNull }
-        .mapNotNull { replayReview(it, root) }
-}
 
-private fun long(v: JsonValue?): Long? = (v as? JsonNumber)?.value?.toLong()
-
-private fun replayReview(row: Row, root: String): ReplayReview? {
-    val type = ReviewType.entries.firstOrNull { it.wire == CardRows.str(row["review_type"]) } ?: return null
-    val rating = long(row["rating"])?.toInt()
+private fun replayReview(r: kotobaya.db.app.StatsReplayRows): ReplayReview? {
+    val type = ReviewType.entries.firstOrNull { it.wire == r.review_type } ?: return null
+    val rating = r.rating?.toInt()
     return ReplayReview(
-        id = CardRows.str(row["id"]) ?: return null,
-        cardId = root,
-        hlc = CardRows.str(row["hlc"]) ?: return null,
-        reviewedAt = long(row["reviewed_at"]) ?: return null,
-        utcOffsetMin = long(row["utc_offset_min"])?.toInt(),
+        id = r.id,
+        cardId = r.root,
+        hlc = r.hlc,
+        reviewedAt = r.reviewed_at,
+        utcOffsetMin = r.utc_offset_min?.toInt(),
         reviewType = type,
         rating = Rating.entries.firstOrNull { it.value == rating },
-        manualAction = ManualAction.entries.firstOrNull { it.wire == CardRows.str(row["manual_action"]) },
-        manualDueAt = long(row["manual_due_at"]),
+        manualAction = ManualAction.entries.firstOrNull { it.wire == r.manual_action },
+        manualDueAt = r.manual_due_at,
         undoneHlc = null,
-        importSource = CardRows.str(row["import_source"]),
+        importSource = r.import_source,
     )
 }

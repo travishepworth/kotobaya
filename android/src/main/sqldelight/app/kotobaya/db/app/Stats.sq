@@ -6,13 +6,18 @@
 -- introduced (scheduled / learning rows only): the row is the first schedule-feeding row of its card's replay root
 -- (the card, or its merge survivor, with every card merged into that root), or the row before it is a manual reset;
 -- replay order (reviewed_at, hlc, id). Drill and cram rows are never introduced.
+-- PERF-LF: the previous row is looked up per member card through review_log_replay_idx (card_id, reviewed_at, ...), as
+-- LocalQueue.sq todayReviews (AND-PERF): without INDEXED BY SQLite walked review_log_reviewed_idx (a MULTI-INDEX OR over
+-- `reviewed_at <` / `=`) for every row of the window: seconds for a year of history. `p.reviewed_at <= r.reviewed_at` is
+-- implied by the order condition and only lets the index bound the range. Same result set.
 statsDayRows:
 SELECT r.reviewed_at, r.utc_offset_min, r.review_type, r.rating, COALESCE(r.duration_ms, 0) AS duration_ms,
        CASE WHEN r.review_type IN ('scheduled', 'learning') THEN
-         COALESCE((SELECT COALESCE(p.manual_action, '') FROM review_log p
+         COALESCE((SELECT COALESCE(p.manual_action, '') FROM review_log p INDEXED BY review_log_replay_idx
                    WHERE p.card_id IN (SELECT pc.id FROM card pc WHERE pc.id = COALESCE(c.merged_into_id, c.id) AND pc.merged_into_id IS NULL
                                        UNION ALL
                                        SELECT pm.id FROM card pm WHERE pm.merged_into_id = COALESCE(c.merged_into_id, c.id))
+                     AND p.reviewed_at <= r.reviewed_at
                      AND p.undone_at IS NULL AND p.review_type IN ('scheduled', 'learning', 'manual')
                      AND (p.reviewed_at < r.reviewed_at OR (p.reviewed_at = r.reviewed_at AND (p.hlc < r.hlc OR (p.hlc = r.hlc AND p.id < r.id))))
                    ORDER BY p.reviewed_at DESC, p.hlc DESC, p.id DESC LIMIT 1), 'reset') = 'reset'
@@ -53,3 +58,20 @@ FROM review_log r
 JOIN card c ON c.id = r.card_id
 WHERE r.undone_at IS NULL AND r.review_type = 'scheduled' AND r.reviewed_at >= :lo AND r.reviewed_at < :hi
 ORDER BY root;
+
+-- PERF-LF (getStatsRetention in one pass instead of three reads per replay root): every card's kind, preset and note
+-- type (the group key `type/kind` and the preset of a root).
+statsCardInfo:
+SELECT c.id, c.kind, c.preset_id, n.type
+FROM card c
+JOIN note n ON n.id = c.note_id;
+
+-- PERF-LF: every non-undone review_log row with its replay root (the card, or its merge survivor), grouped by root: the
+-- history the replay of each root folds (a root's own rows only while it is not merged away, and the rows of the cards
+-- merged into it, as the per-root reads did). Grouped in Kotlin.
+statsReplayRows:
+SELECT COALESCE(c.merged_into_id, c.id) AS root, r.id, r.hlc, r.reviewed_at, r.utc_offset_min, r.review_type, r.rating,
+       r.manual_action, r.manual_due_at, r.import_source
+FROM review_log r
+JOIN card c ON c.id = r.card_id
+WHERE r.undone_at IS NULL;
