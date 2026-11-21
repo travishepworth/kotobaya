@@ -3,6 +3,7 @@ import type { Job } from '../api/generated';
 import { BlobsApi, JobsApi, PutBlobKindEnum } from '../api/generated';
 import { apiConfig } from '../api/client';
 import { openEventStream } from '../events';
+import { needsConnectionFor } from '../ui/access';
 import { sha256Hex } from '../../routes/import/counters';
 
 export type { Job } from '../api/generated';
@@ -36,7 +37,14 @@ export class JobWatch {
 		this.closeStream = null;
 	}
 
+	/** Shell mode, offline: the job cannot be polled; the screen says "waiting for a connection". */
+	get waiting(): boolean {
+		return this.job !== null && isRunning(this.job) && needsConnectionFor('getJob');
+	}
+
 	private async refresh(id: string): Promise<void> {
+		// Offline in the shell the proxy call would fail with an error toast; resume on the next trigger.
+		if (needsConnectionFor('getJob')) return;
 		try {
 			this.job = await jobsApi.getJob({ jobId: id });
 			if (!isRunning(this.job)) this.stop();

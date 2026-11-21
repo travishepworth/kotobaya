@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { uploadsOffered } from '../../../lib/ui/access';
+	import { sh } from '../../../lib/ui/shellMessages';
 	// Import media: source (files / URL / paste / jpdb deck), details, study-deck options; then live progress.
 	import { onDestroy } from 'svelte';
 	import Banner from '../../../lib/ui/Banner.svelte';
@@ -18,6 +20,8 @@
 	import { mx } from '../messages';
 
 	const vm = new MediaNewPage();
+	// Blob uploads are not offered in the shell (SHELL.md 9.4): no file tab there.
+	if (!uploadsOffered() && vm.tab === 'files') vm.tab = 'paste';
 	onDestroy(() => vm.dispose());
 
 	let priorityText = $state(String(vm.priority));
@@ -38,7 +42,7 @@
 				void vm.start();
 			}}
 		>
-			<Tabs label={tm('new.tabs')} bind:value={vm.tab} tabs={IMPORT_TABS.map((t) => ({ value: t, label: tm(`new.tab.${t}` as MediaMessageKey) }))} />
+			<Tabs label={tm('new.tabs')} bind:value={vm.tab} tabs={IMPORT_TABS.filter((t) => t !== 'files' || uploadsOffered()).map((t) => ({ value: t, label: tm(`new.tab.${t}` as MediaMessageKey) }))} />
 
 			<Panel title={mx('mx.source')}>
 				<div class="stack">
@@ -114,6 +118,7 @@
 		</form>
 	{:else if isRunning(vm.job)}
 		<Panel>
+			{#if vm.watch.waiting}<p class="muted" role="status">{sh('shell.job.waiting')}</p>{/if}
 			<div class="running" role="status">
 				<p class="big kb-num">{Math.round(vm.job.progress * 100)}%</p>
 				<ProgressBar value={Math.round(vm.job.progress * 100)} max={100} label={tm('new.title')} />

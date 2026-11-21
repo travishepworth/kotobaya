@@ -1,6 +1,7 @@
 // What the SPA offers a principal and a connection state (SHELL.md 9.4): scope rule and mode rule. Pure functions;
 // the scope rule applies on the plain web too (a personal token without `import` has no Import screen).
 import { opClass } from '../api/shell/ops';
+import { shell } from '../state/shell.svelte';
 import type { NavItem } from './kinds';
 
 export type ScopeName = 'read' | 'write' | 'review' | 'import' | 'admin';
@@ -59,4 +60,22 @@ export function isGatedPath(path: string): boolean {
 /** Show `NeedsConnection` instead of the route: offline and a route that is proxy-only. */
 export function needsConnection(path: string, online: boolean): boolean {
 	return !online && isGatedPath(path);
+}
+
+/**
+ * Per-action rule (SHELL.md 9.4): a `proxy` operation triggered from a mixed route is disabled with "needs
+ * connection" while the shell is offline. Outside the shell nothing is ever gated.
+ */
+export function actionNeedsConnection(operationId: string, state: { present: boolean; online: boolean }): boolean {
+	return state.present && !state.online && opClass(operationId) === 'proxy';
+}
+
+/** Reactive form of `actionNeedsConnection` over the shell state. */
+export function needsConnectionFor(operationId: string): boolean {
+	return actionNeedsConnection(operationId, shell);
+}
+
+/** Exports and blob uploads are not offered in shell mode (SHELL.md 9.4 "Unsupported"). */
+export function uploadsOffered(state: { present: boolean } = shell): boolean {
+	return !state.present;
 }

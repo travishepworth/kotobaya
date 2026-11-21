@@ -9,6 +9,8 @@
 	import { td } from '../../lib/decks/messages';
 	import { checkDeckDraft, type DeckDraft, type DeckListCatalogueEntry, type SearchVocabulary } from '../../lib/state/decks.svelte';
 	import { dk } from './messages';
+	import { needsConnectionFor } from '../../lib/ui/access';
+	import NeedsConnectionHint from '../../lib/ui/NeedsConnectionHint.svelte';
 
 	interface Props {
 		draft: DeckDraft;
@@ -21,6 +23,7 @@
 		onsubmit: () => void;
 	}
 	let { draft = $bindable(), isNew, lists, vocabulary, busy, serverError = null, submitLabel, onsubmit }: Props = $props();
+	const offlineList = $derived(isNew && draft.type === 'list' && needsConnectionFor('createDeck'));
 
 	function submit(e: SubmitEvent): void {
 		e.preventDefault();
@@ -76,7 +79,8 @@
 	</Panel>
 
 	<div class="actions">
-		<Button variant="primary" type="submit" loading={busy}>{submitLabel}</Button>
+		<Button variant="primary" type="submit" loading={busy} disabled={offlineList}>{submitLabel}</Button>
+		{#if offlineList}<NeedsConnectionHint op="createDeck" />{/if}
 	</div>
 </form>
 
