@@ -364,9 +364,7 @@ class LocalQueueLoader(
     private fun deckItemMemberships(): List<kotobaya.db.app.DeckItemMemberships> = cache?.memberships(q) ?: q.deckItemMemberships().executeAsList()
 
     private fun pendingDeckEntries(deckId: String, page: Long, offset: Long): List<kotobaya.db.app.PendingDeckEntries> =
-        memo("pendingDeckEntries|$deckId|$page|$offset", LearningTable.DECK_ITEM, LearningTable.NOTE, LearningTable.WORD_STATUS) {
-            q.pendingDeckEntries(deckId, page, offset).executeAsList()
-        }
+        cache?.pendingDeckEntries(q, deckId, page, offset) ?: q.pendingDeckEntries(deckId, page, offset).executeAsList()
 
     private fun <T> memo(name: String, vararg tables: LearningTable, load: () -> T): T =
         cache?.let { c -> c.memo(name, c.version(*tables), load = load) } ?: load()

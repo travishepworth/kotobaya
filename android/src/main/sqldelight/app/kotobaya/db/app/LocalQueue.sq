@@ -186,3 +186,15 @@ WHERE di.deleted_at IS NULL AND di.note_id IS NOT NULL AND n.deleted_at IS NULL 
 -- PERF-LF: how many of some notes are merge losers (a merge moves memberships between notes: rebuild them all).
 mergedAmong:
 SELECT count(*) FROM note WHERE id IN :ids AND merged_into_id IS NOT NULL;
+
+-- PERF-LF: the entry of some notes, deleted ones included (which entries a note write may have made pending or not).
+noteEntries:
+SELECT id, entry_seq FROM note WHERE id IN :ids;
+
+-- PERF-LF: every note's entry (the start of that bookkeeping).
+allNoteEntries:
+SELECT id, entry_seq FROM note WHERE entry_seq IS NOT NULL;
+
+-- PERF-LF: whether a deck has an item for any of some entries (else its pending entries cannot have changed).
+deckHasEntries:
+SELECT count(*) FROM deck_item WHERE deck_id = :deckId AND entry_seq IN :seqs;

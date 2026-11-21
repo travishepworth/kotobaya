@@ -5,6 +5,7 @@ import kotobaya.android.sync.ReplicaVersions
 import kotobaya.contracts.Reserved
 import kotobaya.db.app.DeckItemMemberships
 import kotobaya.db.app.LocalQueueQueries
+import kotobaya.db.app.PendingDeckEntries
 import kotobaya.sync.client.apply.LearningTable
 
 /** One `queueCandidates` row (the loader's view of a card and its note). Property names as the generated row's. */
@@ -176,7 +177,96 @@ class QueueReadCache(private val versions: ReplicaVersions) {
         return byNote.values.flatten()
     }
 
+    // ---- pending deck entries -----------------------------------------------------------------------------------------
+
+    private class Pending(val deckVersion: Long, val noteVersion: Long, val statusVersion: Long, val rows: List<PendingDeckEntries>)
+
+    /** Least recently used first; one page of one deck each; bounded. */
+    private val pending = object : LinkedHashMap<String, Pending>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pending>?): Boolean = size > MAX_MEMOS
+    }
+
+    /** Every note's entry as of [seqVersion] (the note version), to know the entries a note write touched. */
+    private val seqOfNote = HashMap<String, Long>()
+    private var seqVersion = -1L
+
+    /** Note versions (from exclusive, to inclusive] with the entries whose notes changed in them (null = unknown). */
+    private val seqLog = java.util.ArrayDeque<Triple<Long, Long, Set<Long>?>>()
+
+    /** Recomputed pending pages so far (tests). */
+    @Volatile var pendingLoads: Int = 0
+        private set
+
+    /**
+     * `pendingDeckEntries` of one deck page, current as of this call. A note or word status write recomputes only the
+     * pages of decks holding an item for one of the entries it touched (a minted or pulled deck note leaves every other
+     * deck alone); a deck or deck item write recomputes all.
+     */
+    @Synchronized
+    fun pendingDeckEntries(q: LocalQueueQueries, deckId: String, page: Long, offset: Long): List<PendingDeckEntries> {
+        val deckVersion = versions.version(LearningTable.DECK, LearningTable.DECK_ITEM)
+        val noteVersion = versions.tableVersion(LearningTable.NOTE)
+        val statusVersion = versions.tableVersion(LearningTable.WORD_STATUS)
+        val key = "$deckId|$page|$offset"
+        val p = pending[key]
+        if (p != null && p.deckVersion == deckVersion) {
+            val seqs = changedEntries(q, p.noteVersion, noteVersion, p.statusVersion)
+            if (seqs != null && seqs.size <= MAX_PARTIAL &&
+                (seqs.isEmpty() || seqs.toList().chunked(IN_CHUNK).all { q.deckHasEntries(deckId, it).executeAsOne() == 0L })
+            ) {
+                pending[key] = Pending(deckVersion, noteVersion, statusVersion, p.rows)
+                return p.rows
+            }
+        }
+        val rows = q.pendingDeckEntries(deckId, page, offset).executeAsList()
+        pending[key] = Pending(deckVersion, noteVersion, statusVersion, rows)
+        pendingLoads++
+        return rows
+    }
+
+    /** The entries whose notes (old or new entry) or word status changed since those versions; null = not known. */
+    private fun changedEntries(q: LocalQueueQueries, sinceNote: Long, noteVersion: Long, sinceStatus: Long): Set<Long>? {
+        val out = HashSet<Long>()
+        versions.changedKeys(LearningTable.WORD_STATUS, sinceStatus)?.mapNotNullTo(out) { it.toLongOrNull() } ?: return null
+        if (sinceNote == noteVersion) return out
+        advanceEntries(q, noteVersion)
+        val first = seqLog.peekFirst() ?: return null
+        if (sinceNote < first.first) return null
+        for ((from, to, seqs) in seqLog) if (to > sinceNote) {
+            if (from < sinceNote && seqs == null) return null
+            out += seqs ?: return null
+        }
+        return out
+    }
+
+    private fun advanceEntries(q: LocalQueueQueries, noteVersion: Long) {
+        if (seqVersion == noteVersion) return
+        val ids = if (seqVersion < 0) null else versions.changedKeys(LearningTable.NOTE, seqVersion)
+        if (ids == null || ids.size > MAX_PARTIAL) {
+            seqOfNote.clear()
+            for (r in q.allNoteEntries().executeAsList()) r.entry_seq?.let { seqOfNote[r.id] = it }
+            seqLog.clear()
+        } else {
+            val now = HashMap<String, Long?>()
+            ids.toList().chunked(IN_CHUNK).forEach { chunk -> for (r in q.noteEntries(chunk).executeAsList()) now[r.id] = r.entry_seq }
+            val changed = HashSet<Long>()
+            for (id in ids) {
+                seqOfNote[id]?.let(changed::add)
+                val n = now[id]
+                if (n == null) seqOfNote.remove(id) else {
+                    changed += n
+                    seqOfNote[id] = n
+                }
+            }
+            seqLog.addLast(Triple(seqVersion, noteVersion, changed))
+            while (seqLog.size > MAX_LOG) seqLog.removeFirst()
+        }
+        if (seqLog.isEmpty()) seqLog.addLast(Triple(noteVersion, noteVersion, emptySet()))
+        seqVersion = noteVersion
+    }
+
     private companion object {
+        const val MAX_LOG = 512
         const val MAX_PARTIAL = 2_000
         const val IN_CHUNK = 500
         const val MAX_MEMOS = 256
