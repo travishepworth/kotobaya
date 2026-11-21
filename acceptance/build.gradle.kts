@@ -45,3 +45,12 @@ tasks.test {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
 }
+
+// LF-X1: the black-hole run drives the shell's `LocalApi` and the android module's test fixtures (parity device,
+// TestServer), which only exist on the android unit-test classpath (Robolectric). Its sources live under `blackhole/`
+// (owned by this module) and are compiled into `:android:testDebugUnitTest`, so `make check MODULE=android` runs them.
+project(":android").pluginManager.withPlugin("org.jetbrains.kotlin.android") {
+    project(":android").extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension>("kotlin") {
+        sourceSets.getByName("test").kotlin.srcDir(rootProject.layout.projectDirectory.dir("acceptance/blackhole/src/test/kotlin"))
+    }
+}
