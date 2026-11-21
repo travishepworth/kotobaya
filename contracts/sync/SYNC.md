@@ -1388,7 +1388,7 @@ still applied**, so the device knowingly differs from the server until the user 
 
 | Action | Effect |
 |---|---|
-| **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through. Not offered for `clock_ahead` / `clock_behind` (the op would be refused again or carries a wrong time; 10.4). |
+| **Retry** | `state = 'pending'` (same `op_id`, same `hlc`). The op is pushed again in the next cycle. For `unsupported_op` after a server upgrade, or `unknown_reference` after the missing parent got through, or `invalid_target` for a `deck.deleted` on a media deck once its media is deleted (OPS.md `deck.deleted`). Not offered for `clock_ahead` / `clock_behind` (the op would be refused again or carries a wrong time; 10.4). |
 | **Discard** | The op is given up. Delete the chosen `pending_op` rows and set `sync_state.rebuild_pending = "1"` in one transaction, then run the rebuild (10.3). |
 | **Re-mint** | Only for clock rejections, and the **default** action whenever any row is clock-rejected: rows created with the wrong clock (with everything that depends on them and writes one of those rows, and the deck items and word statuses of their words) and reviews are minted again with corrected times; other edits of rows the server already has, or that other replicas can have (window row, 10.4), are discarded — listed to the user before confirming (MUST). Section 10.4. |
 
