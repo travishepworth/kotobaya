@@ -1,0 +1,123 @@
+{
+  "id" : "resolve-speech-local",
+  "steps" : [ {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "blob_hash" : null,
+        "duration_ms" : null,
+        "source" : "tts",
+        "status" : "pending",
+        "text" : "うっかり",
+        "voice" : "3"
+      } ]
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "blob_hash" : null,
+        "duration_ms" : null,
+        "source" : "tts",
+        "status" : "pending",
+        "text" : "うっかり",
+        "voice" : "3"
+      }, {
+        "blob_hash" : null,
+        "duration_ms" : null,
+        "source" : null,
+        "status" : "none",
+        "text" : null,
+        "voice" : null
+      } ]
+    }
+  }, {
+    "status" : 200,
+    "headers" : {
+      "content-type" : "application/json"
+    },
+    "body" : {
+      "items" : [ {
+        "blob_hash" : null,
+        "duration_ms" : null,
+        "source" : "tts",
+        "status" : "pending",
+        "text" : "うっかり",
+        "voice" : "3"
+      }, {
+        "blob_hash" : null,
+        "duration_ms" : null,
+        "source" : "tts",
+        "status" : "pending",
+        "text" : "うっかり",
+        "voice" : "3"
+      } ]
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/items/0"
+      } ],
+      "instance" : "/api/v1/tts/resolve",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/items/0"
+      } ],
+      "instance" : "/api/v1/tts/resolve",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/urgent"
+      } ],
+      "instance" : "/api/v1/tts/resolve",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  }, {
+    "status" : 422,
+    "headers" : {
+      "content-type" : "application/problem+json"
+    },
+    "body" : {
+      "code" : "validation_failed",
+      "errors" : [ {
+        "code" : "invalid_value",
+        "pointer" : "/items"
+      } ],
+      "instance" : "/api/v1/tts/resolve",
+      "status" : 422,
+      "type" : "urn:kotobaya:problem:validation_failed"
+    }
+  } ]
+}
