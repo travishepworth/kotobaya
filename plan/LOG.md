@@ -1488,3 +1488,7 @@
 2026-11-21T00:00:00Z LF-W3 HANDOFF r2 (ROUTE_OPS empty: no wholly-remote route; ops.json over design §3); CHECK_GREEN web 368 -> merged + pushed t/LF-int 71f43bda
 2026-11-21T00:00:00Z LF-W4 NEW ticket (per-action needs-connection, putBlob hidden in shell) DISPATCH writer
 2026-11-21T00:00:00Z LF-W4 HANDOFF (jobs.svelte.ts trigger touch accepted); CHECK_GREEN web 371 -> merged + pushed t/LF-int
+2026-11-21T00:00:00Z LF-X1 HANDOFF (android 772, 2 known LocalParity; STILL_FORWARDS empty) -> writer asked to prove tests can fail (mutation check)
+2026-11-21T00:00:00Z LF-GOLD BLOCKED (8/11 recorded; 3 scenarios 501: harness lacks confusable/grammar/resolveSpeech wiring) -> DECIDE: authorize ParityServerHarness.kt wiring, same agent
+2026-11-21T00:00:00Z LF-X1 mutation checks OK (forwarding -> noUiPath fail; dropped op -> converges fail); android re-check running
+2026-11-21T00:00:00Z LF-X1 CHECK android 772 / 2 known LocalParity (own-flavor BlackHole xml was stale from mutation run; fresh run 9/9) -> merged + pushed t/LF-int
