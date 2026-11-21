@@ -86,10 +86,18 @@ class HomeLoadBenchmarkTest {
         return took
     }
 
-    /** Each handler alone, warm (the first calls also build the process caches and load classes). */
+    /** Each handler alone in a warm process, unchanged data (the first calls also build the process caches). */
     private fun alone(): Map<String, Long> {
         repeat(2) { (others + queue).forEach { timed(it) } }
         return (others + queue).associate { c -> c.name to (0 until 3).minOf { timed(c) } }
+    }
+
+    /** Each handler alone right after a pulled review changed `review_log` and `card` (Home after a review or a sync). */
+    private fun afterChange(): Map<String, Long> = (others + queue).associate { c ->
+        c.name to (0 until 3).maxOf {
+            device.store.transaction { tx -> pulledReviews(tx, Random(it), 1) }
+            timed(c)
+        }
     }
 
     private val startedCards: List<String> by lazy {
@@ -104,27 +112,32 @@ class HomeLoadBenchmarkTest {
      * A pull applying: short write transactions, each a few reviews another device logged (a new `review_log` row and
      * its card's new schedule), through the learning tables as the applier writes them.
      */
+    private val pulled = java.util.concurrent.atomic.AtomicInteger()
+
+    /** [count] reviews another device logged, as a pull applies them: a new `review_log` row and the card's new schedule. */
+    private fun pulledReviews(tx: kotobaya.sync.client.store.StoreTransaction<kotobaya.android.sync.SqlLearningTables>, rnd: Random, count: Int) {
+        repeat(count) {
+            val n = pulled.incrementAndGet()
+            val card = startedCards[rnd.nextInt(startedCards.size)]
+            val at = now - 60_000 + n
+            tx.learning.put(
+                LearningTable.REVIEW_LOG,
+                mapOf(
+                    "id" to JsonString("0193ffff-0000-7000-8000-%012x".format(n)), "card_id" to JsonString(card),
+                    "device_id" to JsonString("00000000-0000-7000-8000-000000000001"), "hlc" to JsonString("%013d-000000-perf".format(at)),
+                    "reviewed_at" to JsonNumber(at.toDouble()), "review_type" to JsonString("scheduled"), "rating" to JsonNumber(3.0),
+                    "button" to JsonString("good"), "duration_ms" to JsonNumber(5000.0),
+                ),
+            )
+            val due = now + 86_400_000L * (1 + rnd.nextInt(30))
+            tx.learning.put(LearningTable.CARD, mapOf("id" to JsonString(card), "due_at" to JsonNumber(due.toDouble()), "updated_at" to JsonNumber(at.toDouble())))
+        }
+    }
+
     private fun syncWriter(running: AtomicBoolean): Thread = Thread {
         val rnd = Random(9)
-        var n = 0
         while (running.get()) {
-            device.store.transaction { tx ->
-                repeat(5) {
-                    val card = startedCards[rnd.nextInt(startedCards.size)]
-                    val at = now - 60_000 + n
-                    tx.learning.put(
-                        LearningTable.REVIEW_LOG,
-                        mapOf(
-                            "id" to JsonString("0193ffff-0000-7000-8000-%012x".format(n++)), "card_id" to JsonString(card),
-                            "device_id" to JsonString("00000000-0000-7000-8000-000000000001"), "hlc" to JsonString("%013d-000000-perf".format(at)),
-                            "reviewed_at" to JsonNumber(at.toDouble()), "review_type" to JsonString("scheduled"), "rating" to JsonNumber(3.0),
-                            "button" to JsonString("good"), "duration_ms" to JsonNumber(5000.0),
-                        ),
-                    )
-                    val due = now + 86_400_000L * (1 + rnd.nextInt(30))
-                    tx.learning.put(LearningTable.CARD, mapOf("id" to JsonString(card), "due_at" to JsonNumber(due.toDouble()), "updated_at" to JsonNumber(at.toDouble())))
-                }
-            }
+            device.store.transaction { tx -> pulledReviews(tx, rnd, 5) }
             Thread.sleep(20)
         }
     }
@@ -172,18 +185,19 @@ class HomeLoadBenchmarkTest {
             println("PERF-LF loop $id: ${(0 until k.toInt()).map { timed(c) }.joinToString()}")
         }
         val single = alone()
-        val rounds = (0 until 3).map { homeOpen() }
+        val changed = afterChange()
+        val rounds = (0 until 5).map { homeOpen() }
         val queueTimes = rounds.flatten().filter { it.first == queue.name }.map { it.second }
         val answered = answers(12).drop(2)
         val report = buildString {
             appendLine("PERF-LF replica: ${seeded.notes} notes, ${seeded.cards} cards, ${seeded.reviews} reviews, ${seeded.deckItems} deck items")
-            single.forEach { (k, v) -> appendLine("  alone      $k: $v ms") }
+            single.forEach { (k, v) -> appendLine("  alone      $k: $v ms (after a pulled review: ${changed[k]} ms)") }
             rounds.last().forEach { (k, v) -> appendLine("  concurrent $k: $v ms") }
             appendLine("  concurrent getReviewQueue over ${queueTimes.size} calls: p95 ${p95(queueTimes)} ms, max ${queueTimes.max()} ms")
             appendLine("  answerReview p95 ${p95(answered.map { it.first })} ms; next getReviewQueue p95 ${p95(answered.map { it.second })} ms")
         }
         println(report)
-        assertTrue(single.values.all { it < ALONE_MS }, "a handler alone took over $ALONE_MS ms:\n$report")
+        assertTrue((single.values + changed.values).all { it < ALONE_MS }, "a handler alone took over $ALONE_MS ms:\n$report")
         assertTrue(p95(queueTimes) < QUEUE_MS, "getReviewQueue during Home's load and a sync:\n$report")
         assertTrue(p95(answered.map { it.first }) < ANSWER_MS, "answerReview:\n$report")
     }
