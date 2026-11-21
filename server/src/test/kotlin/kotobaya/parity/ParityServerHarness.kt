@@ -20,6 +20,8 @@ import kotobaya.auth.TokenKind
 import kotobaya.auth.TokenValidator
 import kotobaya.auth.Tokens
 import kotobaya.cards.CardsModule
+import kotobaya.confusables.ConfusableModule
+import kotobaya.grammar.GrammarModule
 import kotobaya.decks.DecksModule
 import kotobaya.dict.dictHandlers
 import kotobaya.notes.NotesModule
@@ -30,6 +32,7 @@ import kotobaya.server.TestPg
 import kotobaya.server.json
 import kotobaya.server.kotobayaModule
 import kotobaya.settings.SettingsModule
+import kotobaya.tts.TtsModule
 import kotobaya.stats.StatsModule
 import kotobaya.sync.SyncModule
 import kotobaya.sync.restore.SyncWiring
@@ -76,7 +79,8 @@ object ParityServerHarness {
         val auth = Auth(db, AuthConfig.fromEnv(mapOf("AUTH_PASSWORD_HASH" to cheapHash)), clock, validator = TokenValidator(db, clock))
         val handlers = auth.handlers + dictHandlers(db) + sync.handlers +
             NotesModule(db, sync.opApply).handlers + DecksModule(db, sync.opApply).handlers + SettingsModule(db, sync.opApply).handlers +
-            ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + StatsModule(db, sync.opApply.config.clock).handlers
+            ReviewModule(db, sync.opApply).handlers + CardsModule(db, sync.opApply).handlers + StatsModule(db, sync.opApply.config.clock).handlers +
+            GrammarModule(db, sync.opApply).handlers + ConfusableModule(db, sync.opApply).handlers + TtsModule(db).handlers
         val seedToken = device(db, scenario.seedDeviceId, "seed", now.get())
         val testToken = device(db, scenario.deviceId, "under-test", now.get())
 
