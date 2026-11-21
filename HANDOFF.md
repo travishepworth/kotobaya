@@ -1,29 +1,26 @@
-# HANDOFF PERF-LF
+# HANDOFF PERF-LF (attempt 2)
 
-STATUS: DONE (queue p95 target missed: 105–169 ms across runs)
+STATUS: DONE (real-replica queue p95 is 153–158 ms against the 150 target; synthetic is 127)
 BRANCH: t/PERF-LF-local-handlers
-CHECK: `make check MODULE=android` → green (777 tests)
+CHECK: `make check MODULE=android` → green
 
-## Cause (evidence: JFR + timers)
-The queue read one full dictionary entry per empty-field vocab note on every call, through a single locked dictionary connection, and re-read the whole replica each build. Home's stats replayed the full history per root (N+1). All ran side by side.
+## Changed (attempt 2)
+- Change tracking now uses TEMP triggers on the learning tables, not total_changes. Raw writes are attributed exactly; trigger, index and change-log rows are ignored. If the triggers can't be used, every table counts as changed.
+- A note or word-status write refreshes only the affected cards and memberships. Pending deck entries are refreshed only for decks holding a touched entry.
+- The snapshot is in card id order. Memos are an LRU (max 256); request gates are removed when idle. The background lane is now 1 wide.
 
-## Changed
-- Batched, process-wide dictionary caches (headwords, render data, entry LRU)
-- `ReplicaVersions`: per-table/key change versions; `QueueReadCache`; `StatsHistoryCache` (refreshes per root)
-- Background lane (2 wide, deduplicated) for stats, hot lists, decks; queue never waits
-- Retention in one pass, heatmap uses an index hint, narrow deck-progress reads, memoized lists, parallel queue render
-
-## Real replica, JVM (ms, before → after; after = right after a pulled review)
-queue alone 1150→79; queue concurrent 5645→p95 169 · decks 574→253 · hotWords 119→112 · summary 1394→95 · heatmap 7957→10 · retention 1645→28 · answer→next 2 (prefetched)
+## Real replica (JVM ms; origin/main → attempt 1 → now)
+- queue, concurrent with sync + notes + Home, p95: 5645 → 544 → 153
+- queue after a pulled note: — → 227 → 89; minting deck entries: 61–76
+- decks 574→266 · hot 119→113 · summary 1394→107 · heatmap 7957→10 · retention 1645→35 (after a write)
+- answerReview 2
 
 ## Acceptance → tests
-- thresholds → HomeLoadBenchmarkTest (synthetic data at real counts)
-- caches never stale → ReplicaCachesTest, HeadwordCacheTest
+- ReplicaCachesTest checks memo vs fresh after card, review, undo, merge, note, word-status, deck_item (tracked and raw), kanji-note and preset writes. It covers memberships, pending entries, kanji literals, listDecks and the hot lists, with the change-log triggers installed.
+- HomeLoadBenchmarkTest adds the pulled-note and minting cases.
 
 ## New dependencies
 none
 
 ## For the reviewer
-- Riskiest: cache invalidation (total_changes catches untracked writes)
-- Background requests queue up to ~700 ms concurrently
-- Not built: a persisted snapshot of the queue input. Build it only if the phone still misses 150 ms.
+- Background requests wait up to 1.3 s under a constant sync; they are instant when cached.
