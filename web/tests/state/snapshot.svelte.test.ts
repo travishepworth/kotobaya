@@ -292,6 +292,93 @@ describe('instant start from the snapshot (PERF-SNAP)', () => {
 		expect(p.items.map((i) => i.card.id)).toEqual(['c2', 'c9']);
 	});
 
+	it('a failed first fetch: Retry offered, retried with backoff, and a later success unlocks grading', async () => {
+		await priorLoad(['c1', 'c2']);
+		await reload();
+		api.getReviewQueue.mockClear();
+		answerAll(0, () => queueOf(['c1', 'c2']));
+		api.getReviewQueue.mockRejectedValue(new TypeError('offline'));
+		const p = createReviewPage();
+		pages.push(p);
+		p.start(null);
+		await tick();
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(1);
+		expect(p.refreshFailed).toBe(true);
+		expect(p.unconfirmed).toBe(true);
+		expect(p.loadFailed).toBe(false);
+		// Backoff: 1 s, 2 s, 5 s, then every 15 s.
+		await tick(1000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(2);
+		await tick(2000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(3);
+		await tick(5000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(4);
+		await tick(14_000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(4);
+		api.getReviewQueue.mockImplementation(async () => queueOf(['c1', 'c2']));
+		await tick(1000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(5);
+		expect(p.unconfirmed).toBe(false);
+		expect(p.refreshFailed).toBe(false);
+		expect(p.stale).toBe(false);
+		p.flip();
+		void p.grade(good);
+		await tick();
+		expect(api.answerReview).toHaveBeenCalledTimes(1);
+		await tick(60_000);
+		expect(api.getReviewQueue.mock.calls.length).toBeLessThan(8); // no confirm retries after success
+	});
+
+	it('the Retry button (reload) confirms the snapshot card at once', async () => {
+		await priorLoad(['c1']);
+		await reload();
+		answerAll(0, () => queueOf(['c1']));
+		api.getReviewQueue.mockRejectedValueOnce(new TypeError('offline'));
+		const p = createReviewPage();
+		pages.push(p);
+		p.start(null);
+		await tick();
+		expect(p.refreshFailed).toBe(true);
+		await p.reload();
+		expect(p.unconfirmed).toBe(false);
+	});
+
+	it('an online event retries the confirming fetch at once', async () => {
+		await priorLoad(['c1']);
+		await reload();
+		api.getReviewQueue.mockClear();
+		answerAll(0, () => queueOf(['c1']));
+		api.getReviewQueue.mockRejectedValueOnce(new TypeError('offline'));
+		const p = createReviewPage();
+		pages.push(p);
+		p.start(null);
+		await tick();
+		expect(p.unconfirmed).toBe(true);
+		window.dispatchEvent(new Event('online'));
+		await tick();
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(2);
+		expect(p.unconfirmed).toBe(false);
+	});
+
+	it('leaving while the confirming fetch is in flight, then coming back, fetches again', async () => {
+		await priorLoad(['c1']);
+		await reload();
+		api.getReviewQueue.mockClear();
+		answerAll(0, () => queueOf(['c1']));
+		api.getReviewQueue.mockImplementationOnce(() => new Promise(() => {})); // in flight when the screen is left
+		const p = createReviewPage();
+		pages.push(p);
+		p.start(null);
+		await tick();
+		p.pauseSession();
+		await tick(1000);
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(1);
+		p.resume();
+		await tick();
+		expect(api.getReviewQueue).toHaveBeenCalledTimes(2);
+		expect(p.unconfirmed).toBe(false);
+	});
+
 	it('a snapshot of an ended study day is not used', async () => {
 		await priorLoad(['c1']);
 		await reload();

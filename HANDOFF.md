@@ -1,26 +1,25 @@
-# HANDOFF PERF-SNAP (attempt 2)
+# HANDOFF PERF-SNAP (attempt 3)
 
 STATUS: DONE
 BRANCH: t/PERF-SNAP-instant-home
-CHECK: `make check MODULE=web` → green (386 tests)
+CHECK: `make check MODULE=web` → green (390 tests)
 
 ## Changed (≤ 6 lines)
-- `review.svelte.ts`: snapshot card shown at once, grading disabled (`unconfirmed`, GradeBar `disabled`) until first full fetch; kept in front only if in `fresh`, else replaced; no prefetch merge while unconfirmed. `dueFirstAt` set from snapshot.
-- Queue never saved while `keepGoing` (review screen and Home, which saves only `keep_going=false` responses).
-- `today.svelte.ts`: mark (outbox seq + pending) per request; saves items minus `answeredSinceMark` (as fetchQueue).
-- `snapshot.svelte.ts`: queue section with `dayEndsAt <= now` reads as missing. Boot 401 drops snapshot (memory + IDB).
-- Decks/struggle/stats get `stale`; Home shows "Updating…" per panel.
+- `review.svelte.ts`: added `confirmSnapshot()`. If the first fetch fails while a snapshot card is unconfirmed, `refreshFailed` is set and retries follow a backoff (`CONFIRM_RETRY_MS` 1 s, 2 s, 5 s, then every 15 s). One fetch runs at a time, and retries stop once the card is confirmed or the screen is left.
+- The confirm runs at once on `online` (listener removed on dispose), from `onVisible`, and from `resume()` when the session was left with its fetch in flight.
+- `routes/review/+page.svelte`: a quiet "Try again" (`reload()`) shows next to the disabled grade bar while the card is unconfirmed and the fetch failed.
+- Attempt 1–2 behaviour unchanged (snapshot, grade lock, keep-going/acked filtering, day check, 401 drop, stale notes).
 
 ## Acceptance → tests (`web/tests/state/snapshot.svelte.test.ts`)
-- 1 → "…not graded until confirmed", "…lists the snapshot card…can be graded", "…does not list the snapshot card…replaced, never graded", "a snapshot of an ended study day is not used"
-- 2 → "Keep going pages are never saved (review screen and Home)"
-- 3 → "Home does not save a card answered (and acknowledged) while its fetch was in flight"
-- 6/7 → Home render test checks all notes; "a 401 at start-up drops the snapshot…"
-- 1–3 guards mutation-checked (tests fail without them).
+- Failed first fetch, later success unlocks → "a failed first fetch: Retry offered, retried with backoff, and a later success unlocks grading"
+- Retry button → "the Retry button (reload) confirms the snapshot card at once"
+- Online → "an online event retries the confirming fetch at once"
+- Leave mid-fetch, resume → "leaving while the confirming fetch is in flight, then coming back, fetches again"
+- These three tests fail when the retry, online or resume paths are removed.
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- If the first fetch fails or times out, the snapshot card stays shown but cannot be graded (marked "Updating…"). It unlocks when a later full fetch succeeds.
+- After the backoff reaches its cap, an offline page fetches every 15 s for as long as it stays unconfirmed.
 - Home still fetches the queue with limit 30 (it was 1).

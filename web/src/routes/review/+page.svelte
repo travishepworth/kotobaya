@@ -473,6 +473,12 @@
 	<footer class="actions" bind:this={actionsEl}>
 		{#if !s.loaded || s.display}
 			<div class="slot">
+				{#if s.unconfirmed && s.refreshFailed}
+					<!-- PERF-SNAP: the card is from the last visit and could not be checked yet; it also retries by itself. -->
+					<Button variant="quiet" size="sm" icon="sync" loading={s.busy} onclick={() => void s.reload()} data-testid="rv-confirm-retry">
+						{rv('rv.slow.retry')}
+					</Button>
+				{/if}
 				{#if s.gradeLocked}
 					<!-- An unconfirmed answer: a regrade would reuse its id (the server keeps the first), so only Retry. -->
 					<div class="swap">

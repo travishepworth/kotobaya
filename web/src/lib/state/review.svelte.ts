@@ -91,6 +91,8 @@ const PREFETCH_LOW = 10;
 const PENDING_MAX_MS = 30_000;
 /** ... and stops after this many refetches in a row (the view then offers a quiet Check again): no endless polling. */
 const PENDING_MAX_TRIES = 5;
+/** PERF-SNAP: the fetch that confirms a snapshot card is retried after a failure this long after, then every 15 s. */
+export const CONFIRM_RETRY_MS = [1000, 2000, 5000, 15_000] as const;
 /** C5: `to_materialize` > 0 with nothing served: fetch again every 5 s while the screen is open. */
 const MATERIALIZE_POLL_MS = 5000;
 
@@ -674,6 +676,11 @@ export class ReviewPage {
 	fromSnapshot = $state(false);
 	/** The numbers and cards come from the snapshot and no fetch has replaced them yet: a quiet "updating" note. */
 	stale = $state(false);
+	/** The generation whose confirming fetch is in flight (null: none); a dispose bumps `gen`, so it no longer counts. */
+	private confirmingGen: number | null = null;
+	private confirmTries = 0;
+	private confirmTimer: ReturnType<typeof setTimeout> | null = null;
+	private onlineListener: (() => void) | null = null;
 	/**
 	 * An action failed and the user should know. Since C8 (LF-W1) a failed answer is never put back (it stays in
 	 * the outbox and is retried), so only `undoFailed` is set: an undo the server refused for good.
@@ -911,6 +918,7 @@ export class ReviewPage {
 		this.loaded = true;
 		this.syncCard();
 		this.scheduleDueFetch();
+		this.listenOnline();
 		void outbox.load().then(() => {
 			if (gen !== this.gen || !this.fromSnapshot) return;
 			const back = outbox.answerCards();
@@ -920,6 +928,58 @@ export class ReviewPage {
 			this.syncCard();
 		});
 		return true;
+	}
+
+	/**
+	 * PERF-SNAP: fetch the queue that confirms (or replaces) the snapshot card. On failure the view offers a Retry
+	 * (`refreshFailed`) and it is tried again by itself (CONFIRM_RETRY_MS), at once when the browser is online again
+	 * or the tab visible. One at a time; nothing once the snapshot is confirmed or the screen is left.
+	 */
+	private async confirmSnapshot(): Promise<void> {
+		if (!this.fromSnapshot || this.disposed || this.isDrill || this.confirmingGen === this.gen) return;
+		this.clearConfirm();
+		const gen = this.gen;
+		this.confirmingGen = gen;
+		try {
+			await this.fetchQueue();
+		} catch {
+			if (gen === this.gen && !this.disposed) this.refreshFailed = true;
+		} finally {
+			if (this.confirmingGen === gen) this.confirmingGen = null;
+		}
+		if (gen === this.gen) this.scheduleConfirm();
+	}
+
+	/** The next automatic try of `confirmSnapshot` (backoff), while the snapshot is still unconfirmed. */
+	private scheduleConfirm(): void {
+		this.clearConfirm();
+		if (!this.fromSnapshot || this.disposed || this.isDrill) {
+			this.confirmTries = 0;
+			return;
+		}
+		const delay = CONFIRM_RETRY_MS[Math.min(this.confirmTries, CONFIRM_RETRY_MS.length - 1)];
+		this.confirmTries++;
+		this.confirmTimer = setTimeout(() => {
+			this.confirmTimer = null;
+			void this.confirmSnapshot();
+		}, delay);
+	}
+
+	private clearConfirm(): void {
+		if (this.confirmTimer !== null) clearTimeout(this.confirmTimer);
+		this.confirmTimer = null;
+	}
+
+	/** Back online while the snapshot is unconfirmed: try at once. */
+	private listenOnline(): void {
+		if (this.onlineListener || typeof window === 'undefined') return;
+		this.onlineListener = () => void this.confirmSnapshot();
+		window.addEventListener('online', this.onlineListener);
+	}
+
+	private unlistenOnline(): void {
+		if (this.onlineListener && typeof window !== 'undefined') window.removeEventListener('online', this.onlineListener);
+		this.onlineListener = null;
 	}
 
 	/**
@@ -1103,6 +1163,7 @@ export class ReviewPage {
 	/** The tab became visible again: timers are throttled while hidden, so catch up at once if the card is due. */
 	onVisible(): void {
 		expireKeepGoingIfIdle(); // ADR-039 idle amendment: a page left open for hours has gone idle
+		if (this.fromSnapshot) void this.confirmSnapshot(); // PERF-SNAP: an unconfirmed card is checked at once
 		const due = this.wakeTarget();
 		if (this.isDrill || !due || this.busy || this.disposed) return;
 		if (Date.now() >= due.getTime() && Date.now() - this.lastWake >= WAKE_MIN_MS) {
@@ -1136,6 +1197,12 @@ export class ReviewPage {
 		if (!this.isDrill) {
 			this.scheduleDueFetch();
 			this.scheduleWake();
+			// PERF-SNAP: left while the confirming fetch was in flight (it was aborted): fetch again now.
+			if (this.fromSnapshot) {
+				this.listenOnline();
+				this.confirmTries = 0;
+				void this.confirmSnapshot();
+			}
 		}
 	}
 
@@ -1148,6 +1215,8 @@ export class ReviewPage {
 		if (this.dueTimer !== null) clearTimeout(this.dueTimer);
 		this.dueTimer = null;
 		clearKeepGoing(); // ADR-039: keep going lasts one review visit
+		this.clearConfirm();
+		this.unlistenOnline();
 		this.abort.abort();
 	}
 
@@ -1279,7 +1348,10 @@ export class ReviewPage {
 		this.fromSnapshot = false;
 		this.stale = false;
 		// PERF-SNAP: the scheduled queue starts from the snapshot at once; the fetches below replace it.
+		this.clearConfirm();
+		this.confirmTries = 0;
 		const snap = source === null && this.applySnapshot(gen);
+		if (snap) this.confirmingGen = gen; // this start's fetch is the confirming one
 		void (async () => {
 			try {
 				// In parallel: the queue is the slow call, nothing about it needs the settings.
@@ -1289,8 +1361,15 @@ export class ReviewPage {
 			} catch {
 				// The client toasted (a timeout shows the error state only). From a snapshot: keep it, still "updating".
 				if (gen === this.gen && !snap) this.loadFailed = true;
+				// PERF-SNAP: the snapshot card is still unconfirmed: a Retry, and tries by itself with backoff.
+				if (gen === this.gen && snap && this.fromSnapshot) {
+					this.refreshFailed = true;
+					this.confirmingGen = null;
+					this.scheduleConfirm();
+				}
 			} finally {
 				if (gen === this.gen) this.loaded = true;
+				if (this.confirmingGen === gen) this.confirmingGen = null;
 			}
 		})();
 	}
