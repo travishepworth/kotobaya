@@ -486,7 +486,7 @@ Checked in this order; the first failure decides the code.
 | `clock_ahead` | `wall(hlc)` is more than 24 h + 60 s, or a review's `reviewed_at` more than 24 h, after the server's clock. | every op; `review.logged` (3.4) |
 | `clock_behind` | `wall(hlc)`, or a review's `reviewed_at`, before 2020-01-01. | every op; `review.logged` (3.4) |
 | `invalid_value` | A cross-field or cross-row rule is violated (e.g. `entry_seq` on a kanji note). | per op, OPS.md |
-| `invalid_target` | The target exists but this op may not address it (item ops on a media deck, client `deck.deleted` on a media deck). | per op, OPS.md |
+| `invalid_target` | The target exists but this op may not address it (item ops on a media deck, client `deck.deleted` on a media deck whose media is live). | per op, OPS.md |
 | `immutable` | Attempt to delete or cripple a built-in (note types, the Default preset). | per op, OPS.md |
 
 - **How `op_too_large` is measured (C-1).** The server parses the request body as plain JSON, and
