@@ -45,7 +45,7 @@ kubectl -n kotobaya rollout status deploy/kotobaya-api deploy/kotobaya-web
 ```
 - [ ] `helm -n kotobaya history kotobaya --max 1`: note the revision.
 - [ ] Pods Running, api init container (migrations) completed, no restarts.
-- [ ] `curl -s https://kotobaya.batk.me/api/v1/version` (or the web footer) shows the new version.
+- [ ] `curl -s https://kotobaya.batk.me/api/v1/health` shows the new api `version`; `kubectl -n kotobaya get deploy kotobaya-web -o jsonpath="{..image}"` shows the new web tag.
 - [ ] Smoke: log in on the web, open Home and Review, grade one card, check the api logs show no errors.
 - [ ] Visual check of every UI change in this release: take a browser screenshot and look at it. No overlap, everything laid out in normal flow.
 

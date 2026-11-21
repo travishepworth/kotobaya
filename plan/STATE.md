@@ -5,9 +5,11 @@ Updated: run 39 (2026-11-21)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## RUN 39 (2026-11-21): local-first round DONE — t/LF-int merged to main ffb952de (make test green), pushed.
-RELEASE in progress: pin ffb952de, worktree /tmp/claude-1000/-home-travmonkey-repos-kotobaya/219f69f7-1caa-44e7-b991-357a049dd910/scratchpad/rel0131. api 0.1.31 + web 0.1.36 (worker stays 0.1.21; no migrations). APK 0.1.41 code 141. Predeploy dump ~/kotobaya-backups/predeploy-api-0.1.31-20261121T012755Z.dump.
-Note: ~/repos/kubernetes/kotobaya/values.yaml tags were stale (0.1.28/0.1.33) vs live helm values (0.1.30/0.1.35) -> bump file to new tags.
-Then: helm upgrade, verify live, APK -> tell user "ready", they plug phone in, adb install, screenshot check (FirstSync, needs-connection, Home placeholders).
+LIVE: helm rev 46 (2026-11-21): api 0.1.31 + web 0.1.36 (pin ffb952de), worker 0.1.21. No migrations. Health ok. Predeploy dump ~/kotobaya-backups/predeploy-api-0.1.31-20261121T012755Z.dump. values.yaml now matches live (was stale; backup in scratchpad/values.yaml.bak).
+APK 0.1.41 (code 141, cert ec6b7f45 ok) at ~/kotobaya-apk/kotobaya-0.1.41-release.apk — READY, waiting for user to plug phone in -> adb install -r, check user 10, screenshots (FirstSync, needs-connection, Home placeholders, review).
+Authenticated smoke (plan/smoke/smoke.sh) NOT run: no token access (.env.local read denied). Release worktree rel0131 kept until phone verified.
+Release checklist now in deploy/RELEASE.md.
+
 ## RESUME HERE (run 38, 2026-11-20; was run 37) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.
