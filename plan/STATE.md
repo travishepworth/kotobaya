@@ -5,7 +5,7 @@ Updated: run 39 (2026-11-21)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## RUN 39 (2026-11-21): RESUMED by user ("continue").
-Running: C-32 (architect, opus, from origin/t/LF-int) · reviewer LF-A8b (merge after C-32) · reviewer LF-W1 (then LF-W2).
+Running: C-32 (architect, opus, from origin/t/LF-int) · LF-A8b APPROVED (merge after C-32; android re-check OK: only 2 known LocalParity fails) · LF-W1 MERGED into LF-int 2fa62b30 · LF-W2 running (writer).
 Worktrees: LF-A8b .claude/worktrees/agent-a8370fb45dbf2f811; LF-W1 .claude/worktrees/agent-a665afda378750992; LF-int recreated at /tmp/claude-1000/-home-travmonkey-repos-kotobaya/219f69f7-1caa-44e7-b991-357a049dd910/scratchpad/lfint. LF-A2b worktree/branch removed (merged).
 Open gap: logout doesn't call clearOutbox() -> fold into LF-W2.
 Next after these: LF-W2 (after W1), LF-GOLD + LF-X1 (after A8b), LF-W3 (after W2), then t/LF-int -> main + ONE release.

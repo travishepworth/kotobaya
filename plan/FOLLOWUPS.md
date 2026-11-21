@@ -539,3 +539,7 @@
 - LF-A5 (run 36): delete now-unused LocalCardQuery + CardQueryResult.Forward (production binds ReplicaCardQuery); indexSeqLists depends on core's exact SQL text (guarded by SeqListRewriteTest).
 - LF-A6 (run 36): no bridge hook to re-evaluate dict auto-install on sync outcome (hourly UNMETERED worker instead); search misses not gap-filled (no query kind); DictLookup.remote unused (kept for ParityDevice).
 - LOOP-31-WEB review minor 5: wire QueueItem has no `kind`; web derives learning/review from card.state in itemKind (review.svelte.ts). Add `kind` to QueueItem (contract C-ticket) or state the mapping in C7.
+- LF-A8b (review minor): MediaWritesTest any-order convergence should install() and compare MEDIA_SEGMENT, SENTENCE, OCCURRENCE, SENTENCE_GRAMMAR_SPAN (pull path of media.deleted).
+- LF-A8b (review minor): GrammarRoutes.listGrammarPoints title sort is code-point vs server Postgres collation -> check vs LF-GOLD golden.
+- LF-A8b (review minor): BuiltInSeedsTest parses ../server OpRules.kt by relative path + regex -> use checked-in fixture.
+- LF-A8b (review minor): NoteTypeWrites + presets/notetypes tests outside owned paths (orchestrator-requested) -> note in archived handoff.

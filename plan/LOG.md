@@ -1472,3 +1472,9 @@
 2026-11-21T00:00:00Z - RESUME run 39 (user: continue); lfint worktree recreated; LF-A2b worktree removed
 2026-11-21T00:00:00Z C-32 DISPATCH architect (opus) from origin/t/LF-int
 2026-11-21T00:00:00Z LF-A8b reviewer DISPATCH; LF-W1 reviewer DISPATCH
+2026-11-21T00:00:00Z LF-A8b REVIEW_APPROVE (4 minors -> FOLLOWUPS); merge waits on C-32; android re-check started
+2026-11-21T00:00:00Z LF-W1 REVIEW_CHANGES (1 major: addedAt order after clock goes back; 5 minor) -> writer-senior attempt 2; app-start replay -> LF-W2
+2026-11-21T00:00:00Z LF-A8b CHECK android 739 tests, only the 2 known LocalParity fails (unrecorded goldens) -> merge after C-32
+2026-11-21T00:00:00Z LF-W1 HANDOFF attempt 2 (354 web tests); web re-check + re-review running
+2026-11-21T00:00:00Z LF-W1 REVIEW_APPROVE r2 (2 minors -> LF-W2 item 7); merged + pushed t/LF-int 2fa62b30; worktree removed
+2026-11-21T00:00:00Z LF-W2 DISPATCH writer (ticket +app-start outbox replay, logout clearOutbox, W1 minors)
