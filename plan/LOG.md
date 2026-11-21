@@ -1499,3 +1499,6 @@
 2026-11-21T00:00:00Z RELEASE: helm rev 46 api 0.1.31 + web 0.1.36 (pin ffb952de) LIVE; health ok, no api errors; values.yaml synced (was stale); APK 0.1.41/141 built, cert ok -> waiting for phone
 2026-11-21T00:00:00Z RELEASE: APK 0.1.41/141 INSTALLED (user 0 + 10); screenshots stopped at user request
 2026-11-21T00:00:00Z BUG APK 0.1.41: local handlers seconds-slow on phone (getReviewQueue 28 s, stats 12.8 s, decks 8 s); Home review box ~20 s. PERF-LF DISPATCH writer-senior (benchmark + fix)
+2026-11-21T00:00:00Z PERF-LF scope raised: benchmark on real data (predeploy dump -> server -> real SyncClient replica); targets queue p95<150 ms concurrent, Home handlers<300 ms, answer->next<50 ms; no deferrals
+2026-11-21T00:00:00Z PERF-SNAP DISPATCH writer-senior (web: instant Home + review from persisted snapshot)
+2026-11-21T00:00:00Z RULE: no phone release until per-handler timings measured on the real phone (KotobayaLoad log) meet targets
