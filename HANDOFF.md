@@ -1,23 +1,20 @@
 # HANDOFF LF-GOLD
 
-STATUS: BLOCKED
+STATUS: DONE
 BRANCH: t/LF-GOLD
-CHECK: `make check MODULE=server` → red (3 scenarios unrecorded; 5 test failures); `make check MODULE=android` → red (LocalParityTest 2 failures; ParityExpectTest green)
+CHECK: `make check MODULE=server` → green; `make check MODULE=android` → green
 
 ## Changed (≤ 6 lines)
-- fixtures/shell-parity/golden/: recorded 8 new goldens (RECORD=1): bulk-cards-all-actions-local, bulk-schedule-cards-local, card-writes-local, note-type-writes-local, preset-writes-local, queue-keep-going-target, stats-heatmap-retention-local, stats-summary-local
+- server/src/test/kotlin/kotobaya/parity/ParityServerHarness.kt: added GrammarModule, ConfusableModule, TtsModule handlers (same as Main.kt; no handler changes)
+- fixtures/shell-parity/golden/: 11 new goldens recorded (RECORD=1): the 8 earlier plus confusable-writes-local, grammar-writes-local, resolve-speech-local
 - Existing goldens unchanged (byte-identical)
 
 ## Acceptance → tests
-- 8 missing goldens recorded → ParityGoldenTest (RECORD=1)
-- Not recorded: confusable-writes-local, grammar-writes-local, resolve-speech-local → server answers 501 not_implemented; the recorder refuses to write them
+- 11 missing goldens recorded → ParityGoldenTest (55/55 green)
+- Android LocalParityTest (3/3) and ParityExpectTest (1/1) green; the 2 earlier LocalParityTest failures were the same unrecorded scenarios, not handler diffs
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Harness `server/src/test/kotlin/kotobaya/parity/ParityServerHarness.kt` wires no ConfusableModule, grammar module or resolveSpeech handler (owners: SHELL-P1 for harness; LF-A8 / LF-A6 for handlers, unverified).
-- Grammar title-sort check (LF-A8b): not evaluable; grammar-writes-local has no golden.
-
-## If BLOCKED
-QUESTION: Should the parity harness wire ConfusableModule, the grammar module and resolveSpeech so the 3 scenarios can be recorded (out of LF-GOLD's owned paths), or should those 3 goldens wait while LF-GOLD closes with 8 recorded?
+- Remaining diff, not fixed: GrammarRoutes.kt sorts titles with Keyset.TEXT_ASC (code point), server uses Postgres collation. Golden has one grammar item, so no order difference is visible. Owner: LF-A8b follow-up.
