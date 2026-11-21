@@ -1502,3 +1502,6 @@
 2026-11-21T00:00:00Z PERF-LF scope raised: benchmark on real data (predeploy dump -> server -> real SyncClient replica); targets queue p95<150 ms concurrent, Home handlers<300 ms, answer->next<50 ms; no deferrals
 2026-11-21T00:00:00Z PERF-SNAP DISPATCH writer-senior (web: instant Home + review from persisted snapshot)
 2026-11-21T00:00:00Z RULE: no phone release until per-handler timings measured on the real phone (KotobayaLoad log) meet targets
+2026-11-21T00:00:00Z PERF-SNAP HANDOFF (web 381; Home queue limit 1->30; optimistic session) -> web re-check + reviewer (touches review/outbox)
+2026-11-21T00:00:00Z PERF-SNAP REVIEW_CHANGES (blocker: snapshot cards gradable before fetch confirms -> duplicate reviews; 2 major) -> attempt 2; DECIDE: show snapshot card instantly, grade enabled after first fetch confirms
+2026-11-21T00:00:00Z PERF-SNAP r2 REVIEW_CHANGES (1 major: ungradable snapshot card with no retry after failed first fetch) -> attempt 3
