@@ -5,10 +5,11 @@ Updated: run 39 (2026-11-21)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
 ## RUN 39 (2026-11-21): RESUMED by user ("continue").
-Running: C-32 (architect, opus, from origin/t/LF-int) · LF-A8b APPROVED (merge after C-32; android re-check OK: only 2 known LocalParity fails) · LF-W1 MERGED into LF-int 2fa62b30 · LF-W2 running (writer).
-Worktrees: LF-A8b .claude/worktrees/agent-a8370fb45dbf2f811; LF-W1 .claude/worktrees/agent-a665afda378750992; LF-int recreated at /tmp/claude-1000/-home-travmonkey-repos-kotobaya/219f69f7-1caa-44e7-b991-357a049dd910/scratchpad/lfint. LF-A2b worktree/branch removed (merged).
-Open gap: logout doesn't call clearOutbox() -> fold into LF-W2.
-Next after these: LF-W2 (after W1), LF-GOLD + LF-X1 (after A8b), LF-W3 (after W2), then t/LF-int -> main + ONE release.
+Merged into t/LF-int this run (pushed 84f7cc81): LF-W1, LF-W2, C-32, LF-A8b. All their worktrees/branches removed.
+Running: LF-W3 (writer-light, web) · LF-GOLD (writer-light, goldens; also check grammar title sort server vs android) · LF-X1 (writer, acceptance).
+LF-int worktree: /tmp/claude-1000/-home-travmonkey-repos-kotobaya/219f69f7-1caa-44e7-b991-357a049dd910/scratchpad/lfint.
+Known on LF-int: server ParityGoldenTest 13 fails + android LocalParity 2 fails -> LF-GOLD fixes.
+Next: when W3/GOLD/X1 merged and ALL modules green on t/LF-int -> merge t/LF-int to main, make test, then ONE release (api+web deploy + APK; user plugs phone in).
 ## RESUME HERE (run 38, 2026-11-20; was run 37) — LOCAL-FIRST round (ADR-050, ADR-051)
 User decisions: local-first shell for EVERYTHING; desktop web partial; Keep going on every end screen = extra new cards (never review ahead), final done screen only when no new cards + nothing left; ONE release at the end (api+web deploy + one APK).
 C-31 alone: server (8 fail: ParityGoldenTest) + android (5 fail: RouteTableTest, Parity*) red = expected drift (unrecorded goldens, cached class unimplemented) -> chain via integration branch t/LF-int, merge to main when all modules green.

@@ -10,7 +10,7 @@
 - Spec: Sync and offline (offline guarantees)
 - Contracts: SYNC.md 11, 12, 13; SHELL.md 8, L-9
 - Decisions: ADR-050, 051
-- Design: scratchpad `local-first-design.md` (orchestrator: copy to `docs/design/local-first.md` or paste the named section into this ticket).
+- Design: plan/tickets/LF-DESIGN.md
 
 ## Do
 Extend the offline/sync simulation: a transport that (a) never answers, (b) answers after 8 s, (c) drops every second request. Script a day: open Home, review 60 cards incl. new cards from deck entries with Keep going, search, open dictionary entries, edit a note, bulk-tag — against the shell `LocalApi` with a virtual clock. Then heal the network and sync two devices + server.

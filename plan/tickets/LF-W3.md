@@ -10,7 +10,7 @@
 - Spec: Clients → Android app
 - Contracts: shell.yaml `ShellSyncStatus.first_sync`; SHELL.md 9.4
 - Decisions: ADR-050
-- Design: scratchpad `local-first-design.md` (orchestrator: copy to `docs/design/local-first.md` or paste the named section into this ticket).
+- Design: plan/tickets/LF-DESIGN.md
 
 ## Do
 In shell mode, while `first_sync.done` is false show a full-screen progress ("Setting up: N of M", indeterminate when `total` is null) driven by `shell.sync` events; afterwards never again. Remote-only actions (design section 3, last column) get the existing "needs connection" affordance when `shell.connectivity` says offline. All strings through i18n.

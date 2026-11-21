@@ -1478,3 +1478,9 @@
 2026-11-21T00:00:00Z LF-W1 HANDOFF attempt 2 (354 web tests); web re-check + re-review running
 2026-11-21T00:00:00Z LF-W1 REVIEW_APPROVE r2 (2 minors -> LF-W2 item 7); merged + pushed t/LF-int 2fa62b30; worktree removed
 2026-11-21T00:00:00Z LF-W2 DISPATCH writer (ticket +app-start outbox replay, logout clearOutbox, W1 minors)
+2026-11-21T00:00:00Z C-32 HANDOFF (OPS.md + SYNC.md 5.3 + OpRules; contracts green, server only ParityGolden 13 known) -> reviewer + architect 2nd pass; re-check running
+2026-11-21T00:00:00Z C-32 architect 2nd pass APPROVE (2 doc lows: SYNC.md 10.2 Retry row, OPS.md:334 wording; SYNC.md edit was orchestrator-authorized)
+2026-11-21T00:00:00Z C-32 REVIEW_APPROVE (doc minors -> writer tweak round; DeckApi 409 -> FOLLOWUPS)
+2026-11-21T00:00:00Z LF-W2 CHECK_GREEN (web 360) -> merged + pushed t/LF-int a849879a; DISPATCH LF-W3 (writer-light)
+2026-11-21T00:00:00Z C-32 re-check: contracts green, server only ParityGolden 13 known -> MERGE into t/LF-int dcad0db6
+2026-11-21T00:00:00Z LF-A8b MERGE into t/LF-int 84f7cc81 (rebase touched no android) -> pushed; DISPATCH LF-GOLD (writer-light) + LF-X1 (writer)
