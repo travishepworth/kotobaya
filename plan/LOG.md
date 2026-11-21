@@ -1494,3 +1494,5 @@
 2026-11-21T00:00:00Z LF-X1 CHECK android 772 / 2 known LocalParity (own-flavor BlackHole xml was stale from mutation run; fresh run 9/9) -> merged + pushed t/LF-int
 2026-11-21T00:00:00Z LF-GOLD HANDOFF DONE (11 goldens; harness wiring authorized; server 55/55 parity, android LocalParity green) -> merged t/LF-int 8391d189
 2026-11-21T00:00:00Z LF-int: all round tickets merged; make test (all modules) running before merge to main
+2026-11-21T00:00:00Z LF-int MERGED to main ffb952de (make test green all modules); pushed
+2026-11-21T00:00:00Z RELEASE start: pin ffb952de (worktree scratchpad/rel0131); predeploy dump ~/kotobaya-backups/predeploy-api-0.1.31-20261121T012755Z.dump (pg_restore -l ok); building api 0.1.31, web 0.1.36, APK 0.1.41/141
