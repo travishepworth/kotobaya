@@ -100,6 +100,55 @@ class HomeLoadBenchmarkTest {
         }
     }
 
+    /** Each handler alone right after a pulled note op (a deck entry's new note and card, as materializing writes them). */
+    private fun afterNoteWrite(): Map<String, Long> = (others + queue).associate { c ->
+        c.name to (0 until 3).maxOf {
+            device.store.transaction { tx -> pulledNote(tx) }
+            timed(c)
+        }
+    }
+
+    /** Keep going with a large new-card target: the queue materializes drawn deck entries (notes and cards minted here). */
+    private val minting = Call("getReviewQueue (minting)", "/api/v1/review/queue", "limit=30&keep_going=true&keep_going_new_target=100000")
+
+    /** Entries of the decks with no note yet (what materializing and other devices' deck notes create). */
+    private val freeEntries: ArrayDeque<Long> by lazy {
+        ArrayDeque(
+            driver.executeQuery(
+                null,
+                "SELECT DISTINCT entry_seq FROM deck_item WHERE entry_seq IS NOT NULL AND entry_seq NOT IN (SELECT entry_seq FROM note WHERE entry_seq IS NOT NULL) ORDER BY entry_seq DESC LIMIT 2000",
+                { c: SqlCursor ->
+                    val out = ArrayList<Long>()
+                    while (c.next().value) out += checkNotNull(c.getLong(0))
+                    QueryResult.Value(out)
+                },
+                0,
+            ).value,
+        )
+    }
+
+    /** A pulled `note.created` + `card.created` for a deck entry (origin deck, fields {}), as the applier writes it. */
+    private fun pulledNote(tx: kotobaya.sync.client.store.StoreTransaction<kotobaya.android.sync.SqlLearningTables>) {
+        val seq = synchronized(freeEntries) { freeEntries.removeFirstOrNull() } ?: return
+        val n = pulled.incrementAndGet()
+        val noteId = "0193aaaa-0000-7000-8000-%012x".format(n)
+        tx.learning.put(
+            LearningTable.NOTE,
+            mapOf(
+                "id" to JsonString(noteId), "note_type_id" to JsonString("00000000-0000-7000-8000-000000000101"), "type" to JsonString("vocab"),
+                "entry_seq" to JsonNumber(seq.toDouble()), "origin" to JsonString("deck"), "created_by_device_id" to JsonString("00000000-0000-7000-8000-000000000001"),
+                "created_at" to JsonNumber(now.toDouble()), "updated_at" to JsonNumber(now.toDouble()),
+            ),
+        )
+        tx.learning.put(
+            LearningTable.CARD,
+            mapOf(
+                "id" to JsonString("0193aaab-0000-7000-8000-%012x".format(n)), "note_id" to JsonString(noteId), "kind" to JsonString("meaning"),
+                "created_at" to JsonNumber(now.toDouble()), "updated_at" to JsonNumber(now.toDouble()),
+            ),
+        )
+    }
+
     private val startedCards: List<String> by lazy {
         driver.executeQuery(null, "SELECT id FROM card WHERE state <> 'new' AND deleted_at IS NULL ORDER BY id LIMIT 500", { c: SqlCursor ->
             val out = ArrayList<String>()
@@ -108,10 +157,6 @@ class HomeLoadBenchmarkTest {
         }, 0).value
     }
 
-    /**
-     * A pull applying: short write transactions, each a few reviews another device logged (a new `review_log` row and
-     * its card's new schedule), through the learning tables as the applier writes them.
-     */
     private val pulled = java.util.concurrent.atomic.AtomicInteger()
 
     /** [count] reviews another device logged, as a pull applies them: a new `review_log` row and the card's new schedule. */
@@ -134,10 +179,14 @@ class HomeLoadBenchmarkTest {
         }
     }
 
+    /** A pull applying: short write transactions, each five reviews and one deck note of another device. */
     private fun syncWriter(running: AtomicBoolean): Thread = Thread {
         val rnd = Random(9)
         while (running.get()) {
-            device.store.transaction { tx -> pulledReviews(tx, rnd, 5) }
+            device.store.transaction { tx ->
+                pulledReviews(tx, rnd, 5)
+                pulledNote(tx)
+            }
             Thread.sleep(20)
         }
     }
@@ -186,18 +235,22 @@ class HomeLoadBenchmarkTest {
         }
         val single = alone()
         val changed = afterChange()
+        val noted = afterNoteWrite()
+        val minted = (0 until 5).map { timed(minting) }
         val rounds = (0 until 5).map { homeOpen() }
         val queueTimes = rounds.flatten().filter { it.first == queue.name }.map { it.second }
         val answered = answers(12).drop(2)
         val report = buildString {
             appendLine("PERF-LF replica: ${seeded.notes} notes, ${seeded.cards} cards, ${seeded.reviews} reviews, ${seeded.deckItems} deck items")
-            single.forEach { (k, v) -> appendLine("  alone      $k: $v ms (after a pulled review: ${changed[k]} ms)") }
+            single.forEach { (k, v) -> appendLine("  alone      $k: $v ms (after a pulled review: ${changed[k]} ms; after a pulled note: ${noted[k]} ms)") }
+            appendLine("  getReviewQueue minting deck entries (keep going): ${minted.joinToString()} ms")
             rounds.last().forEach { (k, v) -> appendLine("  concurrent $k: $v ms") }
             appendLine("  concurrent getReviewQueue over ${queueTimes.size} calls: p95 ${p95(queueTimes)} ms, max ${queueTimes.max()} ms")
             appendLine("  answerReview p95 ${p95(answered.map { it.first })} ms; next getReviewQueue p95 ${p95(answered.map { it.second })} ms")
         }
         println(report)
-        assertTrue((single.values + changed.values).all { it < ALONE_MS }, "a handler alone took over $ALONE_MS ms:\n$report")
+        assertTrue((single.values + changed.values + noted.values).all { it < ALONE_MS }, "a handler alone took over $ALONE_MS ms:\n$report")
+        assertTrue(minted.drop(1).all { it < ALONE_MS }, "getReviewQueue while minting:\n$report")
         assertTrue(p95(queueTimes) < QUEUE_MS, "getReviewQueue during Home's load and a sync:\n$report")
         assertTrue(p95(answered.map { it.first }) < ANSWER_MS, "answerReview:\n$report")
     }
