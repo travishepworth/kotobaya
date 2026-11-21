@@ -77,13 +77,12 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| PERF-GATE | writer (sonnet) | 1 | t/PERF-GATE-device-timing | 2026-11-21 |
 
 
 ## Queued
 (PERF-LF MERGED 2026-11-21; android check green after rebase.)
 P11 perf (2026-11-21). Rule from the user: an idea becomes a ticket only once it is validated against code and measurements.
-- PERF-GATE (sonnet, low): VALIDATED (BridgeCore.kt:98 clock includes gate, lane and mutex waits; no benchmark, profile or minify setup). Next after the PERF-LF merge.
+- PERF-GATE: MERGED 43d08609 (review CHANGES r1 -> fixed: setprop reset). NEXT: phone run needs user go (install test APK + script force-stops/starts app): `make perf-device ARGS="--user 10"` and with --speed. Was VALIDATED (BridgeCore.kt:98 clock includes gate, lane and mutex waits; no benchmark, profile or minify setup). Next after the PERF-LF merge.
 - PERF-SNAP2: WITHDRAWN. Premise false: review already saves the queue snapshot after every answer (review.svelte.ts:1575 and others), and Home revalidates on sync.changed.
 - plan/proposals/PERF-WARM.md, STATS-CACHED.md: UNVALIDATED, waiting for PERF-GATE data. The "queue first on the lane" item was false (the queue is not on the lane).
 - Ideas: baseline profile + R8 (PERF-GATE --speed will size it); per-card check for snapshot grading (ADR-051).

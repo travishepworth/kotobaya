@@ -1517,3 +1517,4 @@
 - 2026-11-21: user: validate before ticketing. Verified in code: PERF-GATE ok; PERF-SNAP2 premise false (writer stopped, no output kept); PERF-WARM queue-first item false; WARM and STATS-CACHED moved to plan/proposals (unvalidated).
 - 2026-11-21: PERF-LF MERGED to main (rebased, android check exit 0).
 - 2026-11-21: PERF-GATE dispatched (writer sonnet, attempt 1).
+- 2026-11-21: PERF-GATE MERGED 43d08609 (android check exit 0 after rebase). Phone run awaits user go.
