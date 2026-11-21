@@ -22,3 +22,5 @@ none
 - Core's invariant checker is private to core tests, so `LoopInvariants` re-implements I1–I4 on the wire shape (plus a Keep-going dead-end probe in `Day`).
 - Network is virtual (counters, no sleeping): any UI call to upstream, any wait, or any sync-transport use during a UI request is a finding. Phone B stays offline all day so both phones materialize the same entries and the server merges.
 - The gradle hook edits the `:android` kotlin extension from `acceptance/build.gradle.kts` (owned path) rather than `android/build.gradle.kts`.
+- Mutation check 1 (reverted): forwarding `stats/summary` upstream made all three `noUiPathRequestWaitsForTheNetwork*` fail ("reached the network").
+- Mutation check 2 (reverted): marking one of B's pending `review.logged` ops acked so it never pushed made all three `convergesAfterHealing*` fail (B vs server rows differ). The invariant tests stayed green, as expected.
