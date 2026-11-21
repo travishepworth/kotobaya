@@ -28,18 +28,13 @@ export function visibleSections<T extends { id: string }>(sections: readonly T[]
 }
 
 /**
- * The operations each route calls (operationIds of openapi.yaml), by path prefix. A route is gated behind
- * "needs connection" only when it has no operation the phone can answer: every operation is `proxy`.
+ * Remote-only operations (`proxy` in ops.json) reachable from a route, by path prefix. A route is gated behind
+ * "needs connection" only when every operation it calls is `proxy`: listing a route with any local, cached,
+ * local_or_proxy or hidden operation would gate its local reads offline. Since C-31 no route qualifies, so the
+ * table is empty. The remote-only actions that sit inside mixed routes (createDeck type=list, parse overrides,
+ * grammar rule tests, jpdb vocab mapping, job polling) need a per-action affordance instead (SHELL.md 9.4).
  */
-export const ROUTE_OPS: Readonly<Record<string, readonly string[]>> = {
-	'/stats': ['getStatsSummary', 'getStatsHeatmap', 'getStatsRetention', 'getStatsForecast', 'getStatsKnownWords', 'getStatsCalibration'],
-	'/media': ['listMedia', 'getMedia', 'getMediaCoverage', 'listMediaSentences', 'updateMedia', 'deleteMedia'],
-	'/import/mapping': ['listJpdbVocab', 'listMediaSentences'],
-	'/note-types': ['listNoteTypes', 'getNoteType', 'createNoteType', 'updateNoteType', 'deleteNoteType'],
-	'/struggle': ['listHotWords', 'listLeeches', 'listConfusables', 'listWordConfusables'],
-	'/decks': ['listDecks', 'getDeck', 'listDeckItems', 'listDeckLists', 'getDeckCoverage'],
-	'/dictionary': ['searchDictionary', 'getDictEntry', 'listEntryExamples', 'getKanji']
-};
+export const ROUTE_OPS: Readonly<Record<string, readonly string[]>> = {};
 
 /** True when no operation of the route can be answered without the server. */
 export function isProxyOnly(operationIds: readonly string[]): boolean {

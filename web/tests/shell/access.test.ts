@@ -37,6 +37,18 @@ describe('route gating table', () => {
 		for (const [route, list] of Object.entries(ROUTE_OPS)) for (const id of list) expect(CLASSES[id], `${route}: ${id}`).toBeDefined();
 	});
 
+	it('the table holds only remote-only (proxy) operations, never local, cached, local_or_proxy or hidden ones', () => {
+		for (const [route, list] of Object.entries(ROUTE_OPS)) for (const id of list) expect(CLASSES[id], `${route}: ${id}`).toBe('proxy');
+	});
+
+	it('LF-W3: remote-only actions inside mixed routes do not gate the route, online or offline', () => {
+		// createDeck (type list), parse overrides and grammar rule tests are proxy only per request, not per route.
+		for (const p of ['/decks/new', '/media/abc/read', '/media/abc/sentences', '/import', '/import/mapping', '/struggle/confusables', '/dictionary']) {
+			expect(isGatedPath(p), p).toBe(false);
+			expect(needsConnection(p, false), p).toBe(false);
+		}
+	});
+
 	it('a route with any local operation is never gated', () => {
 		for (const [route, list] of Object.entries(ROUTE_OPS)) {
 			const anyLocal = list.some((id) => CLASSES[id] === 'local' || CLASSES[id] === 'local_or_proxy');
