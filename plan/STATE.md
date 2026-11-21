@@ -6,7 +6,7 @@ Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device
 
 ## RUN 39 (2026-11-21): local-first round DONE — t/LF-int merged to main ffb952de (make test green), pushed.
 LIVE: helm rev 46 (2026-11-21): api 0.1.31 + web 0.1.36 (pin ffb952de), worker 0.1.21. No migrations. Health ok. Predeploy dump ~/kotobaya-backups/predeploy-api-0.1.31-20261121T012755Z.dump. values.yaml now matches live (was stale; backup in scratchpad/values.yaml.bak).
-APK 0.1.41 (code 141, cert ec6b7f45 ok) at ~/kotobaya-apk/kotobaya-0.1.41-release.apk — READY, waiting for user to plug phone in -> adb install -r, check user 10, screenshots (FirstSync, needs-connection, Home placeholders, review).
+APK 0.1.41 (code 141, cert ec6b7f45 ok) INSTALLED 2026-11-21 (user 0 + 10). No screenshots (user said no). User to check: FirstSync, needs-connection hints, Home placeholders, offline review.
 Authenticated smoke (plan/smoke/smoke.sh) NOT run: no token access (.env.local read denied). Release worktree rel0131 kept until phone verified.
 Release checklist now in deploy/RELEASE.md.
 
