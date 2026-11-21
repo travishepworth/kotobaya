@@ -85,20 +85,25 @@ internal class Touched(val tables: Set<LearningTable>, val keys: Map<LearningTab
  * [prepare] at the start of each outermost store transaction, [drain] at its end (before the commit).
  */
 internal class TouchLog(private val driver: SqlDriver) {
+    /** Tests: make [prepare] fail, as on a connection where the log cannot be created. */
+    @Volatile internal var failForTest: Boolean = false
+
     /** False when the log cannot be set up on this connection (then the transaction reports [UNKNOWN]). */
     fun prepare(): Boolean = try {
+        check(!failForTest) { "touch log failure (test)" }
         setUp()
         true
-    } catch (e: RuntimeException) {
+    } catch (e: Exception) {
         false
     }
 
+    /**
+     * Makes sure the log table and every trigger exist on this connection. Checked by name on every transaction (one
+     * small read): a set-up that failed halfway, or an object dropped since, is completed by running the whole
+     * IF NOT EXISTS DDL again; if it is still incomplete this throws (the transaction then reports [UNKNOWN]).
+     */
     private fun setUp() {
-        val exists = driver.executeQuery(null, "SELECT count(*) FROM sqlite_temp_master WHERE type = 'table' AND name = '$TABLE'", { c: SqlCursor ->
-            c.next()
-            QueryResult.Value((c.getLong(0) ?: 0L) > 0L)
-        }, 0).value
-        if (exists) return
+        if (present() == EXPECTED) return
         driver.execute(null, "CREATE TEMP TABLE IF NOT EXISTS $TABLE (tbl TEXT NOT NULL, k TEXT)", 0)
         for (t in LearningTable.entries) {
             val key = t.keyColumns.first()
@@ -106,11 +111,23 @@ internal class TouchLog(private val driver: SqlDriver) {
             val newKey = if (t in ReplicaVersions.KEYED) "new.$key" else "NULL"
             val oldKey = if (t in ReplicaVersions.KEYED) "old.$key" else "NULL"
             val name = t.sqlName
-            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${TABLE}_${name}_i AFTER INSERT ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $newKey); END", 0)
-            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${TABLE}_${name}_u AFTER UPDATE ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $newKey); END", 0)
-            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${TABLE}_${name}_d AFTER DELETE ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $oldKey); END", 0)
+            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${trigger(t, "i")} AFTER INSERT ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $newKey); END", 0)
+            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${trigger(t, "u")} AFTER UPDATE ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $newKey); END", 0)
+            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${trigger(t, "d")} AFTER DELETE ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $oldKey); END", 0)
         }
+        check(present() == EXPECTED) { "the touch log is incomplete on this connection" }
     }
+
+    /** The log's objects present on this connection (`table:name` / `trigger:name`). */
+    private fun present(): Set<String> =
+        driver.executeQuery(null, "SELECT type, name FROM sqlite_temp_master WHERE type IN ('table', 'trigger')", { c: SqlCursor ->
+            val out = HashSet<String>()
+            while (c.next().value) {
+                val entry = "${c.getString(0)}:${c.getString(1)}"
+                if (entry in EXPECTED) out += entry
+            }
+            QueryResult.Value(out)
+        }, 0).value
 
     /**
      * What the transaction wrote. If the log cannot be read (a driver whose "transaction" spans several connections, as
@@ -118,7 +135,7 @@ internal class TouchLog(private val driver: SqlDriver) {
      */
     fun drain(): Touched = try {
         read()
-    } catch (e: RuntimeException) {
+    } catch (e: Exception) {
         UNKNOWN
     }
 
@@ -145,7 +162,14 @@ internal class TouchLog(private val driver: SqlDriver) {
     }
 
     companion object {
-        private const val TABLE = "perf_replica_touch"
+        /** The TEMP table (tests). */
+        internal const val TABLE = "perf_replica_touch"
+
+        /** The TEMP trigger of [table] for [op] (`i`, `u`, `d`). */
+        internal fun trigger(table: LearningTable, op: String): String = "${TABLE}_${table.sqlName}_$op"
+
+        private val EXPECTED: Set<String> =
+            setOf("table:$TABLE") + LearningTable.entries.flatMap { t -> listOf("i", "u", "d").map { "trigger:${trigger(t, it)}" } }
 
         /** Every learning table changed, keys unknown: readers reload. */
         val UNKNOWN: Touched = Touched(LearningTable.entries.toSet(), ReplicaVersions.KEYED.associateWith { null })

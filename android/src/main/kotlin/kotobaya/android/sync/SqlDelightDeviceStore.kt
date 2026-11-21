@@ -108,7 +108,7 @@ class SqlDelightDeviceStore(
         return result
     }
 
-    private val touch = TouchLog(driver)
+    internal val touch = TouchLog(driver)
 
     companion object {
         /** SHELL.md L-9 / SYNC.md 6.1: the longest a local write waits for the write connection. */

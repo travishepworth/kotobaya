@@ -209,6 +209,70 @@ class ReplicaCachesTest {
         assertCachesCurrent("rollback")
     }
 
+    /** A tracked card update, a raw review_log update and a new note in one transaction. */
+    private fun mixedWrite(n: Int) {
+        d.store.transaction { tx ->
+            tx.learning.put(LearningTable.CARD, mapOf("id" to JsonString(cards[n]), "due_at" to JsonNumber((now + n * 1000L).toDouble()), "updated_at" to JsonNumber(now.toDouble())))
+            d.driver.execute(null, "UPDATE review_log SET duration_ms = ? WHERE card_id = ?", 2) {
+                bindLong(0, 100L + n)
+                bindString(1, cards[n + 1])
+            }
+            tx.learning.put(
+                LearningTable.NOTE,
+                mapOf(
+                    "id" to JsonString("0193bbbc-0000-7000-8000-%012x".format(n)), "note_type_id" to JsonString("00000000-0000-7000-8000-000000000101"),
+                    "type" to JsonString("vocab"), "entry_seq" to JsonNumber((1_500_100 + n).toDouble()), "origin" to JsonString("deck"),
+                    "created_by_device_id" to JsonString("00000000-0000-7000-8000-000000000001"),
+                    "created_at" to JsonNumber(now.toDouble()), "updated_at" to JsonNumber(now.toDouble()),
+                ),
+            )
+            tx.learning.put(
+                LearningTable.CARD,
+                mapOf(
+                    "id" to JsonString("0193bbbd-0000-7000-8000-%012x".format(n)), "note_id" to JsonString("0193bbbc-0000-7000-8000-%012x".format(n)),
+                    "kind" to JsonString("meaning"), "created_at" to JsonNumber(now.toDouble()), "updated_at" to JsonNumber(now.toDouble()),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun aDamagedTouchLogIsRepairedOrReportsEverything() {
+        assertCachesCurrent("first build")
+        val touch = kotobaya.android.sync.TouchLog
+
+        // one trigger gone (a set-up that failed halfway, a reopened connection): the next transaction recreates it
+        d.store.transaction { d.driver.execute(null, "DROP TRIGGER IF EXISTS temp.${touch.trigger(LearningTable.CARD, "u")}", 0) }
+        mixedWrite(10)
+        assertCachesCurrent("after a dropped trigger")
+
+        // the log table gone: recreated as well
+        d.store.transaction { d.driver.execute(null, "DROP TABLE IF EXISTS temp.${touch.TABLE}", 0) }
+        mixedWrite(20)
+        assertCachesCurrent("after a dropped log table")
+
+        // every trigger and the table gone at once
+        d.store.transaction {
+            for (t in LearningTable.entries) for (op in listOf("i", "u", "d")) d.driver.execute(null, "DROP TRIGGER IF EXISTS temp.${touch.trigger(t, op)}", 0)
+            d.driver.execute(null, "DROP TABLE IF EXISTS temp.${touch.TABLE}", 0)
+        }
+        mixedWrite(30)
+        assertCachesCurrent("after the whole log was dropped")
+
+        // the log cannot be set up at all: the write still commits and reports every table changed
+        val before = d.store.versions.version(*LearningTable.entries.toTypedArray())
+        d.store.touch.failForTest = true
+        try {
+            mixedWrite(40)
+        } finally {
+            d.store.touch.failForTest = false
+        }
+        assertTrue(d.store.versions.version(*LearningTable.entries.toTypedArray()) >= before + LearningTable.entries.size, "every table moved")
+        assertCachesCurrent("after a transaction without the log")
+        mixedWrite(50)
+        assertCachesCurrent("the log works again")
+    }
+
     @Test
     fun manyRandomWritesKeepTheCachesCurrent() {
         val rnd = Random(3)
