@@ -62,7 +62,8 @@ export { countdown, minutesUntil, loopParts, keepGoingAvailable } from '../revie
 export type { Rendered } from './preview.svelte';
 
 const DUE_SLACK_MS = 250;
-const QUEUE_LIMIT = 20;
+/** LF-W2 / design 7(c): ask for this many cards, and refill (merge) when `PREFETCH_LOW` or fewer remain locally. */
+const QUEUE_LIMIT = 30;
 /** C4: a waiting-state refetch happens this long after the next learning card falls due (server clock slack). */
 const WAKE_SLACK_MS = 1000;
 /** ... and never sooner than this after the previous one, so a clock skew cannot turn waiting into polling. */
@@ -85,7 +86,7 @@ const ANSWER_TIMEOUT_MS = 30_000;
  */
 const PENDING_BASE_MS = 2000;
 /** RC-WEB: when this few cards are left locally, fetch more while answers are still being saved (no drain). */
-const PREFETCH_LOW = 3;
+const PREFETCH_LOW = 10;
 const PENDING_MAX_MS = 30_000;
 /** ... and stops after this many refetches in a row (the view then offers a quiet Check again): no endless polling. */
 const PENDING_MAX_TRIES = 5;
@@ -567,6 +568,27 @@ export function clearOutbox(): Promise<void> {
 }
 
 /**
+ * C8 "on page load the outbox is sent first": read back what an earlier page life stored and send it. Called at
+ * app start (the layout), so a reload on Home does not wait for /review. Never throws.
+ */
+export async function startOutbox(): Promise<void> {
+	await outbox.load();
+	outbox.kick();
+}
+
+/**
+ * Resolves when nothing is left to send, or after `maxMs` (a down network must not hold a screen back). Home reads
+ * its counts after this, so cards with pending answers are not counted as due.
+ */
+export async function outboxSettled(maxMs: number): Promise<void> {
+	await outbox.load();
+	if (outbox.pending.length === 0) return;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	await Promise.race([outbox.idle(), new Promise<void>((r) => (timer = setTimeout(r, maxMs)))]);
+	clearTimeout(timer);
+}
+
+/**
  * A review session for the /review view (ADR-048). The session outlives the component that shows it (it is kept
  * across a dictionary visit), but a `$derived` belongs to the effect it is created under: made during the
  * component's init, `current`/`display`/`phase` went inert when the component was destroyed, and the resumed
@@ -848,8 +870,7 @@ export class ReviewPage {
 		await outbox.load();
 		if (gen !== this.gen || this.disposed) return false;
 		const epoch = this.epoch;
-		const appliedAtStart = this.applied;
-		const outboxSeq = outbox.seq;
+			const outboxSeq = outbox.seq;
 		const startedAt = Date.now();
 		const pendingAtStart = outbox.answerCards();
 		let sent = false;
@@ -865,7 +886,6 @@ export class ReviewPage {
 		}
 		// A newer start (retry) or leaving the screen supersedes this fetch.
 		if (gen !== this.gen || this.disposed) return false;
-		if (append && this.applied !== appliedAtStart) return false; // stale prefetch: see below
 		if (guard && (epoch !== this.epoch || outbox.pending.length > 0)) return false;
 		// Cards whose answer is still on its way are not owed again. The card on screen stays where it is
 		// (with its flip state); only what comes after it is replaced.
@@ -875,12 +895,9 @@ export class ReviewPage {
 		const fresh = q.items.filter((i) => !answered.has(i.card.id) && !pendingAtStart.has(i.card.id));
 		const cur = this.current;
 		if (append) {
-			// A full fetch applied while this prefetch was in flight is newer (it may already reflect an answer that
-			// buried a sibling, or a card suspended elsewhere): drop this one.
-			if (this.applied !== appliedAtStart) return false;
-			// C1: asked before a learning card came due, so it may not list that card first: the refresh after the
-			// answers fetches again.
-			if (this.dueFirstAt !== null && startedAt < this.dueFirstAt && this.dueFirstPassed()) return false;
+			// LF-W2: a prefetch is merged, never discarded: not because a full fetch applied meanwhile (its cards are
+			// kept, answered ones are filtered above) and not because a learning card came due (a card the server lists
+			// first, or listed now but not before, is spliced in behind the card on screen, ahead of the rest).
 			// Prefetch: the card on screen, then the server's order, then any local card the server did not list
 			// (an undo or restore may have put one back meanwhile): never removes a local card. The loop numbers
 			// wait for the refresh after the answers.

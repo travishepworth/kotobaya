@@ -32,7 +32,8 @@ const en = {
 	'home.emptySearch': 'Search the dictionary',
 	'home.emptyImport': 'Import from jpdb',
 	'home.countsFailed': 'Could not load today’s counts. Your reviews are safe; you can still start.',
-	'home.figuresFailed': 'Some figures could not be loaded.'
+	'home.figuresFailed': 'Some figures could not be loaded.',
+	'home.notDownloaded': 'Not downloaded yet. It appears here once this phone has fetched it.'
 } as const;
 
 export type HomeMessageKey = keyof typeof en;

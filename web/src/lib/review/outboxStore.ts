@@ -184,11 +184,13 @@ export function idbOutboxStore(factory: IDBFactory, opts: { blockedTimeoutMs?: n
 	}
 	async function run<T>(mode: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest<T>, mem: () => Promise<T>): Promise<T> {
 		if (failed) return mem();
-		let d = await (db ??= connect(OUTBOX_DB_VERSION));
+		const first = (db ??= connect(OUTBOX_DB_VERSION));
+		let d = await first;
 		let t = d ? tx(d, mode) : null;
 		if (d && !t) {
-			// One reopen at the current version; if that cannot start a transaction either, memory from now on.
-			db = connect();
+			// One reopen at the current version, shared by calls that race here (a call that finds a newer
+			// connection promise uses that one); if it cannot start a transaction either, memory from now on.
+			if (db === first || db === null) db = connect();
 			d = await db;
 			t = d ? tx(d, mode) : null;
 			if (!t) failed = true;

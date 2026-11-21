@@ -5,6 +5,8 @@ import { quietApiConfig } from '../api/client';
 import { ReviewApi } from '../api/generated';
 import { fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
+import { outboxSettled } from './review.svelte';
+import { isUncached, revalidateOn } from './swr';
 
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
 export { countdown, minutesUntil, loopParts, keepGoingAvailable, presentedParts } from '../review/loop';
@@ -14,11 +16,15 @@ const api = new ReviewApi(quietApiConfig);
 /** C4 timing: a waiting refetch happens this long after the card falls due, and never sooner than the gap. */
 const WAKE_SLACK_MS = 1000;
 const WAKE_MIN_MS = 3000;
+/** Home waits this long for answers still in the outbox to be recorded before it reads the counts. */
+const OUTBOX_WAIT_MS = 3000;
 
 export class TodayQueue {
 	view = $state<LoopView | null>(null);
 	loaded = $state(false);
 	failed = $state(false);
+	/** `503 shell_uncached` and nothing to show yet: "not downloaded yet", resolved by `cache.updated`. */
+	uncached = $state(false);
 	#abort = new AbortController();
 	#timer: ReturnType<typeof setTimeout> | null = null;
 	#lastWake = 0;
@@ -26,16 +32,29 @@ export class TodayQueue {
 	readonly loop = $derived(this.view?.loop ?? null);
 	readonly phase = $derived(this.view?.phase ?? null);
 
-	/** Fetch the loop (reads no state). Resolves when settled, failed or not. */
+	/** Refetch on `sync.changed` (debounced) and on `cache.updated` for the queue. Returns the unsubscribe. */
+	watch(): () => void {
+		return revalidateOn(['getReviewQueue'], () => void this.load());
+	}
+
+	/**
+	 * Fetch the loop (reads no state). Resolves when settled, failed or not. The view on screen stays while it
+	 * refetches or fails (stale-while-revalidate). Answers waiting in the outbox are sent first (briefly), so the
+	 * counts do not include cards that were already answered.
+	 */
 	async load(): Promise<void> {
-		this.failed = false;
 		try {
+			await outboxSettled(OUTBOX_WAIT_MS);
 			// limit 1: only `loop` is read here.
 			const q = await fetchWithKeepGoing((keepGoing) => api.getReviewQueue({ limit: 1, keepGoing }, { signal: this.#abort.signal }));
 			this.view = loopView(q);
+			this.failed = false;
+			this.uncached = false;
 			this.#schedule();
-		} catch {
-			if (!this.#abort.signal.aborted) this.failed = true; // shown inline with a retry, no global error
+		} catch (e) {
+			if (this.#abort.signal.aborted) return;
+			if (await isUncached(e)) this.uncached = this.view === null;
+			else if (this.view === null) this.failed = true; // shown inline with a retry, no global error
 		} finally {
 			this.loaded = true;
 		}

@@ -9,6 +9,7 @@ import type {
 	StatsSummary
 } from '../api/generated';
 import { quietApiConfig } from '../api/client';
+import { isUncached, revalidateOn } from './swr';
 
 // RC-WEB: stats are slow (14-76 s, some 504) and each panel shows its own "couldn't load" + retry: no global toast.
 const api = new StatsApi(quietApiConfig);
@@ -17,10 +18,21 @@ export type StatsPanel = 'summary' | 'heatmap' | 'retention' | 'forecast' | 'kno
 const ALL: readonly StatsPanel[] = ['summary', 'heatmap', 'retention', 'forecast', 'known', 'calibration'];
 
 // Each panel loads on its own: one slow or failing endpoint never blanks the others.
-export type Panel<T> = { data: T | null; failed: boolean };
+// `data` is kept while a refetch runs or fails (stale-while-revalidate); `uncached`: `503 shell_uncached`, a
+// "not downloaded yet" placeholder that resolves on `cache.updated`.
+export type Panel<T> = { data: T | null; failed: boolean; uncached: boolean };
+
+const OPERATION: Record<StatsPanel, string> = {
+	summary: 'getStatsSummary',
+	heatmap: 'getStatsHeatmap',
+	retention: 'getStatsRetention',
+	forecast: 'getStatsForecast',
+	known: 'getStatsKnownWords',
+	calibration: 'getStatsCalibration'
+};
 
 function empty<T>(): Panel<T> {
-	return { data: null, failed: false };
+	return { data: null, failed: false, uncached: false };
 }
 
 export const pct = (v: number | null): string => (v === null ? '-' : `${(v * 100).toFixed(1)}%`);
@@ -70,37 +82,69 @@ export class StatsPage {
 		for (const p of panels) this.retry(p);
 	}
 
+	#unwatch: (() => void)[] = [];
+	#inflight = new Set<StatsPanel>();
+
+	/** Refetch `panels` on `sync.changed` and on `cache.updated` for their own operation. Returns the unsubscribe. */
+	watch(panels: readonly StatsPanel[] = ALL): () => void {
+		const offs = panels.map((p) => revalidateOn([OPERATION[p]], () => this.#revalidate(p)));
+		const off = (): void => offs.forEach((f) => f());
+		this.#unwatch.push(off);
+		return off;
+	}
+
+	#revalidate(panel: StatsPanel): void {
+		if (!this.#inflight.has(panel)) this.retry(panel); // stats are slow: never stack requests
+	}
+
 	/** Load one panel (again). A panel that has data keeps showing it until the new data arrives. */
 	retry(panel: StatsPanel): void {
 		const init: RequestInit = { signal: this.#abort.signal };
+		const run = <T,>(fetch: () => Promise<T>, get: () => Panel<T>, set: (p: Panel<T>) => void): void => {
+			this.#inflight.add(panel);
+			load(fetch, get, set, init.signal, () => this.#inflight.delete(panel));
+		};
 		switch (panel) {
 			case 'summary':
-				return load(() => api.getStatsSummary(init), (p) => (this.summaryP = p), init.signal);
+				return run(() => api.getStatsSummary(init), () => this.summaryP, (p) => (this.summaryP = p));
 			case 'heatmap':
-				return load(() => api.getStatsHeatmap({}, init), (p) => (this.heatmapP = p), init.signal);
+				return run(() => api.getStatsHeatmap({}, init), () => this.heatmapP, (p) => (this.heatmapP = p));
 			case 'retention':
-				return load(() => api.getStatsRetention({ groupBy: 'card_kind' }, init), (p) => (this.retentionP = p), init.signal);
+				return run(() => api.getStatsRetention({ groupBy: 'card_kind' }, init), () => this.retentionP, (p) => (this.retentionP = p));
 			case 'forecast':
-				return load(() => api.getStatsForecast({ days: 30 }, init), (p) => (this.forecastP = p), init.signal);
+				return run(() => api.getStatsForecast({ days: 30 }, init), () => this.forecastP, (p) => (this.forecastP = p));
 			case 'known':
-				return load(() => api.getStatsKnownWords({ interval: 'week' }, init), (p) => (this.knownP = p), init.signal);
+				return run(() => api.getStatsKnownWords({ interval: 'week' }, init), () => this.knownP, (p) => (this.knownP = p));
 			case 'calibration':
-				return load(() => api.getStatsCalibration({}, init), (p) => (this.calibrationP = p), init.signal);
+				return run(() => api.getStatsCalibration({}, init), () => this.calibrationP, (p) => (this.calibrationP = p));
 		}
 	}
 
 	/** Leaving the screen: abort what is still loading; nothing is written after this. */
 	dispose(): void {
 		this.#abort.abort();
+		this.#unwatch.splice(0).forEach((f) => f());
 	}
 }
 
-function load<T>(fetch: () => Promise<T>, set: (p: Panel<T>) => void, signal?: AbortSignal | null): void {
+function load<T>(
+	fetch: () => Promise<T>,
+	get: () => Panel<T>,
+	set: (p: Panel<T>) => void,
+	signal: AbortSignal | null | undefined,
+	done: () => void
+): void {
 	fetch().then(
-		(data) => set({ data, failed: false }),
-		() => {
+		(data) => {
+			done();
+			set({ data, failed: false, uncached: false });
+		},
+		async (e: unknown) => {
+			done();
 			if (signal?.aborted) return; // the screen was left: not a failure
-			set({ data: null, failed: true }); // shown inline by the panel, with a retry
+			const prev = get().data; // a refetch that fails keeps what is shown
+			if (await isUncached(e)) set({ data: prev, failed: false, uncached: prev === null });
+			else set({ data: prev, failed: prev === null, uncached: false }); // shown inline by the panel, with a retry
 		}
 	);
 }

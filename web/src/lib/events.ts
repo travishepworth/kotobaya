@@ -14,7 +14,8 @@ export type EventName =
 	| 'shell.connectivity'
 	| 'shell.sync'
 	| 'shell.dict'
-	| 'shell.state_changed';
+	| 'shell.state_changed'
+	| 'cache.updated';
 
 const EVENT_NAMES: readonly EventName[] = [
 	'hello',
@@ -26,7 +27,8 @@ const EVENT_NAMES: readonly EventName[] = [
 	'shell.connectivity',
 	'shell.sync',
 	'shell.dict',
-	'shell.state_changed'
+	'shell.state_changed',
+	'cache.updated'
 ];
 
 /** The `Event` envelope of GET /events (raw wire shape: `at` stays a string). */

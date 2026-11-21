@@ -1,6 +1,8 @@
 // Struggle screens (/struggle, /struggle/leeches, /struggle/confusables, /struggle/word/[noteId]).
 import type { Card, Confusable, ConfusableStatus, HotKanji, HotWord, NoteSummary, Sentence } from '../api/generated';
-import { apiConfig, ResponseError } from '../api/client';
+import { apiConfig, quietApiConfig, ResponseError } from '../api/client';
+import { WordsApi } from '../api/generated';
+import { isUncached, revalidateOn } from './swr';
 import { MediaApi } from '../api/generated';
 import { notesApi } from '../notes/api';
 import { wordsApi } from '../review/api';
@@ -13,24 +15,35 @@ export type { Card, Confusable, ConfusableStatus, HotKanji, HotWord, NoteSummary
 
 const media = new MediaApi(apiConfig);
 
-/** /struggle: hot words and hot kanji. */
+const quietWordsApi = new WordsApi(quietApiConfig);
+
+/** /struggle: hot words and hot kanji. Keeps its data while it refetches (skeleton on the first load only). */
 export class StrugglePage {
 	words = $state<HotWord[]>([]);
 	kanji = $state<HotKanji[]>([]);
 	loaded = $state(false);
-	/** The last load failed (the client already toasted); the view shows the error state and offers `retry`. */
+	/** The last load failed; the view shows the error state and offers `retry`. Never set while data is shown. */
 	loadFailed = $state(false);
+	/** `503 shell_uncached` and nothing to show yet: "not downloaded yet", resolved by `cache.updated`. */
+	uncached = $state(false);
+	#hasData = false;
 
 	start(): void {
-		this.loaded = false;
-		this.loadFailed = false;
+		if (!this.#hasData) {
+			this.loaded = false;
+			this.loadFailed = false;
+		}
 		void (async () => {
 			try {
-				const [w, k] = await Promise.all([wordsApi.listHotWords({ limit: 50 }), wordsApi.listHotKanji({ limit: 30 })]);
+				const [w, k] = await Promise.all([quietWordsApi.listHotWords({ limit: 50 }), quietWordsApi.listHotKanji({ limit: 30 })]);
 				this.words = w.items;
 				this.kanji = k.items;
-			} catch {
-				this.loadFailed = true; // the client already toasted
+				this.#hasData = true;
+				this.loadFailed = false;
+				this.uncached = false;
+			} catch (e) {
+				if (await isUncached(e)) this.uncached = !this.#hasData;
+				else if (!this.#hasData) this.loadFailed = true;
 			} finally {
 				this.loaded = true;
 			}
@@ -40,7 +53,10 @@ export class StrugglePage {
 	retry(): void {
 		this.start();
 	}
-
+	/** Refetch on `sync.changed` (debounced) and on `cache.updated` for the two operations. Returns the unsubscribe. */
+	watch(): () => void {
+		return revalidateOn(['listHotWords', 'listHotKanji'], () => this.start());
+	}
 }
 
 /** /struggle/leeches */

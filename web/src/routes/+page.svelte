@@ -27,14 +27,17 @@
 	const decks = new DecksListPage();
 	const struggle = new StrugglePage();
 	const queue = new TodayQueue();
-	// RC-WEB: the counts and the Start button come from the review queue (as on every client). The slow stats
-	// (14-76 s, some 504) start only after it settles, so they never hold a browser connection the counts need,
-	// load only what this page shows, fail per widget, and are aborted when the page is left.
+	// The stats load in parallel with the queue (LF-W2): they load only what this page shows, fail per widget, and
+	// are aborted when the page is left. Every store keeps its data while it refetches, and refetches on
+	// `sync.changed` and on `cache.updated` for its own operation.
 	const HOME_STATS = ['summary', 'heatmap', 'retention'] as const;
 	$effect(() => {
 		decks.start();
 		struggle.start();
-		void queue.load().then(() => stats.start(HOME_STATS));
+		void queue.load();
+		stats.start(HOME_STATS);
+		const stops = [decks.watch(), struggle.watch(), queue.watch(), stats.watch(HOME_STATS)];
+		return () => stops.forEach((stop) => stop());
 	});
 	onDestroy(() => {
 		queue.dispose();
@@ -135,7 +138,7 @@
 					{#if !view}
 						<div class="due">
 							<p class="overline" id="due-title">{th('home.dueNow')}</p>
-							<p class="muted">{th('home.countsFailed')}</p>
+							<p class="muted">{queue.uncached ? th('home.notDownloaded') : th('home.countsFailed')}</p>
 							<div class="row-actions">
 								<Button size="sm" variant="outline" icon="sync" onclick={() => void queue.load()}>{ut('app.retry')}</Button>
 							</div>
@@ -161,6 +164,8 @@
 				<Panel title={th('home.decks')} link={decks.items.length > 0 ? { href: '/decks', label: th('home.allDecks') } : undefined} flush>
 					{#if !decks.loaded}
 						<div class="pad"><Skeleton shape="row" count={4} /></div>
+					{:else if decks.uncached}
+						<p class="pad muted">{th('home.notDownloaded')}</p>
 					{:else if decks.loadFailed}
 						<LoadError onretry={() => decks.retry()} />
 					{:else if topDecks.length === 0}
@@ -191,6 +196,8 @@
 				<Panel title={th('home.activity')} link={{ href: '/stats', label: ut('app.nav.stats') }}>
 					{#if stats.heatmap}
 						<ActivityStrip caption={th('home.activityCaption')} days={recent} />
+					{:else if stats.heatmapP.uncached}
+						<p class="muted">{th('home.notDownloaded')}</p>
 					{:else if stats.heatmapP.failed}
 						<p class="muted inline-error">
 							{ut('app.loadFailed')}
@@ -223,6 +230,8 @@
 				<Panel title={th('home.struggle')} link={{ href: '/struggle', label: th('home.struggleLink') }}>
 					{#if !struggle.loaded}
 						<Skeleton shape="text" count={2} />
+					{:else if struggle.uncached}
+						<p class="muted">{th('home.notDownloaded')}</p>
 					{:else if struggle.words.length === 0}
 						<p class="calm"><Icon name="success" size={20} />{th('home.struggleEmpty')}</p>
 					{:else}

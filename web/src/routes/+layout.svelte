@@ -19,6 +19,7 @@
 	
 	import { canLogout, logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
 	import { shell } from '../lib/state/shell.svelte';
+	import { startOutbox } from '../lib/state/review.svelte';
 
 	let { children } = $props();
 
@@ -93,6 +94,11 @@
 		void path;
 		void overlayCount();
 		reportBackState(backEnv());
+	});
+
+	// C8: on page load the outbox is sent first, on any screen (stored answers of an earlier page life go out now).
+	$effect(() => {
+		if (session.status === 'in') void startOutbox();
 	});
 
 	// Live-update stream while logged in; screens subscribe on their own for specific events.
