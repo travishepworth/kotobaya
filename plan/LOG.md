@@ -1506,3 +1506,11 @@
 2026-11-21T00:00:00Z PERF-SNAP REVIEW_CHANGES (blocker: snapshot cards gradable before fetch confirms -> duplicate reviews; 2 major) -> attempt 2; DECIDE: show snapshot card instantly, grade enabled after first fetch confirms
 2026-11-21T00:00:00Z PERF-SNAP r2 REVIEW_CHANGES (1 major: ungradable snapshot card with no retry after failed first fetch) -> attempt 3
 2026-11-21T00:00:00Z PERF-SNAP REVIEW_APPROVE r3 (2 harmless minors -> FOLLOWUPS); web 390 green -> merged to main (release waits for PERF-LF)
+2026-11-21T00:00:00Z PERF-LF agent hit usage limit mid-task (5 commits + WIP saved) -> resumed same agent
+2026-11-21T00:00:00Z PERF-LF HANDOFF (real replica JVM: queue concurrent 5645->p95 169 ms (target 150 missed), summary 1394->95, heatmap 7957->10, retention 1645->28, decks 574->253, answer->next 2) -> android re-check + reviewer (cache invalidation)
+2026-11-21T00:00:00Z PERF-LF REVIEW_APPROVE (correctness) but minor 1 = note writes invalidate all caches -> seconds-long rebuild on new-card path: sent back as attempt 2 with 2-4 + p95 push; test APK 0.1.42 build superseded
+2026-11-21T00:00:00Z PERF-LF HANDOFF r2 (TEMP-trigger change tracking; real replica queue concurrent p95 153-158 ms, after pulled note 89, minting 61-76, summary 107, retention 35) -> android re-check + re-review
+2026-11-21T00:00:00Z PERF-LF REVIEW_APPROVE r2 (2 minors: partial TEMP trigger setup could go silently untracked; fallback tests) -> attempt 3 before release
+2026-11-21T00:00:00Z PERF-LF HANDOFF r3 (TouchLog verifies all triggers, repair/UNKNOWN fallback + damage test) -> android check + test APK 0.1.42/142 build
+2026-11-21T00:00:00Z PERF-LF r3 CHECK_GREEN android; test APK 0.1.42/142 built from 60ee56fa (includes PERF-SNAP SPA bundle), cert ok -> waiting for phone to measure on device
+- 2026-11-21 run 39: independent review of 4 perf ideas (2 Plan agents). Server Home counts REJECTED (breaks REVIEW-LOOP same-numbers / ADR-051b). Persisted derived tables REJECTED. Home counts-only REJECTED. Device gate holds. Tickets written: PERF-GATE, PERF-WARM, PERF-SNAP2, C-33. Not dispatched.

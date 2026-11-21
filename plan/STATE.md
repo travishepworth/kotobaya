@@ -80,6 +80,12 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 
 
 ## Queued
+P11 perf tickets (2026-11-21, after independent review plan/handoffs/PERF-REVIEW-2026-11-21.md). NOT dispatched; waiting for the user's go and the decision to merge PERF-LF (t/PERF-LF-local-handlers 60ee56fa, approved; test APK 0.1.42 on the phone, unreleased):
+- PERF-GATE (sonnet, low): on-device timing split + adb harness + targets. deps PERF-LF
+- PERF-WARM (opus, med): cache warm-up at start and after sync + queue first on the lane. deps PERF-LF, PERF-GATE
+- PERF-SNAP2 (opus, med, web): snapshot rewritten after grading and sync. deps PERF-SNAP
+- C-33 (architect, med): heatmap/retention/hot lists -> `cached`. deps PERF-LF
+Ideas with no ticket: baseline profile + R8; per-card check for snapshot grading (needs ADR-051).
 FOLLOWUPS
 
 ## Ready for review / In review
