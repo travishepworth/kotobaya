@@ -20,6 +20,7 @@ import kotobaya.android.shell.api.actions.unknownKeys
 import kotobaya.android.shell.api.actions.uuidValue
 import kotobaya.android.shell.api.browse.invalidQuery
 import kotobaya.android.shell.api.get
+import kotobaya.android.shell.api.memoized
 import kotobaya.android.shell.api.identity.ShellIdentity
 import kotobaya.android.sync.SqlDelightDeviceStore
 import kotobaya.android.sync.SqlLearningTables
@@ -80,6 +81,11 @@ internal fun requireParses(query: String) {
 /** Live decks first by `(priority, id)` (the draw order, server `order by d.priority, d.id`). */
 private val drawOrder: Comparator<Row> = compareBy<Row>({ (it["priority"] as? JsonNumber)?.value ?: 0.0 }, { it["id"].text().orEmpty() })
 
+/** What `listDecks` reads: decks, their items, the notes and cards of their progress, word status and the reading setting. */
+private val DECK_LIST_TABLES = arrayOf(
+    LearningTable.DECK, LearningTable.DECK_ITEM, LearningTable.NOTE, LearningTable.CARD, LearningTable.WORD_STATUS, LearningTable.SETTINGS,
+)
+
 /** `listDecks`: every deck of the replica (tombstones with `include_deleted=true`), optionally of one `type`. */
 internal fun listDecks(call: LocalCall): ShellResponse {
     val q = call.query("type", "include_deleted")
@@ -88,12 +94,15 @@ internal fun listDecks(call: LocalCall): ShellResponse {
     val type = q.first("type")
     if (type != null && type !in DECK_TYPES) e.add("/type", "invalid_value", "Must be one of ${DECK_TYPES.joinToString(", ")}.")
     e.throwIfAny()
-    val items = call.services.get<SqlDelightDeviceStore>().read { tx ->
-        val t = tx.learning
-        t.all(LearningTable.DECK)
-            .filter { (deleted || DeckViews.isLive(it)) && (type == null || DeckViews.type(it) == type) }
-            .sortedWith(drawOrder)
-            .map { DeckViews.deck(t, it) }
+    // PERF-LF: kept until a table the decks, their items or their progress read changes
+    val items = call.memoized("listDecks|$type|$deleted", null, DECK_LIST_TABLES) {
+        call.services.get<SqlDelightDeviceStore>().read { tx ->
+            val t = tx.learning
+            t.all(LearningTable.DECK)
+                .filter { (deleted || DeckViews.isLive(it)) && (type == null || DeckViews.type(it) == type) }
+                .sortedWith(drawOrder)
+                .map { DeckViews.deck(t, it) }
+        }
     }
     return ShellResponse.json(jsonObj("items" to kotobaya.contracts.sync.JsonArray(items)))
 }

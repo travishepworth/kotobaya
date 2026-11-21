@@ -9,6 +9,7 @@ import kotobaya.android.shell.api.actions.cursor
 import kotobaya.android.shell.api.actions.pageLimit
 import kotobaya.android.shell.api.actions.pageOffset
 import kotobaya.android.shell.api.get
+import kotobaya.android.shell.api.memoized
 import kotobaya.android.shell.api.identity.ShellIdentity
 import kotobaya.android.shell.api.identity.obj
 import kotobaya.android.shell.api.review.AnswerViews
@@ -29,6 +30,17 @@ private fun num(v: Long): JsonNumber = JsonNumber(v.toDouble())
 
 private fun isNull(v: JsonValue?): Boolean = v == null || v == JsonNull
 
+/**
+ * PERF-LF: what the hot lists read (reviews, cards, notes, presets, the leech threshold, word status, deck items); they
+ * are kept for a minute of the device clock at most (scores decay with time) and one dictionary generation.
+ */
+private val HOT_TABLES = arrayOf(
+    LearningTable.REVIEW_LOG, LearningTable.CARD, LearningTable.NOTE, LearningTable.FSRS_PARAMS, LearningTable.SETTINGS,
+    LearningTable.WORD_STATUS, LearningTable.DECK, LearningTable.DECK_ITEM,
+)
+
+private fun hotKey(now: Long, dict: InstalledDictionary): Pair<Long, Long> = now / 60_000 to runCatching { dict.generation }.getOrDefault(0L)
+
 private fun hotLimit(call: LocalCall): Int {
     val q = call.query("limit")
     val e = FieldErrors()
@@ -46,12 +58,14 @@ internal fun listHotWords(call: LocalCall): ShellResponse {
     val limit = hotLimit(call)
     val now = call.services.get<ShellIdentity>().nowMs()
     val dict = call.services.get<InstalledDictionary>()
-    val body = call.services.get<SqlDelightDeviceStore>().read { tx ->
-        val t = tx.learning
-        val threshold = AnswerViews.leechThreshold(t)
-        val hot = HotSources(t, now)
-        val items = hot.scoredNotes().take(limit).map { h -> hotWord(t, hot, dict, threshold, h) }
-        obj("items" to JsonArray(items))
+    val body = call.memoized("listHotWords|$limit", hotKey(now, dict), HOT_TABLES) {
+        call.services.get<SqlDelightDeviceStore>().read { tx ->
+            val t = tx.learning
+            val threshold = AnswerViews.leechThreshold(t)
+            val hot = HotSources(t, now)
+            val items = hot.scoredNotes().take(limit).map { h -> hotWord(t, hot, dict, threshold, h) }
+            obj("items" to JsonArray(items))
+        }
     }
     return ShellResponse.json(body)
 }
@@ -117,7 +131,12 @@ internal fun listHotKanji(call: LocalCall): ShellResponse {
     val limit = hotLimit(call)
     val now = call.services.get<ShellIdentity>().nowMs()
     val dict = call.services.get<InstalledDictionary>()
-    val body = call.services.get<SqlDelightDeviceStore>().read { tx ->
+    val body = call.memoized("listHotKanji|$limit", hotKey(now, dict), HOT_TABLES) { hotKanji(call, limit, now, dict) }
+    return ShellResponse.json(body)
+}
+
+private fun hotKanji(call: LocalCall, limit: Int, now: Long, dict: InstalledDictionary): JsonObject =
+    call.services.get<SqlDelightDeviceStore>().read { tx ->
         val t = tx.learning
         val score = LinkedHashMap<String, Double>()
         val count = HashMap<String, Int>()
@@ -154,8 +173,6 @@ internal fun listHotKanji(call: LocalCall): ShellResponse {
         }
         obj("items" to JsonArray(items))
     }
-    return ShellResponse.json(body)
-}
 
 /**
  * `listLeeches`: live cards of live notes with `lapses >= scheduler.leech_threshold` (suspended included), most

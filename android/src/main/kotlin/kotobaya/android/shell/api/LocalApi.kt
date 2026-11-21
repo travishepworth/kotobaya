@@ -4,6 +4,8 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotobaya.android.shell.cache.ResponseCache
 import kotobaya.android.sync.StoreBusyException
@@ -147,7 +149,7 @@ class LocalApi(
         }
         val response = try {
             val call = LocalCall(request, op, params, requestId, services)
-            if (op.operationId in BACKGROUND_LANE) withContext(backgroundLane) { route.handler(call) } else route.handler(call)
+            if (op.operationId in BACKGROUND_LANE) background(request) { withContext(backgroundLane) { route.handler(call) } } else route.handler(call)
         } catch (e: ProblemException) {
             return problem(e.problem)
         } catch (e: CancellationException) {
@@ -165,6 +167,20 @@ class LocalApi(
         if (response.forwarded) headers.remove(ShellHeaders.LOCAL) else headers[ShellHeaders.LOCAL] = "1"
         headers[ShellHeaders.REQUEST_ID] = requestId
         return response.copy(headers = headers)
+    }
+
+    /** One lock per identical background request (method, path, query). */
+    private val sameRequest = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
+
+    /**
+     * PERF-LF: identical background requests run one after the other, never side by side (Home asks for each twice
+     * when a sync lands during its load): the second one starts after the first ended, so it still answers from data
+     * at least as new as its own arrival, and finds the first one's result in the handler's cache ([memoized]) unless
+     * a table it reads changed meanwhile. Waiting suspends; it holds no lane slot.
+     */
+    private suspend fun <T> background(request: ShellRequest, block: suspend () -> T): T {
+        val key = request.method + " " + request.path + "?" + request.query.toSortedMap().entries.joinToString("&") { (k, v) -> "$k=${v.joinToString(",")}" }
+        return sameRequest.getOrPut(key) { Mutex() }.withLock { block() }
     }
 
     private suspend fun forward(request: ShellRequest, op: ApiOperation, requestId: String): ShellResponse {

@@ -370,7 +370,7 @@ class LocalQueueLoader(
         }
 
     private fun <T> memo(name: String, vararg tables: LearningTable, load: () -> T): T =
-        cache?.let { c -> c.memo(name, c.version(*tables), load) } ?: load()
+        cache?.let { c -> c.memo(name, c.version(*tables), load = load) } ?: load()
 
     /** Index of each card kind in its note type's templates: built-in order for built-in types, else alphabetical (as the server). */
     private fun kindOrders(): Map<String, List<String>> {

@@ -53,7 +53,7 @@ data class CandidateRow(
  * between only causes one more refresh). Nothing here decides a queue rule: the rows are exactly what the queries return.
  */
 class QueueReadCache(private val versions: ReplicaVersions) {
-    private class Memo(val version: Long, val value: Any?)
+    private class Memo(val version: Long, val key: Any?, val value: Any?)
 
     private val memos = ConcurrentHashMap<String, Memo>()
 
@@ -71,14 +71,14 @@ class QueueReadCache(private val versions: ReplicaVersions) {
     /** The version of [tables] (for [memo] keys). */
     fun version(vararg tables: LearningTable): Long = versions.version(*tables)
 
-    /** [load]'s value for [name], computed again only when [version] differs from the cached one's. */
-    fun <T> memo(name: String, version: Long, load: () -> T): T {
-        memos[name]?.takeIf { it.version == version }?.let {
+    /** [load]'s value for [name], computed again only when [version] or [key] differs from the cached one's (one value per name). */
+    fun <T> memo(name: String, version: Long, key: Any? = null, load: () -> T): T {
+        memos[name]?.takeIf { it.version == version && it.key == key }?.let {
             @Suppress("UNCHECKED_CAST")
             return it.value as T
         }
         val v = load()
-        memos[name] = Memo(version, v)
+        memos[name] = Memo(version, key, v)
         return v
     }
 

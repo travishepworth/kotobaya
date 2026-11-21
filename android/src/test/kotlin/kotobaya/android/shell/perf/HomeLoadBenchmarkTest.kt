@@ -102,7 +102,7 @@ class HomeLoadBenchmarkTest {
 
     /**
      * A pull applying: short write transactions, each a few reviews another device logged (a new `review_log` row and
-     * its card's new schedule) and a setting, through the learning tables as the applier writes them.
+     * its card's new schedule), through the learning tables as the applier writes them.
      */
     private fun syncWriter(running: AtomicBoolean): Thread = Thread {
         val rnd = Random(9)
@@ -124,10 +124,6 @@ class HomeLoadBenchmarkTest {
                     val due = now + 86_400_000L * (1 + rnd.nextInt(30))
                     tx.learning.put(LearningTable.CARD, mapOf("id" to JsonString(card), "due_at" to JsonNumber(due.toDouble()), "updated_at" to JsonNumber(at.toDouble())))
                 }
-                tx.learning.put(
-                    LearningTable.SETTINGS,
-                    mapOf("key" to JsonString("perf.sync"), "value" to JsonNumber(n.toDouble()), "hlc" to JsonString("h$n"), "updated_at" to JsonNumber(now.toDouble())),
-                )
             }
             Thread.sleep(20)
         }

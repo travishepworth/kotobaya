@@ -167,6 +167,21 @@ class SqlLearningTables internal constructor(
         }
     }
 
+    /**
+     * PERF-LF: [whereIn] reading only [columns] (rows hold just those keys): no decoding of the JSON columns a caller
+     * does not look at (`note.fields`, `clocks`, ...), which dominated the deck list's progress reads.
+     */
+    fun whereIn(table: LearningTable, column: String, values: Collection<JsonValue>, columns: List<String>): List<Row> {
+        val col = schema.column(table, column)
+        val cols = columns.map { schema.column(table, it) }
+        val distinct = values.filter { it != JsonNull }.distinct()
+        return distinct.chunked(IN_CHUNK).flatMap { chunk ->
+            select(table, cols, "WHERE ${col.name} IN (${chunk.joinToString { "?" }})", chunk.size) { stmt ->
+                chunk.forEachIndexed { i, v -> bind(stmt, i, col, v) }
+            }
+        }
+    }
+
     override fun all(table: LearningTable): List<Row> = select(table, "", 0) {}
 
     override fun clear(table: LearningTable) {
@@ -195,8 +210,10 @@ class SqlLearningTables internal constructor(
         return cols.joinToString(" AND ") { "${it.name} = ?" } to cols
     }
 
-    private fun select(table: LearningTable, tail: String, params: Int, binders: (SqlPreparedStatement) -> Unit): List<Row> {
-        val cols = schema.columns(table)
+    private fun select(table: LearningTable, tail: String, params: Int, binders: (SqlPreparedStatement) -> Unit): List<Row> =
+        select(table, schema.columns(table), tail, params, binders)
+
+    private fun select(table: LearningTable, cols: List<Column>, tail: String, params: Int, binders: (SqlPreparedStatement) -> Unit): List<Row> {
         return driver.executeQuery(
             null,
             "SELECT ${cols.joinToString { it.name }} FROM ${table.sqlName} $tail ORDER BY rowid",
