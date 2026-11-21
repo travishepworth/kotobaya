@@ -5,19 +5,19 @@ BRANCH: t/LF-W1-web-outbox
 CHECK: `make check MODULE=web` → green (354 tests)
 
 ## Changed (≤ 6 lines)
-- Fix 1: `outboxStore.seedAddedAt(max)`. `Outbox.load()` raises the tap counter above every stored `addedAt`, and gives taps made before the load finished a new stamp (in the store too).
-- Fix 2: any other 4xx is a final refusal (drop + toast). 408/429 are retried. 401 and 403 pause sending.
-- Fix 4: the connection closes on `versionchange` and reopens on the next call. If a transaction can't start even after a reopen, the store switches to memory (`persistent` false). A failed `put` marks the entry unsaved, so `beforeunload` warns.
-- Fix 5: a `blocked` open is waited out, for up to 10 s. A connection that opens after the timeout is closed at once. If the database is already at a newer version (`VersionError`), it is opened at its current version.
-- Fix 6: when an answer is refused for good, any `undo:<id>` queued behind it is dropped too.
+- 1: `seedAddedAt(max)`. `Outbox.load()` raises the tap counter above stored `addedAt`s and re-stamps taps made before the load finished.
+- 2: other 4xx is final (drop + toast). 408/429 retry. 401/403 pause.
+- 4: closes on `versionchange`, reopens on the next call. If a transaction still can't start, it falls back to memory (`persistent` false). A failed `put` makes `beforeunload` warn.
+- 5: a `blocked` open is waited out for up to 10 s. A newer database version is opened as it is.
+- 6: when an answer is refused for good, its queued `undo:<id>` is dropped.
 
 ## Acceptance → tests
-- Unchanged from attempt 1 (`outbox.svelte.test.ts`). New: "clock moved backward between loads…", "another 4xx (400)…", "403 keeps the outbox…", "an answer refused for good drops the undo…", plus 5 store tests in `outboxStore.test.ts`.
+- As before. New in `outbox.svelte.test.ts`: "clock moved backward…", "another 4xx (400)…", "403 keeps…", "an answer refused for good drops the undo…". Also 5 new tests in `outboxStore.test.ts`.
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- Fix 3 (send the outbox on app start, not only on /review) needs code outside my paths. Moved to LF-W2.
-- 403 pauses instead of dropping, so a session without the scope loses no answers. C8 doesn't list 403.
-- Still open: logout must call `clearOutbox()` in `session.svelte.ts`, which is not my path.
+- 3 (send the outbox on app start) is outside my paths. Moved to LF-W2.
+- 403 pauses rather than drops (C8 doesn't list it), so no answers are lost.
+- `session.svelte.ts` logout must still call `clearOutbox()` (not my path).
