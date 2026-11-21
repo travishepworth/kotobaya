@@ -60,7 +60,7 @@ class SqlDelightDeviceStore(
     private val commitListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
     private val writer = ReentrantLock(true)
 
-    /** PERF-LF: which learning tables changed (bumped after each committed write transaction). */
+    /** PERF-LF: which learning tables (and card / review_log keys) each committed write transaction changed. */
     val versions: ReplicaVersions = ReplicaVersions()
 
     /** Writers queued for their turn now (diagnostics and tests). */
@@ -85,17 +85,16 @@ class SqlDelightDeviceStore(
     private fun <R> run(notify: Boolean, block: (StoreTransaction<SqlLearningTables>) -> R): R {
         active.get()?.let { return block(it) }
         if (!writer.tryLock(writeWaitMs, TimeUnit.MILLISECONDS)) throw StoreBusyException(writeWaitMs)
-        val changes = TxChanges()
-        var untracked = false
+        var touched: Touched? = null
         val result = try {
-            val tx = Tx(readOnly = false, changes)
+            val tx = Tx(readOnly = false)
             // re-assert durability on the connection about to write (cannot change inside a transaction)
             driver.execute(null, "PRAGMA synchronous = FULL", 0)
             try {
                 active.set(tx)
                 db.transactionWithResult {
-                    val before = totalChanges()
-                    block(tx).also { untracked = totalChanges() - before > changes.counted }
+                    touch.prepare()
+                    block(tx).also { touched = touch.drain() }
                 }
             } finally {
                 active.set(null)
@@ -103,44 +102,34 @@ class SqlDelightDeviceStore(
         } finally {
             writer.unlock()
         }
-        // after the commit (see ReplicaVersions); a rolled-back transaction threw above and changed nothing
-        if (untracked || changes.tables.isNotEmpty()) versions.committed(changes, untracked)
+        // after the commit (see ReplicaVersions); a rolled-back transaction threw above and published nothing
+        touched?.takeIf { it.tables.isNotEmpty() }?.let { versions.committed(it) }
         if (notify) for (l in commitListeners) runCatching { l() }
         return result
     }
 
-    /** SQLite `total_changes()` of the transaction's connection. */
-    private fun totalChanges(): Long =
-        driver.executeQuery(null, "SELECT total_changes()", { c -> c.next(); QueryResult.Value(c.getLong(0) ?: 0L) }, 0).value
+    private val touch = TouchLog(driver)
 
     companion object {
         /** SHELL.md L-9 / SYNC.md 6.1: the longest a local write waits for the write connection. */
         const val WRITE_WAIT_MS: Long = 5_000
     }
 
-    private inner class Tx(private val readOnly: Boolean, private val changes: TxChanges? = null) : StoreTransaction<SqlLearningTables> {
-        override val learning: SqlLearningTables = SqlLearningTables(driver, schema, readOnly, changes)
-        override val outbox: OutboxTable = SqlOutbox(driver, readOnly, changes)
+    private inner class Tx(private val readOnly: Boolean) : StoreTransaction<SqlLearningTables> {
+        override val learning: SqlLearningTables = SqlLearningTables(driver, schema, readOnly)
+        override val outbox: OutboxTable = SqlOutbox(driver, readOnly)
         override val syncState: SyncStateTable = object : SyncStateTable {
             override fun get(key: String): String? = db.syncOpsQueries.getSyncState(key).executeAsOneOrNull()
 
             override fun put(key: String, value: String) {
                 if (readOnly) readOnlyWrite()
-                counted { db.syncOpsQueries.putSyncState(key, value) }
+                db.syncOpsQueries.putSyncState(key, value)
             }
 
             override fun remove(key: String) {
                 if (readOnly) readOnlyWrite()
-                counted { db.metaLimitsQueries.deleteSyncState(key) }
+                db.metaLimitsQueries.deleteSyncState(key)
             }
-        }
-
-        /** A write of the store's own (not learning data): its rows count as tracked. */
-        private fun counted(write: () -> Unit) {
-            val c = changes ?: return write()
-            val before = totalChanges()
-            write()
-            c.counted += totalChanges() - before
         }
     }
 }
@@ -155,10 +144,7 @@ class StoreBusyException(waitedMs: Long) : IllegalStateException("the write conn
 internal fun readOnlyWrite(): Nothing = throw IllegalStateException("write inside SqlDelightDeviceStore.read; use transaction")
 
 /** `pending_op` (Local.sq) as T303a's [OutboxTable]. [readOnly]: every write throws ([SqlDelightDeviceStore.read]). */
-internal class SqlOutbox(private val driver: SqlDriver, private val readOnly: Boolean = false, private val changes: TxChanges? = null) : OutboxTable {
-    /** Rows changed by this outbox's writes count as tracked ([ReplicaVersions]). */
-    private fun QueryResult<Long>.count(): Long = value.also { n -> changes?.let { it.counted += n } }
-
+internal class SqlOutbox(private val driver: SqlDriver, private val readOnly: Boolean = false) : OutboxTable {
     private fun writable() {
         if (readOnly) readOnlyWrite()
     }
@@ -184,7 +170,7 @@ internal class SqlOutbox(private val driver: SqlDriver, private val readOnly: Bo
             bindLong(9, row.attempts.toLong())
             bindString(10, row.lastError)
             bindLong(11, row.ackedSeq)
-        }.count()
+        }
     }
 
     override fun get(opId: Uuid): PendingOpRow? =
@@ -219,19 +205,19 @@ internal class SqlOutbox(private val driver: SqlDriver, private val readOnly: Bo
     override fun incrementAttempts(opIds: Collection<Uuid>) {
         writable()
         for (id in opIds) {
-            driver.execute(null, "UPDATE pending_op SET attempts = attempts + 1 WHERE op_id = ?", 1) { bindString(0, id) }.count()
+            driver.execute(null, "UPDATE pending_op SET attempts = attempts + 1 WHERE op_id = ?", 1) { bindString(0, id) }
         }
     }
 
     override fun delete(opId: Uuid) {
         writable()
-        driver.execute(null, "DELETE FROM pending_op WHERE op_id = ?", 1) { bindString(0, opId) }.count()
+        driver.execute(null, "DELETE FROM pending_op WHERE op_id = ?", 1) { bindString(0, opId) }
     }
 
     override fun deleteAckedThrough(maxSeq: Long): Int =
         if (readOnly) readOnlyWrite() else driver.execute(null, "DELETE FROM pending_op WHERE state = 'acked' AND acked_seq <= ?", 1) {
             bindLong(0, maxSeq)
-        }.count().toInt()
+        }.value.toInt()
 
     override fun count(state: PendingState): Int = driver.executeQuery(
         null,
@@ -245,7 +231,7 @@ internal class SqlOutbox(private val driver: SqlDriver, private val readOnly: Bo
         driver.execute(null, "UPDATE pending_op SET $set WHERE op_id = ?", n + 1) {
             binders()
             bindString(n, opId)
-        }.count()
+        }
     }
 
     private fun rows(tail: String, params: Int, binders: (app.cash.sqldelight.db.SqlPreparedStatement) -> Unit): List<PendingOpRow> =

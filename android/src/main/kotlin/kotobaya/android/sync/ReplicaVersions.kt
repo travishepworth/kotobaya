@@ -1,36 +1,36 @@
 package kotobaya.android.sync
 
+import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.db.SqlCursor
+import app.cash.sqldelight.db.SqlDriver
 import java.util.ArrayDeque
-import kotobaya.contracts.sync.JsonString
-import kotobaya.contracts.sync.JsonValue
 import kotobaya.sync.client.apply.LearningTable
 
 /**
  * PERF-LF: which learning tables changed, so readers can keep what they derived from the replica (the queue loader's
- * card snapshot and deck memberships, the stats' per-card history) until a table they read changes, instead of
- * re-reading the whole replica on every request.
+ * card snapshot and deck memberships, the stats' per-card history, Home's lists) until a table they read changes,
+ * instead of re-reading the whole replica on every request.
  *
  * [SqlDelightDeviceStore] records every committed write transaction here AFTER its commit (a reader that reads a
- * version first and the data second can only refresh once more, never keep stale data under a newer version). Writes
- * through [SqlLearningTables] are attributed to their table and, for the [KEYED] tables, to their keys; a transaction
- * whose SQLite `total_changes()` shows rows written by anything else (raw statements, e.g. the content installer's
- * `deck_item` rows) bumps every table and forgets the keys. Writes outside the store's transactions are not seen:
- * learning data is written only inside them (CLAUDE.md rule 8).
+ * version first and the data second can only refresh once more, never keep stale data under a newer version). What a
+ * transaction changed comes from [TouchLog]: SQL triggers on every learning table, so every row write counts exactly,
+ * whoever issued it (the learning tables, the content installer's raw `deck_item` statements, anything else inside a
+ * store transaction), and nothing else does (the device's own indexes and change logs, outbox, sync state).
+ * Writes outside the store's transactions are not seen: learning data is written only inside them (CLAUDE.md rule 8).
  */
 class ReplicaVersions {
     private val versions = LongArray(LearningTable.entries.size)
-    private var all = 0L
 
-    /** Per keyed table, recent commits that touched it: (its version after the commit, its keys or null = unknown). */
+    /** Per keyed table, recent commits that touched it: (its version after the commit, its keys or null = too many). */
     private val logs = KEYED.associateWith { ArrayDeque<Pair<Long, Set<String>?>>() }
 
     /** One number that changes whenever any of [tables] changed (monotonic). */
     @Synchronized
-    fun version(vararg tables: LearningTable): Long = all + tables.sumOf { versions[it.ordinal] }
+    fun version(vararg tables: LearningTable): Long = tables.sumOf { versions[it.ordinal] }
 
     /** The version of [table] alone (for [changedKeys]). */
     @Synchronized
-    fun tableVersion(table: LearningTable): Long = all + versions[table.ordinal]
+    fun tableVersion(table: LearningTable): Long = versions[table.ordinal]
 
     /** Current `card` version (for [changedCards]). */
     fun cardVersion(): Long = tableVersion(LearningTable.CARD)
@@ -39,8 +39,8 @@ class ReplicaVersions {
     fun changedCards(since: Long): Set<String>? = changedKeys(LearningTable.CARD, since)
 
     /**
-     * The keys of [table] (one of [KEYED]; the first key column) written since its [tableVersion] was [since]; null when
-     * that is not known exactly (an untracked write, a table clear, a big batch, or too long ago): reload everything.
+     * The keys of [table] (one of [KEYED]; its first key column) written since its [tableVersion] was [since]; null when
+     * that is not known exactly (a big batch, or too long ago): the caller reloads everything.
      */
     @Synchronized
     fun changedKeys(table: LearningTable, since: Long): Set<String>? {
@@ -56,46 +56,77 @@ class ReplicaVersions {
         return out
     }
 
-    /** Records one committed transaction (see [TxChanges]). [untracked]: rows the store's writers did not count were written. */
+    /** Records one committed transaction. */
     @Synchronized
-    internal fun committed(changes: TxChanges, untracked: Boolean) {
-        if (untracked) {
-            all++
-            for ((t, log) in logs) log.addLast(tableVersion(t) to null)
-        } else {
-            for (t in changes.tables) {
-                versions[t.ordinal]++
-                logs[t]?.addLast(tableVersion(t) to changes.keys(t)?.takeIf { it.size <= MAX_KEYS })
+    internal fun committed(t: Touched) {
+        for (table in t.tables) {
+            versions[table.ordinal]++
+            logs[table]?.let { log ->
+                log.addLast(versions[table.ordinal] to t.keys[table])
+                while (log.size > MAX_LOG) log.removeFirst()
             }
         }
-        for (log in logs.values) while (log.size > MAX_LOG) log.removeFirst()
     }
 
     companion object {
         /** The tables whose written keys are logged. */
-        val KEYED: Set<LearningTable> = setOf(LearningTable.CARD, LearningTable.REVIEW_LOG)
+        val KEYED: Set<LearningTable> = setOf(LearningTable.CARD, LearningTable.REVIEW_LOG, LearningTable.NOTE, LearningTable.WORD_STATUS)
+        internal const val MAX_KEYS = 2_000
         private const val MAX_LOG = 1_024
-        private const val MAX_KEYS = 2_000
     }
 }
 
-/** What one write transaction did, collected by its [SqlLearningTables] and outbox / sync_state writers. */
-internal class TxChanges {
-    val tables = HashSet<LearningTable>()
-    private val keys = HashMap<LearningTable, MutableSet<String>?>()
+/** What one write transaction changed: the learning tables, and the keys of the [ReplicaVersions.KEYED] ones (null = too many). */
+internal class Touched(val tables: Set<LearningTable>, val keys: Map<LearningTable, Set<String>?>)
 
-    /** Rows the store's own writers changed (compared with SQLite `total_changes()` at commit). */
-    var counted = 0L
-
-    /** [rows] rows of [table] written for [key] (null: a whole-table write). */
-    fun learning(table: LearningTable, key: List<JsonValue>?, rows: Long) {
-        tables += table
-        counted += rows
-        if (table !in ReplicaVersions.KEYED) return
-        val k = (key?.firstOrNull() as? JsonString)?.value
-        if (!keys.containsKey(table)) keys[table] = HashSet()
-        if (k == null) keys[table] = null else keys[table]?.add(k)
+/**
+ * The row writes of the current write transaction, recorded by TEMP triggers on every learning table into a TEMP
+ * table of the write connection (created there on first use; a temp table's rows roll back with the transaction).
+ * [prepare] at the start of each outermost store transaction, [drain] at its end (before the commit).
+ */
+internal class TouchLog(private val driver: SqlDriver) {
+    fun prepare() {
+        val exists = driver.executeQuery(null, "SELECT count(*) FROM sqlite_temp_master WHERE type = 'table' AND name = '$TABLE'", { c: SqlCursor ->
+            c.next()
+            QueryResult.Value((c.getLong(0) ?: 0L) > 0L)
+        }, 0).value
+        if (exists) return
+        driver.execute(null, "CREATE TEMP TABLE IF NOT EXISTS $TABLE (tbl TEXT NOT NULL, k TEXT)", 0)
+        for (t in LearningTable.entries) {
+            val key = t.keyColumns.first()
+            // only the keyed tables need the key; the others record the table alone
+            val newKey = if (t in ReplicaVersions.KEYED) "new.$key" else "NULL"
+            val oldKey = if (t in ReplicaVersions.KEYED) "old.$key" else "NULL"
+            val name = t.sqlName
+            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${TABLE}_${name}_i AFTER INSERT ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $newKey); END", 0)
+            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${TABLE}_${name}_u AFTER UPDATE ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $newKey); END", 0)
+            driver.execute(null, "CREATE TEMP TRIGGER IF NOT EXISTS ${TABLE}_${name}_d AFTER DELETE ON main.$name BEGIN INSERT INTO $TABLE VALUES ('$name', $oldKey); END", 0)
+        }
     }
 
-    fun keys(table: LearningTable): Set<String>? = if (keys.containsKey(table)) keys[table] else emptySet()
+    fun drain(): Touched {
+        val counts = driver.executeQuery(null, "SELECT tbl, count(DISTINCT k) FROM $TABLE GROUP BY tbl", { c: SqlCursor ->
+            val out = HashMap<String, Long>()
+            while (c.next().value) out[checkNotNull(c.getString(0))] = c.getLong(1) ?: 0L
+            QueryResult.Value(out)
+        }, 0).value
+        if (counts.isEmpty()) return Touched(emptySet(), emptyMap())
+        val byName = LearningTable.entries.associateBy { it.sqlName }
+        val tables = counts.keys.mapNotNullTo(HashSet()) { byName[it] }
+        val keys = HashMap<LearningTable, Set<String>?>()
+        for (t in ReplicaVersions.KEYED) {
+            val n = counts[t.sqlName] ?: continue
+            keys[t] = if (n > ReplicaVersions.MAX_KEYS) null else driver.executeQuery(null, "SELECT DISTINCT k FROM $TABLE WHERE tbl = ? AND k IS NOT NULL", { c: SqlCursor ->
+                val out = HashSet<String>()
+                while (c.next().value) c.getString(0)?.let(out::add)
+                QueryResult.Value(out)
+            }, 1) { bindString(0, t.sqlName) }.value
+        }
+        driver.execute(null, "DELETE FROM $TABLE", 0)
+        return Touched(tables, keys)
+    }
+
+    private companion object {
+        const val TABLE = "perf_replica_touch"
+    }
 }

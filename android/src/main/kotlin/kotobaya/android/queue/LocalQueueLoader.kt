@@ -361,8 +361,7 @@ class LocalQueueLoader(
     private fun kanjiNoteLiterals(): Set<String> =
         memo("kanjiNoteLiterals", LearningTable.NOTE) { q.kanjiNoteLiterals().executeAsList().mapNotNullTo(HashSet()) { it } }
 
-    private fun deckItemMemberships(): List<kotobaya.db.app.DeckItemMemberships> =
-        memo("deckItemMemberships", LearningTable.DECK, LearningTable.DECK_ITEM, LearningTable.NOTE) { q.deckItemMemberships().executeAsList() }
+    private fun deckItemMemberships(): List<kotobaya.db.app.DeckItemMemberships> = cache?.memberships(q) ?: q.deckItemMemberships().executeAsList()
 
     private fun pendingDeckEntries(deckId: String, page: Long, offset: Long): List<kotobaya.db.app.PendingDeckEntries> =
         memo("pendingDeckEntries|$deckId|$page|$offset", LearningTable.DECK_ITEM, LearningTable.NOTE, LearningTable.WORD_STATUS) {

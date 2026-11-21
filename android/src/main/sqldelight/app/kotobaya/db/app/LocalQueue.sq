@@ -151,3 +151,38 @@ WHERE di.deck_id = :deckId AND di.deleted_at IS NULL AND di.entry_seq IS NOT NUL
   AND (ws.override_status IS NULL OR ws.override_status NOT IN ('known', 'never_forget', 'blacklisted', 'ignored'))
 ORDER BY di.position, di.item_key
 LIMIT :limit OFFSET :offset;
+
+-- PERF-LF: queueCandidatesAll of the cards of some notes (notes a write touched since the snapshot).
+queueCandidatesOfNotes:
+SELECT c.id, c.note_id, c.kind, n.note_type_id, n.type, n.created_at, c.state, c.due_at, c.suspended,
+       c.buried_until, ws.override_status, n.kanji_literal, n.entry_seq,
+       CASE WHEN n.type = 'vocab' THEN n.fields ELSE '{}' END AS fields
+FROM card c
+JOIN note n ON n.id = c.note_id
+LEFT JOIN word_status ws ON ws.entry_seq = n.entry_seq
+WHERE c.note_id IN :noteIds AND c.deleted_at IS NULL AND c.merged_into_id IS NULL AND n.deleted_at IS NULL
+  AND c.last_review_id IS NOT :refusedId;
+
+-- PERF-LF: the ids of the notes of some entries (their word status changed: override_status is in every candidate row).
+notesOfEntries:
+SELECT id FROM note WHERE entry_seq IN :seqs;
+
+-- PERF-LF: deckItemMemberships of some notes (pass the same ids three times): the rows whose resolved note or source
+-- note is one of them.
+deckItemMembershipsOfNotes:
+SELECT di.deck_id, di.position, di.item_key, n.id AS note_id
+FROM deck_item di
+JOIN deck d ON d.id = di.deck_id AND d.deleted_at IS NULL AND d.type <> 'smart'
+JOIN note n ON n.entry_seq = di.entry_seq AND n.deleted_at IS NULL
+WHERE di.deleted_at IS NULL AND di.entry_seq IS NOT NULL AND n.id IN :a
+UNION ALL
+SELECT di.deck_id, di.position, di.item_key, n.id AS note_id
+FROM deck_item di
+JOIN deck d ON d.id = di.deck_id AND d.deleted_at IS NULL AND d.type <> 'smart'
+JOIN note src ON src.id = di.note_id
+JOIN note n ON n.id = COALESCE(src.merged_into_id, src.id)
+WHERE di.deleted_at IS NULL AND di.note_id IS NOT NULL AND n.deleted_at IS NULL AND (src.id IN :b OR n.id IN :c);
+
+-- PERF-LF: how many of some notes are merge losers (a merge moves memberships between notes: rebuild them all).
+mergedAmong:
+SELECT count(*) FROM note WHERE id IN :ids AND merged_into_id IS NOT NULL;

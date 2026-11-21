@@ -169,8 +169,16 @@ class LocalApi(
         return response.copy(headers = headers)
     }
 
-    /** One lock per identical background request (method, path, query). */
-    private val sameRequest = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
+    /** One lock per identical background request (method, path, query) while any such request runs; removed when idle. */
+    private class Gate {
+        val mutex = Mutex()
+        var users = 0
+    }
+
+    private val sameRequest = HashMap<String, Gate>()
+
+    /** Background request keys with a request running or waiting (tests: bounded). */
+    internal fun liveGates(): Int = synchronized(sameRequest) { sameRequest.size }
 
     /**
      * PERF-LF: identical background requests run one after the other, never side by side (Home asks for each twice
@@ -180,7 +188,12 @@ class LocalApi(
      */
     private suspend fun <T> background(request: ShellRequest, block: suspend () -> T): T {
         val key = request.method + " " + request.path + "?" + request.query.toSortedMap().entries.joinToString("&") { (k, v) -> "$k=${v.joinToString(",")}" }
-        return sameRequest.getOrPut(key) { Mutex() }.withLock { block() }
+        val gate = synchronized(sameRequest) { sameRequest.getOrPut(key) { Gate() }.also { it.users++ } }
+        try {
+            return gate.mutex.withLock { block() }
+        } finally {
+            synchronized(sameRequest) { if (--gate.users == 0) sameRequest.remove(key) }
+        }
     }
 
     private suspend fun forward(request: ShellRequest, op: ApiOperation, requestId: String): ShellResponse {

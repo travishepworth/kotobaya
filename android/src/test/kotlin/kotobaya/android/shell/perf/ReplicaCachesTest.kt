@@ -3,7 +3,6 @@ package kotobaya.android.shell.perf
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotobaya.android.queue.CandidateRow
 import kotobaya.android.shell.api.LocalRoutes
@@ -50,9 +49,34 @@ class ReplicaCachesTest {
         }
     }
 
+    /** The loader's whole input (candidates, memberships, pending entries, kanji needs), order-normalized. */
+    private fun loaderInput(cache: kotobaya.android.queue.QueueReadCache?): kotobaya.contracts.queue.QueueInput {
+        val headwords = kotobaya.android.shell.api.review.shellHeadwords(kotobaya.android.shell.api.ShellServices.None, d.installedDictionary)
+        val input = kotobaya.android.queue.LocalQueueLoader(
+            d.database, { d.clock.now },
+            headwordOf = headwords::headword, prefetchHeadwords = headwords::prefetch,
+            materializer = kotobaya.android.shell.api.review.ShellEntryMaterializer(d.noteCreator) { false },
+            kanji = kotobaya.android.queue.KanjiSource(d.installedDictionary), cache = cache,
+        ).load(keepGoingNewBatch = 30).input
+        return input.copy(candidates = input.candidates.sortedBy { it.cardId }.map { c -> c.copy(memberships = c.memberships.sortedBy { it.deckId }) })
+    }
+
+    private fun body(path: String, query: String): String = d.request("GET", path, query, null).also { assertEquals(200, it.status, it.body) }.body.orEmpty()
+
+    private val memoized = listOf("/api/v1/decks" to "", "/api/v1/words/hot" to "limit=50", "/api/v1/kanji/hot" to "limit=30")
+
     private fun assertCachesCurrent(what: String) {
         assertEquals(fresh(), cached(), "$what: queue candidates")
+        assertEquals(
+            q.deckItemMemberships().executeAsList().sortedWith(compareBy({ it.note_id }, { it.deck_id }, { it.item_key })),
+            d.queueCache.memberships(q).sortedWith(compareBy({ it.note_id }, { it.deck_id }, { it.item_key })),
+            "$what: deck memberships",
+        )
+        assertEquals(loaderInput(null), loaderInput(d.queueCache), "$what: loader input (memberships, pending entries, kanji literals)")
         assertEquals(statsText(StatsHistoryCache(null)), statsText(d.statsCache), "$what: stats history")
+        val kept = memoized.map { (p, qs) -> body(p, qs) }
+        d.queueCache.clearMemos()
+        assertEquals(memoized.map { (p, qs) -> body(p, qs) }, kept, "$what: listDecks / listHotWords / listHotKanji")
     }
 
     private val cards: List<String> by lazy { fresh().filter { it.state != "new" }.map { it.id } }
@@ -106,8 +130,10 @@ class ReplicaCachesTest {
 
         // a note change (note facts are part of every candidate row): everything is read again
         val noteId = fresh().first { it.type == "vocab" }.note_id
+        val full = d.queueCache.fullLoads
         d.store.transaction { it.learning.put(LearningTable.NOTE, mapOf("id" to JsonString(noteId), "deleted_at" to JsonNumber(now.toDouble()))) }
         assertCachesCurrent("note deleted")
+        assertEquals(full, d.queueCache.fullLoads, "a note write refreshes only that note's cards")
 
         // a raw statement inside a store transaction: the store cannot attribute it, so every version moves
         val before = d.store.versions.version(LearningTable.CARD, LearningTable.REVIEW_LOG, LearningTable.DECK_ITEM)
@@ -117,8 +143,61 @@ class ReplicaCachesTest {
             d.driver.execute(null, "UPDATE review_log SET duration_ms = 1 WHERE card_id = ?", 1) { bindString(0, cards[6]) }
         }
         assertTrue(d.store.versions.version(LearningTable.CARD, LearningTable.REVIEW_LOG, LearningTable.DECK_ITEM) > before)
-        assertNull(d.store.versions.changedCards(cv), "an untracked write has no key list")
+        assertEquals(setOf(cards[5]), d.store.versions.changedCards(cv), "raw statements are attributed by the triggers")
         assertCachesCurrent("raw write")
+
+        // word status (override_status is in every candidate row of the entry's notes; pending entries skip overrides)
+        val vocab = fresh().first { it.type == "vocab" && it.entry_seq != null }
+        d.store.transaction {
+            it.learning.put(
+                LearningTable.WORD_STATUS,
+                mapOf(
+                    "entry_seq" to JsonNumber(vocab.entry_seq!!.toDouble()), "status" to JsonString("known"), "override_status" to JsonString("known"),
+                    "override_hlc" to JsonString("h"), "updated_at" to JsonNumber(now.toDouble()),
+                ),
+            )
+            it.learning.put(
+                LearningTable.WORD_STATUS,
+                mapOf(
+                    "entry_seq" to JsonNumber(1_501_250.0), "status" to JsonString("ignored"), "override_status" to JsonString("ignored"),
+                    "override_hlc" to JsonString("h"), "updated_at" to JsonNumber(now.toDouble()),
+                ),
+            )
+        }
+        assertCachesCurrent("word status")
+
+        // deck items: added and removed through the learning tables, and installed by raw statements (ContentInstaller)
+        val deck = d.store.read { it.learning.all(LearningTable.DECK) }.first { (it["type"] as JsonString).value == "list" }["id"] as JsonString
+        d.store.transaction {
+            it.learning.put(
+                LearningTable.DECK_ITEM,
+                mapOf("deck_id" to deck, "item_key" to JsonString("e:1500220"), "entry_seq" to JsonNumber(1_500_220.0), "position" to JsonNumber(-1.0), "added_at" to JsonNumber(now.toDouble())),
+            )
+            it.learning.delete(LearningTable.DECK_ITEM, listOf(deck, JsonString("e:1500010")))
+        }
+        assertCachesCurrent("deck items via the learning tables")
+        d.store.transaction {
+            d.driver.execute(null, "DELETE FROM deck_item WHERE deck_id = ? AND position BETWEEN 20 AND 40", 1) { bindString(0, deck.value) }
+            d.driver.execute(null, "INSERT INTO deck_item (deck_id, item_key, entry_seq, position, added_at) VALUES (?, 'e:1500250', 1500250, -2, 0)", 1) { bindString(0, deck.value) }
+        }
+        assertCachesCurrent("deck items via raw statements")
+
+        // a new kanji note (blocks minting the literal) and a preset change (every replay)
+        d.store.transaction {
+            it.learning.put(
+                LearningTable.NOTE,
+                mapOf(
+                    "id" to JsonString("0193bbbb-0000-7000-8000-000000000001"), "note_type_id" to JsonString("00000000-0000-7000-8000-000000000102"),
+                    "type" to JsonString("kanji"), "kanji_literal" to JsonString("\u9f8d"), "created_by_device_id" to JsonString("00000000-0000-7000-8000-000000000001"),
+                    "created_at" to JsonNumber(now.toDouble()), "updated_at" to JsonNumber(now.toDouble()),
+                ),
+            )
+        }
+        assertCachesCurrent("kanji note")
+        d.store.transaction {
+            it.learning.put(LearningTable.FSRS_PARAMS, mapOf("id" to JsonString(Reserved.DEFAULT_PRESET_ID), "desired_retention" to JsonNumber(0.8), "updated_at" to JsonNumber(now.toDouble())))
+        }
+        assertCachesCurrent("preset change")
 
         // reads and rolled-back writes change nothing
         val all = d.store.versions.version(*LearningTable.entries.toTypedArray())
@@ -146,5 +225,6 @@ class ReplicaCachesTest {
             if (i % 5 == 4) assertCachesCurrent("after write batch $i")
         }
         assertTrue(d.queueCache.partialLoads > 0 && d.statsCache.partialLoads > 0, "the partial refresh paths ran")
+        assertTrue(d.queueCache.memoCount() <= 256, "memos are bounded")
     }
 }
