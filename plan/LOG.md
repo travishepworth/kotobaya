@@ -1484,3 +1484,6 @@
 2026-11-21T00:00:00Z LF-W2 CHECK_GREEN (web 360) -> merged + pushed t/LF-int a849879a; DISPATCH LF-W3 (writer-light)
 2026-11-21T00:00:00Z C-32 re-check: contracts green, server only ParityGolden 13 known -> MERGE into t/LF-int dcad0db6
 2026-11-21T00:00:00Z LF-A8b MERGE into t/LF-int 84f7cc81 (rebase touched no android) -> pushed; DISPATCH LF-GOLD (writer-light) + LF-X1 (writer)
+2026-11-21T00:00:00Z LF-W3 HANDOFF (366 web); DECIDE: route-level needsConnection gate = existing affordance; writer extends ROUTE_OPS to design §3 remote-only ops (access.ts authorized); per-action inline -> follow-up
+2026-11-21T00:00:00Z LF-W3 HANDOFF r2 (ROUTE_OPS empty: no wholly-remote route; ops.json over design §3); CHECK_GREEN web 368 -> merged + pushed t/LF-int 71f43bda
+2026-11-21T00:00:00Z LF-W4 NEW ticket (per-action needs-connection, putBlob hidden in shell) DISPATCH writer
