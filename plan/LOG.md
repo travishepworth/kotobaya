@@ -1505,3 +1505,4 @@
 2026-11-21T00:00:00Z PERF-SNAP HANDOFF (web 381; Home queue limit 1->30; optimistic session) -> web re-check + reviewer (touches review/outbox)
 2026-11-21T00:00:00Z PERF-SNAP REVIEW_CHANGES (blocker: snapshot cards gradable before fetch confirms -> duplicate reviews; 2 major) -> attempt 2; DECIDE: show snapshot card instantly, grade enabled after first fetch confirms
 2026-11-21T00:00:00Z PERF-SNAP r2 REVIEW_CHANGES (1 major: ungradable snapshot card with no retry after failed first fetch) -> attempt 3
+2026-11-21T00:00:00Z PERF-SNAP REVIEW_APPROVE r3 (2 harmless minors -> FOLLOWUPS); web 390 green -> merged to main (release waits for PERF-LF)
