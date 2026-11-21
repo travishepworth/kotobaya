@@ -32,6 +32,8 @@ class ReplicaCachesTest {
 
     init {
         ReplicaScale.seed(d.driver, d.store, now, small)
+        // as on the phone: triggers on `note` that write device rows (they must not count as learning writes)
+        d.store.transaction { kotobaya.android.notes.NoteChangeLog(d.driver).install() }
     }
 
     private val q get() = d.database.localQueueQueries

@@ -58,6 +58,11 @@ class HomeLoadBenchmarkTest {
     ).also { d -> realDict?.let { java.io.File(it).copyTo(d.dictStore.installed.also { f -> f.parentFile?.mkdirs() }, overwrite = true) } }
     private val seeded = if (realReplica != null) ReplicaScale.counts(driver) else ReplicaScale.seed(driver, device.store, now)
 
+    init {
+        // as on the phone: the note change log's triggers on `note` (NotesFeature) write a row per note write
+        device.store.transaction { kotobaya.android.notes.NoteChangeLog(driver).install() }
+    }
+
     @AfterTest
     fun tearDown() {
         driver.close()
