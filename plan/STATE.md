@@ -80,12 +80,11 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 
 
 ## Queued
-P11 perf tickets (2026-11-21, after independent review plan/handoffs/PERF-REVIEW-2026-11-21.md). NOT dispatched; waiting for the user's go and the decision to merge PERF-LF (t/PERF-LF-local-handlers 60ee56fa, approved; test APK 0.1.42 on the phone, unreleased):
-- PERF-GATE (sonnet, low): on-device timing split + adb harness + targets. deps PERF-LF
-- PERF-WARM (opus, med): cache warm-up at start and after sync + queue first on the lane. deps PERF-LF, PERF-GATE
-- PERF-SNAP2 (opus, med, web): snapshot rewritten after grading and sync. deps PERF-SNAP
-- C-33 (architect, med): heatmap/retention/hot lists -> `cached`. deps PERF-LF
-Ideas with no ticket: baseline profile + R8; per-card check for snapshot grading (needs ADR-051).
+P11 perf (2026-11-21). Rule from the user: an idea becomes a ticket only once it is validated against code and measurements.
+- PERF-GATE (sonnet, low): VALIDATED (BridgeCore.kt:98 clock includes gate, lane and mutex waits; no benchmark, profile or minify setup). Next after the PERF-LF merge.
+- PERF-SNAP2: WITHDRAWN. Premise false: review already saves the queue snapshot after every answer (review.svelte.ts:1575 and others), and Home revalidates on sync.changed.
+- plan/proposals/PERF-WARM.md, STATS-CACHED.md: UNVALIDATED, waiting for PERF-GATE data. The "queue first on the lane" item was false (the queue is not on the lane).
+- Ideas: baseline profile + R8 (PERF-GATE --speed will size it); per-card check for snapshot grading (ADR-051).
 FOLLOWUPS
 
 ## Ready for review / In review

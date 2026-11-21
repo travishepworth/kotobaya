@@ -1,5 +1,7 @@
 # Independent review of the four speed-up ideas (2026-11-21)
 
+> Correction (2026-11-21, checked by the orchestrator against the code): PERF-SNAP2 was withdrawn because its premise was false. PERF-WARM's "queue first on the lane" item was false. WARM and STATS-CACHED are unvalidated proposals in plan/proposals/. Only PERF-GATE is a ticket.
+
 Two read-only reviewers (Plan agents) were told to try to break each idea, using the PERF-LF worktree and the timings from the phone running 0.1.42.
 
 ## Idea 1: Home numbers from a server endpoint when online. Doesn't hold for counts.

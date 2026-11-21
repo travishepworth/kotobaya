@@ -1,4 +1,6 @@
-# C-33 — Heavy stats and hot lists become `cached` in the shell
+# PROPOSAL (not a ticket) — Heavy stats and hot lists become `cached` in the shell
+
+> **Status: UNVALIDATED.** The 4.1–4.5 s phone times include waiting on the 1-wide lane, and the handlers took 10–35 ms each on desktop. Becomes a contract ticket only if PERF-GATE shows their own compute time on the phone is large. Known cost: the heatmap and hot lists would leave out today's reviews until they are revalidated.
 
 - Phase: P11 perf · Model: opus (architect) · Risk: med
 - Deps: PERF-LF (merged)
