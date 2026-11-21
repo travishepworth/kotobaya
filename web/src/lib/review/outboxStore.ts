@@ -72,14 +72,25 @@ function byAddedAt(a: OutboxRecord, b: OutboxRecord): number {
 	return a.addedAt - b.addedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
-/** The fallback: a map that lives as long as the page. */
-export function memoryOutboxStore(): OutboxStore {
-	const m = new Map<string, OutboxRecord>();
+/** A keyed record store (IndexedDB or memory); the outbox and the start-up snapshot (PERF-SNAP) both use one. */
+export interface RecordStore<T extends { id: string }> {
+	/** False for the in-memory fallback (a tab close loses what it holds). */
+	readonly persistent: boolean;
+	/** Every record, in no particular order. */
+	all(): Promise<T[]>;
+	put(r: T): Promise<void>;
+	delete(id: string): Promise<void>;
+	clear(): Promise<void>;
+}
+
+/** The fallback: a map that lives as long as the page. Values are copied in and out (as IndexedDB would). */
+export function memoryRecordStore<T extends { id: string }>(): RecordStore<T> {
+	const m = new Map<string, T>();
 	return {
 		persistent: false,
-		all: async () => [...m.values()].map((r) => ({ ...r })).sort(byAddedAt),
+		all: async () => [...m.values()].map((r) => structuredClone(r)),
 		put: async (r) => {
-			m.set(r.id, { ...r });
+			m.set(r.id, structuredClone(r));
 		},
 		delete: async (id) => {
 			m.delete(id);
@@ -88,6 +99,23 @@ export function memoryOutboxStore(): OutboxStore {
 			m.clear();
 		}
 	};
+}
+
+function sorted(s: RecordStore<OutboxRecord>): OutboxStore {
+	return {
+		get persistent() {
+			return s.persistent;
+		},
+		all: async () => (await s.all()).sort(byAddedAt),
+		put: (r) => s.put(r),
+		delete: (id) => s.delete(id),
+		clear: () => s.clear()
+	};
+}
+
+/** The fallback: a map that lives as long as the page. */
+export function memoryOutboxStore(): OutboxStore {
+	return sorted(memoryRecordStore<OutboxRecord>());
 }
 
 function req<T>(r: IDBRequest<T>): Promise<T> {
@@ -105,7 +133,13 @@ export const OPEN_BLOCKED_TIMEOUT_MS = 10_000;
  * waited for, up to `blockedTimeoutMs`. Without `version` (a reopen after another tab upgraded) the current
  * version is opened; it must still hold our store.
  */
-function open(factory: IDBFactory, blockedTimeoutMs: number, version?: number): Promise<IDBDatabase> {
+interface DbConfig {
+	db: string;
+	store: string;
+	version: number;
+}
+
+function open(factory: IDBFactory, cfg: DbConfig, blockedTimeoutMs: number, version?: number): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
 		let timer: ReturnType<typeof setTimeout> | null = null;
 		let gaveUp = false;
@@ -113,17 +147,17 @@ function open(factory: IDBFactory, blockedTimeoutMs: number, version?: number): 
 			if (timer !== null) clearTimeout(timer);
 			timer = null;
 		};
-		const r = version === undefined ? factory.open(OUTBOX_DB) : factory.open(OUTBOX_DB, version);
+		const r = version === undefined ? factory.open(cfg.db) : factory.open(cfg.db, version);
 		r.onupgradeneeded = () => {
 			// Other stores of this database (LF-W2) create their own on a later version; never drop ours.
-			if (!r.result.objectStoreNames.contains(OUTBOX_STORE)) r.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id' });
+			if (!r.result.objectStoreNames.contains(cfg.store)) r.result.createObjectStore(cfg.store, { keyPath: 'id' });
 		};
 		r.onsuccess = () => {
 			stop();
 			const d = r.result;
-			if (gaveUp || !d.objectStoreNames.contains(OUTBOX_STORE)) {
+			if (gaveUp || !d.objectStoreNames.contains(cfg.store)) {
 				d.close();
-				reject(new Error('IndexedDB outbox store missing'));
+				reject(new Error(`IndexedDB store ${cfg.store} missing`));
 				return;
 			}
 			resolve(d);
@@ -149,15 +183,24 @@ function open(factory: IDBFactory, blockedTimeoutMs: number, version?: number): 
  * (and `persistent` turns false, so the page warns before a close).
  */
 export function idbOutboxStore(factory: IDBFactory, opts: { blockedTimeoutMs?: number } = {}): OutboxStore {
+	return sorted(idbRecordStore<OutboxRecord>(factory, { db: OUTBOX_DB, store: OUTBOX_STORE, version: OUTBOX_DB_VERSION }, opts));
+}
+
+/** `idbOutboxStore` for any keyPath-`id` object store `cfg.store` of database `cfg.db`. */
+export function idbRecordStore<T extends { id: string }>(
+	factory: IDBFactory,
+	cfg: DbConfig,
+	opts: { blockedTimeoutMs?: number } = {}
+): RecordStore<T> {
 	const blockedTimeoutMs = opts.blockedTimeoutMs ?? OPEN_BLOCKED_TIMEOUT_MS;
-	const fallback = memoryOutboxStore();
+	const fallback = memoryRecordStore<T>();
 	let failed = false;
 	let db: Promise<IDBDatabase | null> | null = null;
 	function connect(version?: number): Promise<IDBDatabase | null> {
-		const p = open(factory, blockedTimeoutMs, version)
+		const p = open(factory, cfg, blockedTimeoutMs, version)
 			.catch((e: unknown) => {
 				// Another tab already upgraded past our version (LF-W2 stores): open whatever is current.
-				if (version !== undefined && e instanceof Error && e.name === 'VersionError') return open(factory, blockedTimeoutMs);
+				if (version !== undefined && e instanceof Error && e.name === 'VersionError') return open(factory, cfg, blockedTimeoutMs);
 				throw e;
 			})
 			.then(
@@ -177,14 +220,14 @@ export function idbOutboxStore(factory: IDBFactory, opts: { blockedTimeoutMs?: n
 	}
 	function tx(d: IDBDatabase, mode: IDBTransactionMode): IDBTransaction | null {
 		try {
-			return d.transaction(OUTBOX_STORE, mode);
+			return d.transaction(cfg.store, mode);
 		} catch {
 			return null; // closed (versionchange, browser shutdown) or otherwise unusable
 		}
 	}
 	async function run<T>(mode: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest<T>, mem: () => Promise<T>): Promise<T> {
 		if (failed) return mem();
-		const first = (db ??= connect(OUTBOX_DB_VERSION));
+		const first = (db ??= connect(cfg.version));
 		let d = await first;
 		let t = d ? tx(d, mode) : null;
 		if (d && !t) {
@@ -201,7 +244,7 @@ export function idbOutboxStore(factory: IDBFactory, opts: { blockedTimeoutMs?: n
 			t.onerror = () => reject(t.error ?? new Error('IndexedDB transaction failed'));
 			t.onabort = () => reject(t.error ?? new Error('IndexedDB transaction aborted'));
 		});
-		const out = await req(f(t.objectStore(OUTBOX_STORE)));
+		const out = await req(f(t.objectStore(cfg.store)));
 		if (mode === 'readwrite') await done; // durable once the transaction commits
 		return out;
 	}
@@ -209,14 +252,12 @@ export function idbOutboxStore(factory: IDBFactory, opts: { blockedTimeoutMs?: n
 		get persistent() {
 			return !failed;
 		},
-		all: async () =>
-			(
-				await run(
-					'readonly',
-					(s) => s.getAll() as IDBRequest<OutboxRecord[]>,
-					() => fallback.all()
-				)
-			).sort(byAddedAt),
+		all: () =>
+			run(
+				'readonly',
+				(s) => s.getAll() as IDBRequest<T[]>,
+				() => fallback.all()
+			),
 		put: async (r) => {
 			await run(
 				'readwrite',

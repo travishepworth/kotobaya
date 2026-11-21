@@ -5,6 +5,7 @@ import { isShellMode } from '../api/shell';
 import { openEventStream } from '../events';
 import { initShell } from './shell.svelte';
 import { clearOutbox } from './review.svelte';
+import { clearSnapshot, loadSnapshot, setSnapshotAccount, snapshotPrincipal } from './snapshot.svelte';
 import { t } from '../i18n';
 import { pushToast } from '../toasts.svelte';
 
@@ -29,25 +30,48 @@ setUnauthenticatedHandler(setOut);
  * Ask the server whether the cookie is still a valid session. In the Android shell the same call is answered
  * locally (`getPrincipal`); a 401 there means "not paired / re-pair" and leads to /login as on the web.
  */
-export async function refreshSession(): Promise<void> {
+export async function refreshSession(snapshotRead: Promise<void> = Promise.resolve()): Promise<void> {
 	void initShell(); // shell mode: send `ready` and load ShellInfo once per page life; no-op in a browser
 	try {
-		session.principal = await authApi.getPrincipal();
+		const p = await authApi.getPrincipal();
+		session.principal = p;
 		session.status = 'in';
+		setSnapshotAccount(p);
 		resumeErrorReports();
 	} catch (e) {
 		// Network errors already raised a toast; anything else means "not logged in".
 		if (e instanceof ResponseError) setOut();
-		else if (session.status === 'unknown') setOut();
+		else {
+			await snapshotRead; // offline with a snapshot: still in (optimistically), see `bootSession`
+			if (session.status === 'unknown') setOut();
+		}
 	}
+}
+
+/**
+ * App start (PERF-SNAP): the session check runs at once; meanwhile the start-up snapshot is read and, if it holds
+ * a principal, the session counts as `in` (optimistically) so Home draws from the snapshot without waiting for
+ * the network. The check then confirms (another principal drops the snapshot) or sends to /login (401).
+ */
+export async function bootSession(): Promise<void> {
+	const read = loadSnapshot().then(() => {
+		const p = snapshotPrincipal();
+		if (p && session.status === 'unknown') {
+			session.principal = p;
+			session.status = 'in';
+		}
+	});
+	await refreshSession(read);
 }
 
 export async function login(password: string, totpCode?: string): Promise<LoginResult> {
 	try {
-		session.principal = await authApi.login({
+		const p = await authApi.login({
 			loginRequest: { password, ...(totpCode ? { totpCode } : {}) }
 		});
+		session.principal = p;
 		session.status = 'in';
+		setSnapshotAccount(p);
 		resumeErrorReports();
 		return { ok: true };
 	} catch (e) {
@@ -72,8 +96,9 @@ export async function logout(): Promise<void> {
 	try {
 		await authApi.logout();
 	} finally {
-		// Unsent answers belong to the user who logged out (LF-W1): gone here and in IndexedDB.
-		await clearOutbox().catch(() => {});
+		// Unsent answers and the start-up snapshot belong to the user who logged out (LF-W1, PERF-SNAP): gone here
+		// and in IndexedDB.
+		await Promise.all([clearOutbox().catch(() => {}), clearSnapshot().catch(() => {})]);
 		setOut();
 	}
 }

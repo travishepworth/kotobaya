@@ -10,6 +10,7 @@ import type {
 } from '../api/generated';
 import { quietApiConfig } from '../api/client';
 import { isUncached, revalidateOn } from './swr';
+import { readSnapshot, writeSnapshot, type StatsSnapshot } from './snapshot.svelte';
 
 // RC-WEB: stats are slow (14-76 s, some 504) and each panel shows its own "couldn't load" + retry: no global toast.
 const api = new StatsApi(quietApiConfig);
@@ -77,6 +78,20 @@ export class StatsPage {
 	/** Aborts the requests still in flight when the screen is left (they would hold browser connections). */
 	#abort = new AbortController();
 
+	/** PERF-SNAP: the Home widgets (summary, heatmap, retention) are drawn at once from the start-up snapshot. */
+	constructor() {
+		const snap = readSnapshot('stats');
+		if (snap?.summary) this.summaryP = { data: snap.summary, failed: false, uncached: false };
+		if (snap?.heatmap) this.heatmapP = { data: snap.heatmap, failed: false, uncached: false };
+		if (snap?.retention) this.retentionP = { data: snap.retention, failed: false, uncached: false };
+	}
+
+	/** Keep a freshly loaded Home widget in the snapshot (the other panels are not shown on Home). */
+	#keep(panel: StatsPanel, data: unknown): void {
+		if (panel !== 'summary' && panel !== 'heatmap' && panel !== 'retention') return;
+		writeSnapshot('stats', { ...(readSnapshot('stats') ?? {}), [panel]: data } as StatsSnapshot);
+	}
+
 	/** Start the loads of `panels` (all by default; reads no state). */
 	start(panels: readonly StatsPanel[] = ALL): void {
 		for (const p of panels) this.retry(p);
@@ -102,7 +117,11 @@ export class StatsPage {
 		const init: RequestInit = { signal: this.#abort.signal };
 		const run = <T,>(fetch: () => Promise<T>, get: () => Panel<T>, set: (p: Panel<T>) => void): void => {
 			this.#inflight.add(panel);
-			load(fetch, get, set, init.signal, () => this.#inflight.delete(panel));
+			const keep = (p: Panel<T>): void => {
+				set(p);
+				if (p.data !== null && !p.failed && !p.uncached) this.#keep(panel, p.data);
+			};
+			load(fetch, get, keep, init.signal, () => this.#inflight.delete(panel));
 		};
 		switch (panel) {
 			case 'summary':

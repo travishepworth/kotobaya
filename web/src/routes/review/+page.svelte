@@ -322,6 +322,9 @@
 				{#if s.loaded && total > 0}
 					<p class="of">{rv('rv.of', { done, total })}</p>
 				{/if}
+				{#if s.stale}
+					<p class="of updating" role="status" data-testid="rv-updating">{rv('rv.updating')}</p>
+				{/if}
 			</div>
 			{#if !s.loaded || total > 0}
 				<ProgressBar value={done} max={Math.max(total, 1)} label={rv('rv.progress')} />

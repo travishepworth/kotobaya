@@ -18,7 +18,7 @@
 	import { closeTopOverlay, installNav, overlayCount, reportBackState, reviewBack, type BackEnv } from '../lib/ui/backStack.svelte';
 	import { initTheme, reportTheme } from '../lib/ui/theme.svelte';
 	
-	import { canLogout, logout, refreshSession, session, watchConnection } from '../lib/state/session.svelte';
+	import { bootSession, canLogout, logout, session, watchConnection } from '../lib/state/session.svelte';
 	import { isFirstSyncPending, shell } from '../lib/state/shell.svelte';
 	import { startOutbox } from '../lib/state/review.svelte';
 
@@ -72,11 +72,12 @@
 		};
 	}
 
-	// Check the cookie once at startup (the status never returns to 'unknown').
+	// Check the cookie once at startup (the status never returns to 'unknown'); PERF-SNAP: with a start-up
+	// snapshot the app is drawn from it at once while the check runs.
 	onMount(() => {
 		installNav({ goto: (to) => goto(to), env: backEnv });
 		reportTheme();
-		if (session.status === 'unknown') void refreshSession();
+		if (session.status === 'unknown') void bootSession();
 	});
 
 	// Guard: unauthenticated users go to /login (remembering where they were), and back out of it.

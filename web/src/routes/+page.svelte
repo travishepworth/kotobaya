@@ -148,6 +148,7 @@
 						</div>
 					{:else}
 						<LoopHero {view} {eta} onkeepgoing={keepGoing} />
+						{#if queue.stale}<p class="muted updating" role="status" data-testid="home-updating">{th('home.updating')}</p>{/if}
 						{#if view.phase === 'empty' && summary}<p class="muted next">{nextDue(summary.nextDueAt)}</p>{/if}
 					{/if}
 					{#if summary && summary.doneToday.reviews > 0}
@@ -330,6 +331,11 @@
 		gap: var(--kb-space-2);
 		flex: 1 1 14rem;
 		max-width: 22rem;
+	}
+	.updating {
+		margin: 0;
+		width: 100%;
+		font: var(--kb-type-caption);
 	}
 	.next {
 		margin: 0;

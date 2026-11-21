@@ -5,7 +5,8 @@ import { quietApiConfig } from '../api/client';
 import { ReviewApi } from '../api/generated';
 import { fetchWithKeepGoing, startKeepGoing } from '../review/keepGoingDay';
 import { loopView, type LoopView } from '../review/loop';
-import { outboxSettled } from './review.svelte';
+import { QUEUE_LIMIT, outboxSettled, pendingAnswerCards } from './review.svelte';
+import { readSnapshot, writeQueueSnapshot } from './snapshot.svelte';
 import { isUncached, revalidateOn } from './swr';
 
 export type { LoopPhase, LoopView, ReviewLoop } from '../review/loop';
@@ -25,9 +26,24 @@ export class TodayQueue {
 	failed = $state(false);
 	/** `503 shell_uncached` and nothing to show yet: "not downloaded yet", resolved by `cache.updated`. */
 	uncached = $state(false);
+	/**
+	 * PERF-SNAP: `view` comes from the start-up snapshot and no fetch has replaced it yet (in flight or failed).
+	 * The view shows it with a quiet "updating" note: not authoritative.
+	 */
+	stale = $state(false);
 	#abort = new AbortController();
 	#timer: ReturnType<typeof setTimeout> | null = null;
 	#lastWake = 0;
+
+	/** Drawn at once from the snapshot when there is one (no skeleton after the first-ever load). */
+	constructor() {
+		const snap = readSnapshot('queue');
+		if (snap) {
+			this.view = snap.view;
+			this.loaded = true;
+			this.stale = true;
+		}
+	}
 
 	readonly loop = $derived(this.view?.loop ?? null);
 	readonly phase = $derived(this.view?.phase ?? null);
@@ -45,11 +61,14 @@ export class TodayQueue {
 	async load(): Promise<void> {
 		try {
 			await outboxSettled(OUTBOX_WAIT_MS);
-			// limit 1: only `loop` is read here.
-			const q = await fetchWithKeepGoing((keepGoing) => api.getReviewQueue({ limit: 1, keepGoing }, { signal: this.#abort.signal }));
+			// The review screen's first page: `loop` is shown here, the items are kept for an instant Start review.
+			const q = await fetchWithKeepGoing((keepGoing) => api.getReviewQueue({ limit: QUEUE_LIMIT, keepGoing }, { signal: this.#abort.signal }));
 			this.view = loopView(q);
 			this.failed = false;
 			this.uncached = false;
+			this.stale = false;
+			const pending = pendingAnswerCards();
+			writeQueueSnapshot({ view: this.view, dayEndsAt: q.dayEndsAt, items: q.items.filter((i) => !pending.has(i.card.id)) });
 			this.#schedule();
 		} catch (e) {
 			if (this.#abort.signal.aborted) return;

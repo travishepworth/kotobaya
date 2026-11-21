@@ -14,6 +14,8 @@ const en = {
 	'rv.count.learning': '{n} learning',
 	'rv.count.review': '{n} to review',
 	'rv.due': '{n} due',
+	// PERF-SNAP: the cards and counts are from the last visit; the fresh queue is on its way (or could not load).
+	'rv.updating': 'Updating…',
 	'rv.menu': 'Card actions',
 	'rv.undo': 'Undo last answer',
 	'rv.edit': 'Edit note',

@@ -7,6 +7,7 @@ import { NoteTypesApi, NotesApi, WordsApi } from '../api/generated';
 import { apiConfig, quietApiConfig } from '../api/client';
 import { DecksApi } from '../api/generated';
 import { isUncached, revalidateOn } from './swr';
+import { readSnapshot, writeSnapshot } from './snapshot.svelte';
 import { decksApi } from '../decks/api';
 import { emptyDraft, parseNumbers, toCreate, toDraft, toPatch, type DeckDraft } from '../decks/draft';
 import { td, type DeckMessageKey } from '../decks/messages';
@@ -87,6 +88,16 @@ export class DecksListPage {
 	uncached = $state(false);
 	#hasData = false;
 
+	/** PERF-SNAP: drawn at once from the start-up snapshot when there is one; `start` refreshes behind it. */
+	constructor() {
+		const snap = readSnapshot('decks');
+		if (snap) {
+			this.items = snap;
+			this.loaded = true;
+			this.#hasData = true;
+		}
+	}
+
 	start(): void {
 		if (!this.#hasData) {
 			this.loaded = false;
@@ -96,6 +107,7 @@ export class DecksListPage {
 			try {
 				const all = (await quietDecksApi.listDecks({})).items;
 				this.items = [...all].sort(compareDeckDrawOrder);
+				writeSnapshot('decks', this.items);
 				this.#hasData = true;
 				this.loadFailed = false;
 				this.uncached = false;

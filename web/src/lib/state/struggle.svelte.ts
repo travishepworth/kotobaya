@@ -3,6 +3,7 @@ import type { Card, Confusable, ConfusableStatus, HotKanji, HotWord, NoteSummary
 import { apiConfig, quietApiConfig, ResponseError } from '../api/client';
 import { WordsApi } from '../api/generated';
 import { isUncached, revalidateOn } from './swr';
+import { readSnapshot, writeSnapshot } from './snapshot.svelte';
 import { MediaApi } from '../api/generated';
 import { notesApi } from '../notes/api';
 import { wordsApi } from '../review/api';
@@ -28,6 +29,17 @@ export class StrugglePage {
 	uncached = $state(false);
 	#hasData = false;
 
+	/** PERF-SNAP: drawn at once from the start-up snapshot when there is one; `start` refreshes behind it. */
+	constructor() {
+		const snap = readSnapshot('struggle');
+		if (snap) {
+			this.words = snap.words;
+			this.kanji = snap.kanji;
+			this.loaded = true;
+			this.#hasData = true;
+		}
+	}
+
 	start(): void {
 		if (!this.#hasData) {
 			this.loaded = false;
@@ -38,6 +50,7 @@ export class StrugglePage {
 				const [w, k] = await Promise.all([quietWordsApi.listHotWords({ limit: 50 }), quietWordsApi.listHotKanji({ limit: 30 })]);
 				this.words = w.items;
 				this.kanji = k.items;
+				writeSnapshot('struggle', { words: w.items, kanji: k.items });
 				this.#hasData = true;
 				this.loadFailed = false;
 				this.uncached = false;

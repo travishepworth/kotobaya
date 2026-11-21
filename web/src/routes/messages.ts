@@ -33,6 +33,8 @@ const en = {
 	'home.emptyImport': 'Import from jpdb',
 	'home.countsFailed': 'Could not load today’s counts. Your reviews are safe; you can still start.',
 	'home.figuresFailed': 'Some figures could not be loaded.',
+	// PERF-SNAP: the counts on screen are from the last visit; the fresh ones are on their way (or could not load).
+	'home.updating': 'Updating…',
 	'home.notDownloaded': 'Not downloaded yet. It appears here once this phone has fetched it.',
 	'firstSync.title': 'Setting up this phone',
 	'firstSync.progress': 'Setting up: {n} of {total}',

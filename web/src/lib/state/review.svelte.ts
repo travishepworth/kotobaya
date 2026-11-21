@@ -54,6 +54,7 @@ import {
 	type OutboxStore
 } from '../review/outboxStore';
 import { renderPreview, type Rendered } from './preview.svelte';
+import { readSnapshot, writeQueueSnapshot, writeSnapshot } from './snapshot.svelte';
 
 export type { KanjiPart, Note, NoteSummary, NoteType, QueueItem } from '../api/generated';
 export type { GradeButton, ReviewPhase } from '../review/model';
@@ -63,7 +64,7 @@ export type { Rendered } from './preview.svelte';
 
 const DUE_SLACK_MS = 250;
 /** LF-W2 / design 7(c): ask for this many cards, and refill (merge) when `PREFETCH_LOW` or fewer remain locally. */
-const QUEUE_LIMIT = 30;
+export const QUEUE_LIMIT = 30;
 /** C4: a waiting-state refetch happens this long after the next learning card falls due (server clock slack). */
 const WAKE_SLACK_MS = 1000;
 /** ... and never sooner than this after the previous one, so a clock skew cannot turn waiting into polling. */
@@ -576,6 +577,11 @@ export async function startOutbox(): Promise<void> {
 	outbox.kick();
 }
 
+/** Card ids with an answer still in the outbox (PERF-SNAP: never served again from the start-up snapshot). */
+export function pendingAnswerCards(): Set<string> {
+	return outbox.answerCards();
+}
+
 /**
  * Resolves when nothing is left to send, or after `maxMs` (a down network must not hold a screen back). Home reads
  * its counts after this, so cards with pending answers are not counted as due.
@@ -649,6 +655,13 @@ export class ReviewPage {
 	held = $state<QueueItem | null>(null);
 	/** Aborts this page's queue fetches when it is left. */
 	private abort = new AbortController();
+	/**
+	 * PERF-SNAP: the session was started from the start-up snapshot and no queue fetch has been applied since.
+	 * The first one keeps the card on screen in front (the user may be on its back) and replaces the rest.
+	 */
+	private fromSnapshot = false;
+	/** The numbers and cards come from the snapshot and no fetch has replaced them yet: a quiet "updating" note. */
+	stale = $state(false);
 	/**
 	 * An action failed and the user should know. Since C8 (LF-W1) a failed answer is never put back (it stays in
 	 * the outbox and is retried), so only `undoFailed` is set: an undo the server refused for good.
@@ -853,6 +866,48 @@ export class ReviewPage {
 		this.presets = new Map(ps.items.map((p) => [p.id, p]));
 		this.fiveButtons = st.items.find((s) => s.key === 'scheduler.grading_buttons')?.value === 5;
 		this.autoplay = st.items.find((s) => s.key === 'review.autoplay_audio')?.value !== false;
+		writeSnapshot('statics', { noteTypes: nts.items, presets: ps.items, fiveButtons: this.fiveButtons, autoplay: this.autoplay });
+	}
+
+	/**
+	 * PERF-SNAP: start from the start-up snapshot (the first queue page and what renders it), synchronously, so the
+	 * first card shows before any request answers. Cards with an answer in the outbox are left out (also those
+	 * read back from the store once it is read). False when there is no usable snapshot.
+	 */
+	private applySnapshot(gen: number): boolean {
+		const q = readSnapshot('queue');
+		const st = readSnapshot('statics');
+		if (!q || !st) return false;
+		const pending = outbox.answerCards();
+		this.noteTypes = new Map(st.noteTypes.map((n) => [n.id, n]));
+		this.presets = new Map(st.presets.map((p) => [p.id, p]));
+		this.fiveButtons = st.fiveButtons;
+		this.autoplay = st.autoplay;
+		this.items = q.items.filter((i) => !pending.has(i.card.id));
+		this.view = q.view;
+		this.dayEndsAt = q.dayEndsAt;
+		// Answers from here on are C7 `pending` against the snapshot's numbers.
+		this.appliedSeq = outbox.seq;
+		outbox.applied.set(this, outbox.seq);
+		this.fromSnapshot = true;
+		this.stale = true;
+		this.loaded = true;
+		this.syncCard();
+		void outbox.load().then(() => {
+			if (gen !== this.gen || !this.fromSnapshot) return;
+			const back = outbox.answerCards();
+			if (!this.items.some((i) => back.has(i.card.id))) return;
+			this.items = this.items.filter((i) => !back.has(i.card.id));
+			this.epoch++;
+			this.syncCard();
+		});
+		return true;
+	}
+
+	/** PERF-SNAP: keep the local queue as the snapshot's first page (never a drill, never before a `loop`). */
+	private persistQueue(): void {
+		if (this.isDrill || !this.view) return;
+		writeQueueSnapshot({ view: this.view, dayEndsAt: this.dayEndsAt, items: this.items });
 	}
 
 	/**
@@ -910,10 +965,13 @@ export class ReviewPage {
 			this.items = [...merged, ...this.items.filter((i) => !ids.has(i.card.id))];
 			this.noteDueFirst(q, startedAt);
 			this.syncCard();
+			this.persistQueue();
 			return true;
 		}
 		// A card brought back by undo stays in front (the server may still count its answer, or not list it yet).
-		const keepCur = cur && (fresh.some((i) => i.card.id === cur.card.id) || this.undoneCardId === cur.card.id);
+		// So does the snapshot card on screen when the first fetch arrives (PERF-SNAP: no swap under the user).
+		const keepCur =
+			cur && (fresh.some((i) => i.card.id === cur.card.id) || this.undoneCardId === cur.card.id || this.fromSnapshot);
 		this.items =
 			keepCur
 				? [cur, ...fresh.filter((i) => i.card.id !== cur.card.id)]
@@ -927,8 +985,11 @@ export class ReviewPage {
 		this.dayEndsAt = q.dayEndsAt;
 		this.noteDueFirst(q, startedAt);
 		this.refreshFailed = false;
+		this.fromSnapshot = false;
+		this.stale = false;
 		this.syncCard();
 		this.scheduleWake();
+		this.persistQueue();
 		return true;
 	}
 
@@ -1192,6 +1253,10 @@ export class ReviewPage {
 		this.loadFailed = false;
 		this.refreshFailed = false;
 		this.drillUnavailable = false;
+		this.fromSnapshot = false;
+		this.stale = false;
+		// PERF-SNAP: the scheduled queue starts from the snapshot at once; the fetches below replace it.
+		const snap = source === null && this.applySnapshot(gen);
 		void (async () => {
 			try {
 				// In parallel: the queue is the slow call, nothing about it needs the settings.
@@ -1199,7 +1264,8 @@ export class ReviewPage {
 				if (gen !== this.gen) return;
 				if (source === null && outbox.pending.length > 0) void this.refreshWhenIdle();
 			} catch {
-				if (gen === this.gen) this.loadFailed = true; // the client toasted (a timeout shows the error state only)
+				// The client toasted (a timeout shows the error state only). From a snapshot: keep it, still "updating".
+				if (gen === this.gen && !snap) this.loadFailed = true;
 			} finally {
 				if (gen === this.gen) this.loaded = true;
 			}
@@ -1350,6 +1416,7 @@ export class ReviewPage {
 		this.items = this.items.slice(1); // seamless: the next local card is shown at once; a due card is spliced in
 		this.epoch++;
 		this.newPress();
+		this.persistQueue();
 		if (this.dueFirstPassed() && this.items.length > 0) void this.spliceFetch();
 		await this.refresh();
 	}
@@ -1403,6 +1470,7 @@ export class ReviewPage {
 		if (this.undoneCardId === item.card.id) this.undoneCardId = null;
 		this.epoch++;
 		this.newPress();
+		this.persistQueue(); // PERF-SNAP: an answered card is never served again from the snapshot
 		if (!this.isDrill) {
 			if (this.dueFirstPassed() && this.items.length > 0) void this.spliceFetch();
 			else void this.prefetch();
@@ -1439,6 +1507,7 @@ export class ReviewPage {
 		if (this.held?.card.id === cardId) this.held = null;
 		this.epoch++;
 		this.syncCard();
+		this.persistQueue();
 	}
 
 	/** The server refused an undo for good (unknown review): the answer stands. */
@@ -1479,6 +1548,7 @@ export class ReviewPage {
 		this.epoch++;
 		this.newPress();
 		this.flipped = true; // ADR-048: the undone card comes back revealed, ready to re-grade
+		this.persistQueue();
 	}
 
 	async bury(): Promise<void> {
