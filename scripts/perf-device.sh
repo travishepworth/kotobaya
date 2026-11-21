@@ -50,7 +50,9 @@ else
   VERSION="${VERSION:-unknown}"
   "${ADB[@]}" shell setprop log.tag.KTB-PERF DEBUG   # log every call, not only the slow ones
   if [ "$SPEED" = 1 ]; then "${ADB[@]}" shell cmd package compile -m speed -f "$PKG" >&2; fi
-  start() { "${ADB[@]}" shell am start "${UARG[@]}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "$PKG" >/dev/null; }
+  # Explicit component: `am start -p <pkg> -c LAUNCHER` does not resolve on Android 15 (Private Space user 10).
+  COMP="$("${ADB[@]}" shell cmd package resolve-activity --brief "${UARG[@]}" -c android.intent.category.LAUNCHER "$PKG" | tr -d '\r' | tail -1)"
+  start() { "${ADB[@]}" shell am start "${UARG[@]}" -n "$COMP" >/dev/null; }
   run() { # kind index: the log of one launch
     "${ADB[@]}" logcat -c
     if [ "$1" = cold ]; then "${ADB[@]}" shell am force-stop "${UARG[@]}" "$PKG"; else "${ADB[@]}" shell input keyevent KEYCODE_HOME; sleep 1; fi
