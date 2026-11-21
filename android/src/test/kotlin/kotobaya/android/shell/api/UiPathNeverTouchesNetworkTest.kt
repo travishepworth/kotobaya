@@ -60,21 +60,9 @@ class UiPathNeverTouchesNetworkTest {
     companion object {
         /**
          * `local` operations that still reach the upstream on at least one request (no handler yet, or a handler's
-         * [Fallthrough]), with the ticket that makes them local. LF-X1 runs the strict version once all have landed.
+         * [Fallthrough]), with the ticket that makes them local. LF-X1: all have landed, so the list is empty (the strict version).
          */
-        val STILL_FORWARDS: Map<String, String> = mapOf(
-            "getStatsSummary" to "LF-A3", "getStatsHeatmap" to "LF-A3", "getStatsRetention" to "LF-A3",
-            "bulkCards" to "LF-A4", "bulkScheduleCards" to "LF-A4",
-            "resolveSpeech" to "LF-A6", "searchDictionary" to "LF-A6",
-            "createCard" to "LF-A8", "updateCard" to "LF-A8", "deleteCard" to "LF-A8",
-            "createPreset" to "LF-A8", "updatePreset" to "LF-A8", "deletePreset" to "LF-A8",
-            "createNoteType" to "LF-A8", "updateNoteType" to "LF-A8", "deleteNoteType" to "LF-A8",
-            "setConfusable" to "LF-A8", "listConfusables" to "LF-A8", "listWordConfusables" to "LF-A8",
-            "createGrammarPoint" to "LF-A8", "updateGrammarPoint" to "LF-A8", "deleteGrammarPoint" to "LF-A8",
-            "putGrammarSpan" to "LF-A8", "removeGrammarSpan" to "LF-A8", "listGrammarPoints" to "LF-A8",
-            "getGrammarPoint" to "LF-A8", "updateMedia" to "LF-A8", "deleteMedia" to "LF-A8", "listMedia" to "LF-A8",
-            "getMedia" to "LF-A8",
-        )
+        val STILL_FORWARDS: Map<String, String> = emptyMap()
 
         /** Answered by the blob intercept (SHELL.md 2.7), never through [LocalApi]. */
         val NOT_THROUGH_THE_BRIDGE: Set<String> = setOf("getBlob")

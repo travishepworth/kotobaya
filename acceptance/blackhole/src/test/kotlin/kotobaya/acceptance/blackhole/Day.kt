@@ -117,8 +117,8 @@ class Day(private val phone: SimPhone, private val answersTarget: Int, private v
             ParityJson.str(ParityJson.at(json(ui("card", "GET", "/api/v1/cards/$c")), "/note_id"))
         }
         // search
-        ui("search cards", "GET", "/api/v1/cards", "q=deck%3A*&limit=20", allowed = setOf(200, 400))
-        ui("search tag", "GET", "/api/v1/cards", "q=tag%3Ablackhole&limit=20", allowed = setOf(200, 400))
+        ui("search cards", "GET", "/api/v1/cards", "query=deck%3A*&limit=20")
+        ui("search tag", "GET", "/api/v1/cards", "query=tag%3Ablackhole&limit=20")
         ui("search notes", "GET", "/api/v1/notes", "limit=20")
         // dictionary: a search, entries (installed and missing), examples
         val hits = json(ui("dict search", "GET", "/api/v1/dict/search", "q=%E9%A3%9F"))
@@ -140,7 +140,7 @@ class Day(private val phone: SimPhone, private val answersTarget: Int, private v
             val action = obj("type" to str("add_tags"), "tags" to JsonArray(listOf(str("blackhole"))))
             ui("bulk tag", "POST", "/api/v1/cards/bulk", body = obj("card_ids" to JsonArray(ids.map { str(it) }), "action" to action), allowed = setOf(200, 204, 409))
         }
-        ui("search tag again", "GET", "/api/v1/cards", "q=tag%3Ablackhole&limit=20", allowed = setOf(200, 400))
+        ui("search tag again", "GET", "/api/v1/cards", "query=tag%3Ablackhole&limit=20")
     }
 
     /** A background sync attempt; its outcome is the network's business. */

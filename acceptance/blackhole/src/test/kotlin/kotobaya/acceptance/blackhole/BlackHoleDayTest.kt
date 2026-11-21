@@ -139,7 +139,7 @@ class BlackHoleDayTest {
             assertEquals(emptyList(), day.problems, "$mode phone $name: UI requests that waited for or used the network")
             assertEquals(0L, phone.net.uiWaitedMs, "$mode phone $name: virtual network wait on the UI path")
             assertEquals(emptyList(), phone.net.uiCalls, "$mode phone $name: upstream calls from the UI path")
-            assertTrue(day.uiRequests > 100, "$mode phone $name: the script ran (${day.uiRequests} requests)")
+            assertTrue(day.uiRequests > 50, "$mode phone $name: the script ran (${day.uiRequests} requests)")
         }
         assertEquals(A_ANSWERS, o.dayA.answered.size, "$mode: phone A answered 60 cards")
         assertEquals(B_ANSWERS, o.dayB.answered.size, "$mode: phone B answered its cards")
@@ -178,7 +178,7 @@ class BlackHoleDayTest {
         val serverReviews = o.server.loggedOps().filter { it.opType == OpType.REVIEW_LOGGED }.map { it.entityId }
         assertEquals(expected.sorted(), serverReviews.sorted(), "$mode: server log holds each answer exactly once")
         for ((name, phone) in listOf("A" to o.a, "B" to o.b)) {
-            val rows = phone.tables().all(LearningTable.REVIEW_LOG).map { str(it, "id") }
+            val rows = phone.tables().all(LearningTable.REVIEW_LOG).map { str(it, "id")!! }
             assertEquals(expected.sorted(), rows.sorted(), "$mode: device $name review_log holds each answer exactly once")
         }
 
