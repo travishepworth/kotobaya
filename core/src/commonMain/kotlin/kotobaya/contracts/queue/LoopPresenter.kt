@@ -86,25 +86,30 @@ public data class PendingAnswer(
  * C-31 (ADR-051): the output of [LoopPresenter.present]: everything the review header, the
  * progress bar and the screen switch need.
  *
- * Invariants (P-I1 … P-I4 of [LoopPresenter]): every member of [parts] is `>= 0`; [untilStop] is
- * their sum; a terminal [screen] has all four at 0.
+ * Invariants (P-I1 … P-I5 of [LoopPresenter]): every member of [parts] is `>= 0`; [untilStop] is
+ * `parts.learning + parts.review + parts.new` (ADR-054: `parts.later` is not summed); a terminal
+ * [screen] has all four parts at 0; `WAITING` and terminal screens have [untilStop] 0.
  *
  * Example (P2 below): `LoopPresentation(screen = CARD, parts = UntilStopParts(learning = 0, later
- * = 6, review = 29, new = 30), untilStop = 65)`.
+ * = 6, review = 29, new = 30), untilStop = 59)`.
  */
 public data class LoopPresentation(
     /** Which screen to show. */
     public val screen: LoopScreen,
     /**
-     * The four header numbers ("learning · later · to review · new"), already projected for the
-     * pending answers. Clients show them as they are (a part that is 0 may be hidden) and never
-     * add, subtract or re-derive. Example: `(0, 6, 29, 30)`.
+     * The header numbers ("learning · to review · new") and the later-today hint (`later`),
+     * already projected for the pending answers. Clients show them as they are (a part that is 0
+     * may be hidden; `later` only in the hint line, never as a header chip, ADR-054) and never
+     * add, subtract or re-derive. Example: `(0, 6, 29, 30)`: header "29 to review · 30 new",
+     * hint "6 later today".
      */
     public val parts: UntilStopParts,
     /**
-     * `parts.learning + parts.later + parts.review + parts.new`: the remainder of the progress
-     * bar, `done / (done + untilStop)` with `done` = the answers of this visit (pending ones
-     * included). Example: `65`.
+     * `parts.learning + parts.review + parts.new` (ADR-054: the cards doable now; `parts.later`
+     * is **not** added): the remainder of the progress bar, `done / (done + untilStop)` with
+     * `done` = the answers of this visit (pending ones included). A pending answer whose card
+     * returns today moves it into `later`, so it leaves `untilStop` while `done` grows by one:
+     * `done + untilStop` holds steady. Example: `59`.
      */
     public val untilStop: Int,
 )
@@ -131,14 +136,18 @@ public data class LoopPresentation(
  * **Parts.** Rule 3: `state.untilStopParts`, unchanged. Rules 1 and 2: the **projection**: start
  * with `p = state.untilStopParts` and apply every pending answer in list order:
  *
- * | `kind` | Outcome | Part that loses 1 | Part that gains 1 | `untilStop` |
+ * | `kind` | Outcome | Part that loses 1 | Part that gains 1 | `untilStop` (ADR-054) |
  * |---|---|---|---|---|
- * | `NEW` | returns today | `new` | `later` | same |
+ * | `NEW` | returns today | `new` | `later` | − 1 |
  * | `NEW` | leaves today | `new` | none | − 1 |
- * | `LEARNING` | returns today | `learning` (if it is 0: `later`) | `later` | same |
- * | `LEARNING` | leaves today | `learning` (if it is 0: `later`) | none | − 1 |
- * | `REVIEW` | returns today | `review` | `later` | same |
+ * | `LEARNING` | returns today | `learning` (if it is 0: `later`) | `later` | − 1 (same when taken from `later`) |
+ * | `LEARNING` | leaves today | `learning` (if it is 0: `later`) | none | − 1 (same when taken from `later`) |
+ * | `REVIEW` | returns today | `review` | `later` | − 1 |
  * | `REVIEW` | leaves today | `review` | none | − 1 |
+ *
+ * (Before ADR-054 the "returns today" rows kept `untilStop` unchanged, because `later` was
+ * summed. The `untilStop` column is a consequence of the parts, not a separate rule: when
+ * nothing is taken because the part is 0, `untilStop` does not change.)
  *
  * - A part never goes below 0: when the part that should lose 1 is 0 (and, for `LEARNING`,
  *   `later` is 0 too) nothing is taken; the gain still applies.
@@ -159,7 +168,9 @@ public data class LoopPresentation(
  *   all zero while a card is shown. `localHeadKind == null` with `hasLocalCard` (a caller bug)
  *   is treated as `REVIEW`.
  *
- * `untilStop` = the sum of the resulting parts.
+ * `untilStop` = `p.learning + p.review + p.new` of the resulting parts (ADR-054: `p.later` is not
+ * summed). The floor of a held `LEARNING` card that takes one from `later` therefore raises
+ * `untilStop` by one: the card came due and is doable now.
  *
  * **Why no sibling column.** [QueueBuilder] rule 1 puts at most one NEW or REVIEW card per note
  * in a build, so `state.untilStopParts` never counted a sibling of a held card; answering a card
@@ -174,9 +185,14 @@ public data class LoopPresentation(
  * {`GOAL_REACHED`, `DONE_FOR_TODAY`, `EMPTY`}.
  * - **P-I1** terminal ⇒ `pending` is empty, `hasLocalCard` is false and every part is 0.
  * - **P-I2** `parts.learning + parts.review + parts.new > 0` ⇒ `screen` in {`CARD`, `SETTLING`}.
- * - **P-I3** every part `>= 0`; `untilStop` is their sum; `screen == CARD` ⇒ `untilStop >= 1`.
+ * - **P-I3** every part `>= 0`; `untilStop == parts.learning + parts.review + parts.new`;
+ *   `screen == CARD` ⇒ `untilStop >= 1`.
  * - **P-I4** `pending` empty and `!hasLocalCard` ⇒ `parts == state.untilStopParts` and `screen`
  *   is `state.phase`'s (with `REVIEWING` → `SETTLING`): the presenter adds nothing of its own.
+ * - **P-I5** (ADR-054) `untilStop > 0` ⇒ `screen` in {`CARD`, `SETTLING`}; `screen` in {`WAITING`,
+ *   `GOAL_REACHED`, `DONE_FOR_TODAY`, `EMPTY`} ⇒ `untilStop == 0` (also with `parts.later > 0`
+ *   on `WAITING`). With nothing pending and no held card, `untilStop > 0` ⇔ `state.phase ==
+ *   REVIEWING` (from I9 of [ReviewLoop] and P-I4). `SETTLING` may show `untilStop == 0` (P6, P7).
  * - Consistency with the loop (the fuzz test's check): let `state'` be the evaluation after the
  *   pending answers were applied at the same `now`, with the same limits, and every pending
  *   answer's `resultingState` / `dueAt` known. **Asserted for every input without keep going
@@ -184,8 +200,11 @@ public data class LoopPresentation(
  *   (the projection is never off by more than the answers it projects); with `burySiblings`
  *   this bound is the whole rule. **Asserted for plain inputs** (additionally `burySiblings =
  *   false`, no pending entries, no kanji units, no per-deck limits):
- *   `present(…).untilStop == state'.untilStop`, and part by part with `learning + later`
- *   taken together (the presenter has no clock to tell them apart).
+ *   part by part with `learning + later` taken together (the presenter has no clock to tell
+ *   them apart), and `present(…).untilStop == state'.untilStop` whenever every returning
+ *   pending answer has `dueAt > now` (true for every learning step longer than 0 at the same
+ *   `now`; a card that came back already due is under `learning` in `state'` but under `later`
+ *   in the projection, ADR-054).
  *
  * **Edge cases.**
  * - `pending` empty, `hasLocalCard` true, state terminal (the client holds a card from an older
@@ -206,17 +225,18 @@ public data class LoopPresentation(
  *
  * **Worked examples.** `dayEndsAt` = D. State parts are written `(learning, later, review, new)`.
  * - **P1** (nothing pending): state `REVIEWING` `(0, 5, 30, 30)`, `pending = []`, a REVIEW card
- *   held → `CARD`, `(0, 5, 30, 30)`, `untilStop 65`.
+ *   held → `CARD`, `(0, 5, 30, 30)`, `untilStop 60` (`0 + 30 + 30`; the 5 later are the hint).
  * - **P2** (Again on a review): P1, the user grades it Again; the response says `RELEARNING`,
  *   due in 10 minutes (before D); the next held card is a REVIEW card → `pending = [(REVIEW, 1,
- *   RELEARNING, now + 600 000)]` → `CARD`, `(0, 6, 29, 30)`, `untilStop 65` (unchanged: the bar
- *   total grew by one with `done`). This equals a fresh evaluation ([ReviewLoop] U1).
+ *   RELEARNING, now + 600 000)]` → `CARD`, `(0, 6, 29, 30)`, `untilStop 59` (the card left the
+ *   total for `later` and `done` grew by one: the bar's total stays 60). This equals a fresh
+ *   evaluation ([ReviewLoop] U1).
  * - **P3** (new → learning): P2, the next card is NEW and is graded Good → `LEARNING`, due in 10
  *   minutes: `pending` gains `(NEW, 3, LEARNING, now + 600 000)` → held REVIEW card → `CARD`,
- *   `(0, 7, 29, 29)`, `untilStop 65`.
+ *   `(0, 7, 29, 29)`, `untilStop 58`.
  * - **P4** (learning graduating): state `REVIEWING` `(2, 1, 0, 0)`; the user grades the first
  *   learning card Good → `REVIEW`, due in 2 days: `pending = [(LEARNING, 3, REVIEW, now + 172 800
- *   000)]`, the second learning card held → `CARD`, `(1, 1, 0, 0)`, `untilStop 2`.
+ *   000)]`, the second learning card held → `CARD`, `(1, 1, 0, 0)`, `untilStop 1` (state: 2).
  * - **P5** (sibling bury): `burySiblings`; note X has a meaning card M (REVIEW, due today) and a
  *   reading card R (REVIEW, due today); the state counted only M (`review 30`: one per note). M
  *   is graded Good → `REVIEW`: `pending = [(REVIEW, 3, REVIEW, …)]` → `(0, 5, 29, 30)`. R is now
@@ -227,9 +247,10 @@ public data class LoopPresentation(
  * - **P6** (day end): 23:58 local, D = midnight's instant; state `REVIEWING` `(1, 0, 0, 0)`; the
  *   last learning card is graded Again → `LEARNING`, due in 10 minutes = D + 480 000 (after D):
  *   `pending = [(LEARNING, 1, LEARNING, D + 480 000)]`, no card held → **leaves today** →
- *   `SETTLING`, `(0, 0, 0, 0)`, `untilStop 0`; the fetch returns `GOAL_REACHED` (the card does not
+ *   `SETTLING`, `(0, 0, 0, 0)`, `untilStop 0` (state: 1); the fetch returns `GOAL_REACHED` (the card does not
  *   hold the day open) → with `pending` now empty: `GOAL_REACHED`, zeros. Had it been due at
- *   D − 1: `SETTLING`, `(0, 1, 0, 0)`, then `WAITING`.
+ *   D − 1: `SETTLING`, `(0, 1, 0, 0)`, `untilStop 0`, then `WAITING` with `untilStop 0` and the
+ *   hint "1 later today".
  * - **P7** (last card answered, answer still in the outbox): state `REVIEWING` `(0, 0, 1, 0)`; the
  *   only review is graded Good, the browser is offline: `pending = [(REVIEW, 3, null, null)]`, no
  *   card held → `SETTLING`, `(0, 0, 0, 0)` — **not** an end screen (P-I1: an end screen needs
@@ -242,8 +263,8 @@ public data class LoopPresentation(
  * - **P9** (held card, stale terminal state): state `GOAL_REACHED` zeros; a LEARNING card held
  *   (it came due through an undo) → `CARD`, `(1, 0, 0, 0)` by the floor.
  * - **P10** (keep-going batch, [ReviewLoop] W3): state `REVIEWING`, keep going, target 80, `(0,
- *   0, 0, 40)`; three NEW cards graded Good → `LEARNING` due in 1 minute: `CARD`, `(0, 3, 0, 37)`,
- *   `untilStop 40`.
+ *   0, 0, 40)`, `untilStop 40`; three NEW cards graded Good → `LEARNING` due in 1 minute: `CARD`,
+ *   `(0, 3, 0, 37)`, `untilStop 37` (with `done` 3 the bar's total stays 40).
  */
 public interface LoopPresenter {
     /**

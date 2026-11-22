@@ -7,7 +7,7 @@
   "narrative": [
     "Two deckless new words: 学校 (card ...10) and 先生 (card ...40). Kanji notes: 学 (card ...20, new) is an item of the deck \"Kanji\", which is disabled; 校 (card ...30, new) is suspended; 先 (card ...50) was graduated yesterday with Easy (review state, not due); 生 (card ...60) is new and deckless, created after 先生.",
     "Step 0: 学校 is drawn with 学 although the only deck of 学 is disabled (a disabled deck supplies no new cards on its own turns, but a word pulls its kanji); the suspended 校 neither joins nor blocks. 先生 is drawn with 生 only: 先 is started. Order: 学 学校 生 先生. Nothing is minted (every kanji has a note). until_stop is 4.",
-    "Step 1 answers 学 Good (it enters its first learning step). Step 2: the open group continues with 学校 at once; 学 is counted in later_today, so until_stop is still 4."
+    "Step 1 answers 学 Good (it enters its first learning step). Step 2: the open group continues with 学校 at once; 学 is counted in later_today, which is not in the total (ADR-054), so until_stop is 3."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -317,7 +317,7 @@
             "total": 0
           },
           "/loop/later_today/count": 1,
-          "/loop/until_stop": 4,
+          "/loop/until_stop": 3,
           "/loop/new/today": 1
         },
         "lengths": {

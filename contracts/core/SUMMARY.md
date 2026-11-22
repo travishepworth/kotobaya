@@ -208,7 +208,8 @@ Worth a second look:
 ## C-28 changes: progress bar, kanji first, deck progress, kanji tiles, exemptions (ADR-038..042)
 
 What was decided:
-- **Progress bar total (ADR-038).** The loop now also returns "answers left until the stop screen"
+- **Progress bar total (ADR-038; amended by ADR-054, see C-34: later-today cards are no longer
+  counted).** The loop now also returns "answers left until the stop screen"
   (`untilStop`): learning cards ready or due later today, reviews within today's limit, and the new
   cards still left in today's goal. Each card counts once, so the total grows when you press Again
   or when a new card starts its learning steps. While you keep going, the stream has no end, so
@@ -408,6 +409,8 @@ What was decided:
 - **Header numbers that add up.** The "answers left" number is now also given as its four parts
   (`untilStopParts`: learning ready, learning later today, reviews, new), so the header and Home
   can show "9 learning · 14 later · 0 to review · 0 new" and it equals what is left of the bar.
+  (Amended by ADR-054 / C-34: the header shows learning, reviews and new, summing to `untilStop`;
+  "14 later" moves to the hint line.)
 - Nothing is stored; no op, table or setting changed. Both new members have defaults, so core
   compiles before CORE-30 implements them.
 
@@ -478,3 +481,28 @@ Three choices most worth a second look:
 3. **A review that falls due mid-batch waits behind at most one word's kanji cards** when that
    word's unit is half-answered (the existing "never split a kanji unit" rule). Learning cards
    never wait.
+
+## C-34 changes: the review total counts only cards you can do now (ADR-054)
+
+What was decided:
+- **`untilStop` = ready learning + reviews + new cards servable now.** Learning cards on their
+  timers ("later today") are no longer in the total, the progress bar or the header chips; they
+  appear only in the later-today hint line. A learning card that comes due joins the total then.
+- **The total reaches 0 exactly when the waiting or done screen shows** (new invariant I9 for the
+  loop, P-I5 for the presenter). Waiting now shows 0 to do plus the countdown and the hint.
+- **Every answer lowers the total by one**, Again included (the card moves to "later"), and `done`
+  grows by one, so the bar's total holds steady while you answer; it grows when a card comes due.
+- KDoc only: no signature, type or default changed. Amends ADR-038 and ADR-049 C3 where this file
+  and the README quote them.
+
+Alternatives rejected:
+- Keeping `later` in the total and hiding it in the header only. The header and the bar would
+  disagree again, and the bar would still not be full at the waiting screen.
+- A second member for "ready now". The user asked for one rule everywhere.
+
+Three choices most worth a second look:
+1. **Waiting shows 0** although cards are minutes away; the hint and the countdown carry them.
+2. **The bar's total grows during a session** each time a learning card comes due, instead of when
+   it is answered Again. Same amount, different moment.
+3. **The presenter's projection of a returning card lowers its total by one** (into `later`); the
+   fallback that takes a `LEARNING` answer from `later` leaves it unchanged.

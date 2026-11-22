@@ -53,7 +53,8 @@ public enum class LoopPhase(
      * today (`laterToday > 0`): show a countdown to [LoopState.nextDueAt] and resume then. Checked
      * **before** the stop screens, with and without keep going, whether or not new cards or a
      * backlog remain; [LoopState.keepGoingAvailable] says whether a Keep going button is offered
-     * while waiting. Never served early (no learn-ahead, ADR-033).
+     * while waiting. Never served early (no learn-ahead, ADR-033). [LoopState.untilStop] is 0 here
+     * (ADR-054: nothing is doable now; the learning cards are only in the later-today hint).
      * Example: W1 step 2 (goal 40/40, 14 learning cards on their timers, 707 new cards) →
      * `WAITING`, `keepGoingAvailable = true`. Example: B6 (keep going, no backlog, no new, 8
      * learning cards due later) → `WAITING`, `keepGoingAvailable = false`.
@@ -105,17 +106,20 @@ public data class LegacyCounts(
 )
 
 /**
- * ADR-049 (additive): [LoopState.untilStop] split into the four numbers the review header and Home
- * show, so that the header adds up to the progress bar's remainder and no client does arithmetic.
- * Wire: `ReviewQueue.loop.until_stop_parts`.
+ * ADR-049 (additive), amended by ADR-054 (C-34): the numbers behind the review header, Home and the
+ * later-today hint. [learning] + [review] + [new] is [LoopState.untilStop] (the cards doable right
+ * now) and they are the header chips; [later] is information for the later-today hint only and is
+ * **not** summed (not a chip, not in Home's big number, not in the progress bar). No client does
+ * arithmetic. Wire: `ReviewQueue.loop.until_stop_parts`.
  *
- * Invariants (property-tested): every member `>= 0`; `learning + later + review + new ==
- * LoopState.untilStop`; `learning == LoopState.readyLearning`; `later == LoopState.laterToday`.
- * Like [LoopState.untilStop] it follows the mode: [review] and [new] differ with keep going.
+ * Invariants (property-tested): every member `>= 0`; `learning + review + new ==
+ * LoopState.untilStop` (`later` excluded, ADR-054); `learning == LoopState.readyLearning`;
+ * `later == LoopState.laterToday`. Like [LoopState.untilStop] it follows the mode: [review] and
+ * [new] differ with keep going.
  *
  * Example (W1 step 1, the ADR-049 case): `UntilStopParts(learning = 9, later = 14, review = 0,
- * new = 0)`, sum 23 = `untilStop`. Example (A1): `(0, 26, 0, 40)`, sum 66. Example (B4, keep
- * going, batch 10): `(0, 0, 135, 10)`, sum 145. Example (B3, a stop screen): `(0, 0, 0, 0)`.
+ * new = 0)`, `untilStop` 9 (not 23). Example (A1): `(0, 26, 0, 40)`, `untilStop` 40. Example (B4,
+ * keep going, batch 10): `(0, 0, 135, 10)`, 145. Example (B3, a stop screen): `(0, 0, 0, 0)`, 0.
  */
 public data class UntilStopParts(
     /**
@@ -125,7 +129,8 @@ public data class UntilStopParts(
     public val learning: Int = 0,
     /**
      * Learning/relearning cards on their timer that come back before the day ends: always
-     * [LoopState.laterToday]. `>= 0`. Example: 14.
+     * [LoopState.laterToday]. **Not** part of [LoopState.untilStop] (ADR-054); shown only in the
+     * later-today hint. `>= 0`. Example: 14.
      */
     public val later: Int = 0,
     /**
@@ -152,7 +157,7 @@ public data class UntilStopParts(
  * keep-going build K, N∞ (legacy only) and `input.today`, so it is **identical with and without
  * keep going** (same input otherwise): every client shows the same numbers at the same instant
  * whatever mode it is in. [untilStop] / [untilStopParts] are the progress bar and header of the
- * visit and follow the mode (ADR-038, ADR-049).
+ * visit and follow the mode (ADR-038, ADR-049, ADR-054).
  *
  * Invariants (property-tested by LOOP-CORE):
  * - `readyLearning, readyReviews, laterToday, backlog, backlogBeyondLimit, reviewsToday, newToday, newGoal >= 0`;
@@ -171,13 +176,15 @@ public data class UntilStopParts(
  *   non-empty` (the served queue of a keep-going evaluation is then K∞ itself), so it is false
  *   whenever `keepGoing` there;
  * - retired cards (rule 0) are in no count;
- * - `untilStop >= 0`; without keep going `untilStop == readyLearning + laterToday + readyReviews +
- *   availableToday(N)`; `phase == REVIEWING` implies `untilStop >= 1`;
- *   `untilStop == 0` iff `phase` in {`GOAL_REACHED`, `DONE_FOR_TODAY`, `EMPTY`} (ADR-049: the bar
- *   is full exactly at a stop screen);
- * - `untilStopParts` sums to `untilStop`; its `learning == readyLearning`, `later == laterToday`,
+ * - `untilStop >= 0`; without keep going `untilStop == readyLearning + readyReviews +
+ *   availableToday(N)` (ADR-054: `laterToday` is **not** added);
+ *   `untilStop >= 1` iff `phase == REVIEWING`; `untilStop == 0` iff `phase` in {`WAITING`,
+ *   `GOAL_REACHED`, `DONE_FOR_TODAY`, `EMPTY`} (ADR-054, amending ADR-049's "0 only at a stop
+ *   screen": the bar is full exactly when nothing can be served now; I9);
+ * - `untilStopParts.learning + untilStopParts.review + untilStopParts.new == untilStop` (`later`
+ *   not summed); its `learning == readyLearning`, `later == laterToday`,
  *   `review == (if (keepGoing) backlog else readyReviews)`;
- * - C-31: the invariants **I1 … I8** of [ReviewLoop] hold for every evaluation.
+ * - C-31: the invariants **I1 … I9** of [ReviewLoop] hold for every evaluation.
  *
  * Example (B3 below): `phase = DONE_FOR_TODAY, keepGoing = false, readyLearning = 0, readyReviews = 0,
  * laterToday = 0, nextDueAt = null, backlog = 135, backlogBeyondLimit = 135, reviewsToday = 200,
@@ -246,40 +253,46 @@ public data class LoopState(
     /** The frozen pre-ADR-037 counts for old clients. */
     public val legacy: LegacyCounts,
     /**
-     * ADR-038 (additive): **answers left until the stop screen**. The review progress bar's total
-     * is `done + untilStop`, `done` = the answers the client has sent in this visit. Each card
-     * counts once, whatever number of steps it still has, so the total grows when a card comes
-     * back: Again on a review moves it from [readyReviews] to [laterToday] (`untilStop` unchanged,
-     * `done + 1`), and introducing a new card moves it from the new part to [laterToday].
+     * ADR-038 (additive), redefined by ADR-054 (C-34): **the cards doable right now**, always
+     * `untilStopParts.learning + untilStopParts.review + untilStopParts.new`. Learning cards on
+     * their timers ([laterToday]) are **not** counted: they are not doable now, and they appear
+     * only in the later-today hint. The review progress bar's total is `done + untilStop`, `done`
+     * = the answers the client has sent in this visit. Each card counts once. Every answer moves
+     * one card out of it: Again on a review moves it from [readyReviews] to [laterToday]
+     * (`untilStop - 1`, `done + 1`: the bar's total holds steady), introducing a new card moves it
+     * from the new part to [laterToday] (the same), a card that leaves today just leaves. The
+     * total grows when a learning card comes due (it moves from [laterToday] to [readyLearning]:
+     * `untilStop + 1`) or when cards arrive from elsewhere (pull, undo).
      *
-     * **Without keep going** (`keepGoing == false`): `readyLearning + laterToday + readyReviews +
-     * newLeft`, with `newLeft` = rule 4's `availableToday` of the normal build N: the new cards
-     * that can still be introduced today under the day goal and the per-deck caps, not bounded by
-     * the batch, kanji cards of the units included (drawn, withheld and to be minted alike).
-     * These are the answers before the stop screen (`GOAL_REACHED` / `DONE_FOR_TODAY` /
-     * `EMPTY`). Learning cards due later today are included because they come back before the
-     * day is done, and since ADR-049 the loop waits for them (`WAITING`) instead of stopping: so
-     * during `WAITING` it equals [laterToday] (`>= 1`) and at a stop screen it is always 0.
+     * **Invariant (ADR-054; I9):** `untilStop >= 1` iff `phase == REVIEWING` (a card can be served
+     * now); `untilStop == 0` iff `phase` in {`WAITING`, `GOAL_REACHED`, `DONE_FOR_TODAY`,
+     * `EMPTY`}. In particular `WAITING` has `untilStop == 0` although `laterToday >= 1`.
+     *
+     * **Without keep going** (`keepGoing == false`): `readyLearning + readyReviews + newLeft`,
+     * with `newLeft` = rule 4's `availableToday` of the normal build N: the new cards that can
+     * still be introduced today under the day goal and the per-deck caps, not bounded by the
+     * batch, kanji cards of the units included (drawn, withheld and to be minted alike).
      *
      * **With keep going** (`keepGoing == true`): the stream has no end, so it is what is in sight:
-     * `readyLearning + laterToday + backlog + newBatch`, with `newBatch` = what rule 4 of the
-     * keep-going build K drew (`drawn`: at most about `keepGoingNewBatch`, units whole). It
-     * therefore depends on the batch (the API's `limit`) in this mode, and only in this mode.
+     * `readyLearning + backlog + newBatch`, with `newBatch` = what rule 4 of the keep-going build
+     * K drew (`drawn`: at most about `keepGoingNewBatch`, units whole). It therefore depends on the
+     * batch (the API's `limit`) in this mode, and only in this mode.
      *
      * **With keep going and a target** (C-31; `keepGoing == true`, `limits.keepGoingNewTarget !=
      * null`): the stream has an end again, so `newBatch` is replaced by `availableToday` of the
      * served build (rule 6 "Target": the new cards left to the target that the pool can supply,
-     * **not** bounded by the batch): `readyLearning + laterToday + backlog + newLeftToTarget`. It
-     * counts down to 0 as the batch is worked off and is 0 exactly at the stop screen that
-     * follows. Example (W3 step 2): `0 + 0 + 0 + 40 = 40`.
+     * **not** bounded by the batch): `readyLearning + backlog + newLeftToTarget`. It counts down
+     * to 0 as the batch is worked off. Example (W3 step 2): `0 + 0 + 40 = 40`.
      *
      * The default `0` exists only so that existing callers compile; `ReviewLoop.evaluate` MUST set
-     * it. `>= 0`.
-     * Example (A1): 0 ready, 26 later, goal 40, 0 introduced, 100 new → `0 + 26 + 0 + 40 = 66`.
-     * Example (B3): `0`; (B4, B3 with keep going, batch 10): `0 + 0 + 135 + 10 = 145`.
-     * Example (goal 40, 10 introduced, 30 reviews due, 5 learning cards on a timer, plenty of new
-     * cards): `0 + 5 + 30 + 30 = 65`; with only 12 new cards left in the decks: `47`.
-     * Example (W1, ADR-049): goal met, 9 ready learning, 14 later → `9 + 14 + 0 + 0 = 23`.
+     * it. `>= 0`. Examples are written `learning + review + new`:
+     * Example (A1): 0 ready, 26 later, goal 40, 0 introduced, 100 new → `0 + 0 + 40 = 40` (the 26
+     * are only in the hint).
+     * Example (B3): `0`; (B4, B3 with keep going, batch 10): `0 + 135 + 10 = 145`.
+     * Example (U1: goal 40, 10 introduced, 30 reviews due, 5 learning cards on a timer, plenty of
+     * new cards): `0 + 30 + 30 = 60`; with only 12 new cards left in the decks: `42`.
+     * Example (W1, ADR-049): goal met, 9 ready learning, 14 later → `9 + 0 + 0 = 9` (not 23); once
+     * none of them is ready (`WAITING`) → `0`.
      */
     public val untilStop: Int = 0,
     /**
@@ -307,11 +320,12 @@ public data class LoopState(
      */
     public val keepGoingAvailable: Boolean = false,
     /**
-     * ADR-049 (additive): [untilStop] split into learning ready / learning later today / reviews /
-     * new, see [UntilStopParts]. The review header and Home show exactly these four numbers.
+     * ADR-049 (additive), amended by ADR-054: learning ready / learning later today / reviews /
+     * new, see [UntilStopParts]. The review header and Home show `learning`, `review` and `new`
+     * (their sum is [untilStop]); `later` only feeds the later-today hint.
      *
      * The default (all 0) exists only so that existing callers compile; `ReviewLoop.evaluate` MUST
-     * set it. Example: W1 step 1 → `(9, 14, 0, 0)`.
+     * set it. Example: W1 step 1 → `(9, 14, 0, 0)`, [untilStop] 9.
      */
     public val untilStopParts: UntilStopParts = UntilStopParts(),
 )
@@ -386,15 +400,16 @@ public data class LoopResult(
  * leaving, restart, day change or 10 minutes idle) is **kept** and now also bounds the target.
  * A caller that passes `keepGoingNewTarget = null` gets the pre-C-31 result bit for bit.
  *
- * **Invariants I1 … I8 (C-31, ADR-051; normative, the fuzz test `ReviewLoopInvariantFuzzTest`
+ * **Invariants I1 … I9 (C-31, ADR-051; I9 ADR-054; normative, the fuzz test `ReviewLoopInvariantFuzzTest`
  * asserts each after every step).** `ready` = `readyLearning + readyReviews`; "terminal" =
  * `phase` in {`GOAL_REACHED`, `DONE_FOR_TODAY`, `EMPTY`}; `parts` = `untilStopParts`.
  * - **I1** `ready > 0` ⇒ `phase == REVIEWING` and `queue.items` is non-empty. (A ready card is
  *   always served: a header that shows something to study never sits on an end screen.)
  * - **I2** terminal ⇒ `readyLearning == 0`, `readyReviews == 0`, `laterToday == 0`,
  *   `untilStop == 0` and every member of `parts` is 0.
- * - **I3** `parts.learning + parts.later + parts.review + parts.new == untilStop`, every member
- *   `>= 0`, `parts.learning == readyLearning`, `parts.later == laterToday`.
+ * - **I3** `parts.learning + parts.review + parts.new == untilStop` (ADR-054: `parts.later` is
+ *   **not** summed), every member `>= 0`, `parts.learning == readyLearning`, `parts.later ==
+ *   laterToday`.
  * - **I4** `phase == EMPTY` ⇒ K∞ empty and `!keepGoingAvailable`; `phase` in {`WAITING`,
  *   `GOAL_REACHED`, `DONE_FOR_TODAY`} ⇒ `keepGoingAvailable == (K∞ non-empty)`;
  *   `phase == REVIEWING` ⇒ `!keepGoingAvailable`; `GOAL_REACHED` / `DONE_FOR_TODAY` ⇒
@@ -410,11 +425,13 @@ public data class LoopResult(
  *   (rule 5 "Open group first") stay ahead of the reviews. The fuzz test asserts exactly this:
  *   every NEW item that precedes a REVIEW item belongs to the open group, and no NEW item ever
  *   precedes a LEARNING item.
- * - **I6** the presenter ([LoopPresenter], its own invariants P-I1 … P-I4).
+ * - **I6** the presenter ([LoopPresenter], its own invariants P-I1 … P-I5).
  * - **I7** without keep going, and with keep going and a target: answering `queue.items[0]`
  *   with any rating, at the same `now`, and re-evaluating with the same limits gives
  *   `untilStop(after) <= untilStop(before) + 1` (the bar's total `done + untilStop` never
- *   jumps; the expected value is `<= untilStop(before)`, the `+ 1` is the asserted bound). Not
+ *   jumps; since ADR-054 the expected value is usually `untilStop(before) - 1`: the answered
+ *   card leaves the total whether it returns today (into `laterToday`) or not; the `+ 1` is the
+ *   asserted bound, unchanged by ADR-054). Not
  *   asserted for keep going **without** a target (its batch-bounded new part is refilled
  *   after every answer and a kanji unit may overshoot the batch) and not across a day rollover.
  * - **I8** (ADR-052 b) `!keepGoing` ⇒ `|NEW items of queue.items| + |queue.toMaterialize| +
@@ -433,6 +450,10 @@ public data class LoopResult(
  *   built-in kanji type: the first-of-the-day kanji part of rule 4, ADR-044.) So after a
  *   keep-going session Home and the header show **no** new cards: an unfinished batch is not
  *   owed.
+ * - **I9** (ADR-054) `untilStop > 0` ⇔ `phase == REVIEWING` (a card can be served now, or a deck
+ *   entry / kanji note awaits materialization); hence `phase` in {`WAITING`, `GOAL_REACHED`,
+ *   `DONE_FOR_TODAY`, `EMPTY`} ⇒ `untilStop == 0`, also when `laterToday > 0`. (Before ADR-054
+ *   `WAITING` had `untilStop == laterToday`.)
  *
  * Fuzz test shape (CORE-31; jvm + js, seeded, at least 2 000 runs of at most 60 steps): a random
  * input (cards in all four states with random dues around `now` and around `day.endMs`, pending
@@ -442,11 +463,12 @@ public data class LoopResult(
  * next learning due, past `day.endMs` with a new `day` and empty `today`); press Keep going
  * (set `keepGoing = true`, `keepGoingNewTarget = newToday + max(1, newGoal)`); end the visit
  * (`keepGoing = false`, target null); hold the answer back as a [PendingAnswer] instead of
- * applying it (for I6). I1 … I8 are asserted after every step, I7 only for answer steps.
+ * applying it (for I6). I1 … I9 are asserted after every step, I7 only for answer steps.
  *
  * Consequences:
  * - A stop screen (`GOAL_REACHED` / `DONE_FOR_TODAY` / `EMPTY`) means nothing is left for today:
- *   nothing ready, nothing later today, `untilStop == 0`.
+ *   nothing ready, nothing later today, `untilStop == 0`. `WAITING` also has `untilStop == 0`
+ *   (nothing doable now, ADR-054); only its later-today hint and countdown show what is coming.
  * - `GOAL_REACHED` / `DONE_FOR_TODAY` always have a Keep going that yields at least one card (never
  *   a dead end).
  * - `WAITING` no longer implies "no new card left": it happens whenever the served queue is empty
@@ -518,7 +540,8 @@ public data class LoopResult(
  * - **A1** (A; 0 ready, 26 learning cards due later today, 100 new cards, 0 introduced today):
  *   N = 10 NEW → `REVIEWING`; `readyLearning 0, readyReviews 0, laterToday 26, nextDueAt` = their
  *   earliest due, `backlog 0/0, reviewsToday 0, reviewsLimit null, newToday 0, newGoal 40,
- *   newAvailable true, untilStop 66`; `legacy = (new 40, learning 26, review 0, moreAvailable false)`.
+ *   newAvailable true, untilStop 40` (`0 + 0 + 40`; the 26 later are not summed, ADR-054),
+ *   `untilStopParts (0, 26, 0, 40)`; `legacy = (new 40, learning 26, review 0, moreAvailable false)`.
  *   Never `WAITING`.
  * - **B3** (B; 200 reviews done today, 40 introduced, 135 due reviews left, new cards remain):
  *   N empty, K non-empty → `DONE_FOR_TODAY`; `readyReviews 0, backlog 135, backlogBeyondLimit 135,
@@ -533,26 +556,29 @@ public data class LoopResult(
  *   N empty, K = 10 NEW → `GOAL_REACHED`, `untilStop 0`, `keepGoingAvailable true`. With `keepGoing = true` → `REVIEWING`, items NEW; after 60 more introductions
  *   still `REVIEWING` with `newToday 100, newGoal 40` (no end while new cards exist).
  * - **U1** (ADR-038; B; goal 40, 10 introduced, 30 reviews due under the cap, 5 learning cards
- *   due later today, 0 ready, 200 new cards): `REVIEWING`, `untilStop = 0 + 5 + 30 + 30 = 65`.
- *   After one review answered Again: `readyReviews 29, laterToday 6` → still 65 (the bar's total
- *   grew by one with `done`). After a new card answered Good: new part 29, `laterToday` + 1 → 65.
- *   After a review answered Good: 64.
+ *   due later today, 0 ready, 200 new cards): `REVIEWING`, `untilStop = 0 + 30 + 30 = 60`
+ *   (`learning + review + new`, ADR-054), `untilStopParts (0, 5, 30, 30)`. Then, one after the
+ *   other: a review answered Again: `readyReviews 29, laterToday 6` → 59; a new card answered
+ *   Good: new part 29, `laterToday 7` → 58; a review answered Good → 57. Each answer lowers it by
+ *   one while `done` grows by one, so the bar's total `done + untilStop` stays 60. When one of
+ *   the 7 learning cards comes due: `readyLearning 1, laterToday 6` → 58, the total grows by one.
  * - **W1** (ADR-049, the reported case; A; goal 40, 40 introduced today, 0 due reviews, 707 new
  *   cards; 23 of today's cards are in learning steps, all due within 8 minutes, before the day
  *   ends):
  *   1. 9 of the 23 are due, 14 are not: N = K's head = those 9 LEARNING items →
  *      `REVIEWING`; `readyLearning 9, readyReviews 0, laterToday 14, nextDueAt` = the earliest
  *      of the 14, `backlog 0/0, reviewsLimit null, newToday 40, newGoal 40, newAvailable true,
- *      untilStop 23, untilStopParts (9, 14, 0, 0), keepGoingAvailable false` (N is non-empty);
- *      `legacy = (new 0, learning 23, review 0, moreAvailable false)`. Header "9 learning · 14
- *      later · 0 to review · 0 new" = 23 = the bar's remainder.
+ *      untilStop 9, untilStopParts (9, 14, 0, 0), keepGoingAvailable false` (N is non-empty);
+ *      `legacy = (new 0, learning 23, review 0, moreAvailable false)`. Header "9 learning" (the
+ *      zero chips hidden) = 9 = the bar's remainder; the hint line says "14 later today"
+ *      (ADR-054; before it the header showed 23, counting cards that could not be done).
  *   2. None of the 23 is due (the reported instant: 13:15:24, one second after the 40th new
  *      card, the next due at 13:15:47; equally after the 9 of step 1 were answered into a
  *      further step): N empty, K = 10 NEW → **`WAITING`** (ADR-037 said `GOAL_REACHED`);
- *      `readyLearning 0, laterToday 23, nextDueAt` = 13:15:47, `untilStop 23, untilStopParts
+ *      `readyLearning 0, laterToday 23, nextDueAt` = 13:15:47, `untilStop 0, untilStopParts
  *      (0, 23, 0, 0), keepGoingAvailable true`; `legacy.moreAvailable true`.
  *   3. Step 2 with `keepGoing = true`, batch 10: `queue` = K = 10 NEW → `REVIEWING`, `keepGoing
- *      true, keepGoingAvailable false, untilStop 0 + 23 + 0 + 10 = 33, untilStopParts (0, 23, 0,
+ *      true, keepGoingAvailable false, untilStop 0 + 0 + 10 = 10, untilStopParts (0, 23, 0,
  *      10)`; every other field equals step 2's. At 13:15:47 the due learning card is K's first item.
  *   4. All 23 answered until none is due again today (graduated, or their next step ends after
  *      `day.endMs`), still 40/40, without keep going: N empty, K non-empty, `laterToday 0` →
@@ -560,23 +586,23 @@ public data class LoopResult(
  *      `reviewsUnlimited = false` the same four steps end in `DONE_FOR_TODAY`.
  * - **W2** (ADR-049; B; 200/200 reviews, 40/40 new, 135 due reviews beyond the cap, 2 relearning
  *   cards due in 6 minutes): N empty, K = the backlog → `WAITING`, `keepGoingAvailable true`,
- *   `untilStop 2`, `(0, 2, 0, 0)`; with `keepGoing = true` → `REVIEWING` (the backlog),
- *   `untilStop 0 + 2 + 135 + 10 = 147`, `(0, 2, 135, 10)`. After the 2 graduate → B3.
+ *   `untilStop 0`, `(0, 2, 0, 0)`; with `keepGoing = true` → `REVIEWING` (the backlog),
+ *   `untilStop 0 + 135 + 10 = 145`, `(0, 2, 135, 10)`. After the 2 graduate → B3.
  * - **W3** (C-31, ADR-052: one goal-sized batch per press; A; goal 40, 40 introduced today, no
  *   due reviews, no learning card left for today, 707 new cards, batch 10):
  *   1. `keepGoing = false`: N empty, K∞ = 10 NEW → `GOAL_REACHED`, `untilStop 0`, `(0, 0, 0, 0)`,
  *      `keepGoingAvailable true`, `newToday 40`. The client computes `T = 40 + max(1, 40) = 80`.
  *   2. `keepGoing = true, keepGoingNewTarget = 80`: `targetRemaining 40`; S = K_T = 10 NEW (the
- *      batch) → `REVIEWING`, `untilStop 0 + 0 + 0 + 40 = 40`, `(0, 0, 0, 40)`,
+ *      batch) → `REVIEWING`, `untilStop 0 + 0 + 40 = 40`, `(0, 0, 0, 40)`,
  *      `keepGoingAvailable false`.
  *   3. After 25 of them were introduced (`newToday 65`), 3 of those are in a step due in 2
  *      minutes, 1 is due now, the rest graduated: S = `[that LEARNING card, 10 NEW]` →
- *      `REVIEWING`, head = the due learning card (I5), `untilStop 1 + 3 + 0 + 15 = 19`,
+ *      `REVIEWING`, head = the due learning card (I5), `untilStop 1 + 0 + 15 = 16`,
  *      `(1, 3, 0, 15)`.
  *   4. `newToday 80`, nothing in a learning step due today: `targetRemaining 0` → K_T empty, K∞
  *      = 10 NEW → **`GOAL_REACHED` with `keepGoing = true`**, `untilStop 0`, `(0, 0, 0, 0)`,
  *      `keepGoingAvailable true`. (Before C-31: `REVIEWING` with the 81st new card.) Had 2 of
- *      the batch still been on their timers: `WAITING`, `(0, 2, 0, 0)`, `keepGoingAvailable
+ *      the batch still been on their timers: `WAITING`, `untilStop 0`, `(0, 2, 0, 0)`, `keepGoingAvailable
  *      true`, and this step after they graduate.
  *   5. The user presses again: `T = 80 + 40 = 120` → step 2 with `newToday 80`.
  *   6. Step 4 with only 12 new cards left in every deck when the press of step 1 happened:
@@ -599,12 +625,13 @@ public data class LoopResult(
  *   2. The user answers 7 new cards (`newToday 27`; 2 of them in a step due in 5 minutes, 5
  *      graduated) and leaves Review. The client drops the flag and the target.
  *   3. Home evaluates with `keepGoing = false`, target null: `dayRemaining = max(0, 20 − 27) = 0`
- *      → N empty; `laterToday 2` → `WAITING`, `untilStop 2`, `(0, 2, 0, 0)` — **new 0**, not 13
+ *      → N empty; `laterToday 2` → `WAITING`, `untilStop 0`, `(0, 2, 0, 0)` — **new 0**, not 13
  *      (I8); `keepGoingAvailable true`. After the 2 graduate: `GOAL_REACHED`, `(0, 0, 0, 0)`.
  *   4. The user returns and presses Keep going: `T = 27 + max(1, 20) = 47` → `REVIEWING`,
  *      `(0, 0, 0, 20)`: a **fresh full batch of 20**, not the 13 left of the old one.
  *   5. The same, but the 2 learning cards are due when the user returns before pressing:
- *      `keepGoing = false` → `REVIEWING` with those 2 (`(2, 0, 0, 0)`), then step 3's end.
+ *      `keepGoing = false` → `REVIEWING` with those 2 (`(2, 0, 0, 0)`, `untilStop 2`), then step
+ *      3's end.
  * - **X2** (C-31, target already exceeded; keep going with `T = 40`, but `newToday 43` because
  *   another device introduced cards and its reviews were pulled): `targetRemaining 0`; no NEW
  *   is drawn; with 3 due reviews S = those 3 → `REVIEWING`, `(0, 0, 3, 0)`; with none →

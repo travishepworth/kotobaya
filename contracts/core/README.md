@@ -273,7 +273,9 @@ going for "one visit" and to count `newShownThisSession`. All of that is gone.
   answer end it. In the shell the client is the SPA (openapi `getReviewQueue` rule C2); native
   code stores nothing and always builds with `false`. Never an op, never a synced setting, never
   persisted (the ADR-037 `kotobaya.keepGoingDay` storage key is gone).
-- **Progress bar (ADR-038).** `LoopState.untilStop`; the bar is `done / (done + untilStop)`.
+- **Progress bar (ADR-038, amended by ADR-054).** `LoopState.untilStop` (the cards doable now:
+  `untilStopParts.learning + review + new`, `later` not summed); the bar is
+  `done / (done + untilStop)`.
   Native surfaces show no bar.
 - **Waiting (ADR-049, C-30).** Only `LoopPhase.WAITING` waits; resume at `LoopState.nextDueAt`.
   `WAITING` is decided before the stop screens: whenever the served queue is empty and
@@ -581,6 +583,7 @@ Tests (CORE-28d):
 - `queue/ReviewLoopTest.kt`: `untilStop` for A1 (66), B3 (0), B4 (145), U1 (65, 47 with 12 new
   cards) and its three follow-ups (Again on a review keeps it, Good lowers it, a new card
   answered Good keeps it); equal before and after materialization; `REVIEWING` implies `>= 1`.
+  (**Superseded by ADR-054, see the C-34 section:** A1 40, U1 60 / 42, every answer lowers it.)
 - `cards/KanjiRequirementTest.kt` (ADR-045, C-28e; **amended by C-28f, see the ADR-046 section
   above** for 薔薇 and the "equal with and without tags" property): every worked example of the KDoc, on and off,
   as the full triple (海老, 寿司, 珈琲, 林檎, お化け, 彼, 今日, 昨日, 鱈, 鱈子, 薔薇 tagged and
@@ -620,7 +623,8 @@ Implementation ticket CORE-30 (`kotobaya.queue.DefaultReviewLoop`), tests first:
 
 - `ReviewLoopTest` (jvm + js): **W1** steps 1-4 with the numbers of the KDoc (9 ready / 14 later /
   707 new, goal 40/40, unlimited: `REVIEWING` 23 `(9,14,0,0)`; `WAITING` `keepGoingAvailable`
-  `(0,23,0,0)`; keep going `REVIEWING` 33 `(0,23,0,10)`; `GOAL_REACHED` 0); the capped twin ending
+  `(0,23,0,0)`; keep going `REVIEWING` 33 `(0,23,0,10)`; `GOAL_REACHED` 0; **ADR-054 / C-34:
+  `untilStop` 9, 0, 10, 0**); the capped twin ending
   in `DONE_FOR_TODAY`; **W2**; B6 now also asserts `keepGoingAvailable == false`; A1, A3, B3, B4,
   U1 gain their `untilStopParts` (`(0,26,0,40)`, `(0,0,0,0)`, `(0,0,0,0)`, `(0,0,135,10)`,
   `(0,5,30,30)`) and `keepGoingAvailable` (false, true, true, false, false).
@@ -632,8 +636,9 @@ Implementation ticket CORE-30 (`kotobaya.queue.DefaultReviewLoop`), tests first:
   `WAITING`; a read-only caller with `toMaterialize` non-empty stays `REVIEWING`.
 - Properties (extend `QueuePropertyTest`; random inputs, both modes): `WAITING` iff served queue
   empty and `laterToday > 0`; stop phase implies `laterToday == 0 && readyLearning == 0 &&
-  readyReviews == 0 && untilStop == 0`; `untilStop == 0` iff stop phase; `untilStopParts` sums to
-  `untilStop` with `learning == readyLearning`, `later == laterToday`, `review == (keepGoing ?
+  readyReviews == 0 && untilStop == 0`; `untilStop == 0` iff stop phase (**ADR-054: iff
+  `phase != REVIEWING`**); `untilStopParts` sums to `untilStop` (**ADR-054: `learning + review +
+  new`, `later` not summed**) with `learning == readyLearning`, `later == laterToday`, `review == (keepGoing ?
   backlog : readyReviews)`; `keepGoingAvailable == (!keepGoing && legacy.moreAvailable)`; every
   field except `phase`, `keepGoing`, `keepGoingAvailable`, `untilStop`, `untilStopParts` is equal
   across the flag; no LEARNING item with `dueAt > now` in either build (no learn-ahead).
@@ -696,7 +701,8 @@ Implementation ticket CORE-31 (`kotobaya.queue.DefaultQueueBuilder` rule 6 "Targ
   in the past, unknown `resultingState` per kind and rating, `localHeadKind == null`).
 - `ReviewLoopInvariantFuzzTest` (jvm + js; seeded; at least 2 000 runs of at most 60 steps; the
   seed is printed on failure): the generator and the steps of `ReviewLoop` KDoc "Fuzz test
-  shape"; after every step **I1 … I8** and the presenter's **P-I1 … P-I4** plus its consistency
+  shape"; after every step **I1 … I8** and the presenter's **P-I1 … P-I4** (ADR-054: I1 … I9,
+  P-I1 … P-I5) plus its consistency
   bound. This is the test ADR-051 asks for; it must fail if phase rule 2 and 3 are swapped
   back, if `keepGoingAvailable` is computed from the served build, or if a normal build reads
   the target.
@@ -713,3 +719,41 @@ Edge cases the KDoc fixes and the tests above cover: target already exceeded; `n
 pool smaller than the batch; a card coming due mid-batch; the visit ending mid-batch; a keep-going
 `WAITING` that offers the button; day rollover (the client drops flag and target, C2); duplicate or
 out-of-order pending answers; clock skew (the presenter reads no clock).
+
+## ADR-054: until_stop counts only cards doable now (C-34)
+
+Contract: KDoc only, `queue/ReviewLoop.kt` (`UntilStopParts`, `LoopState.untilStop` /
+`untilStopParts`, the `LoopState` invariants, I3, I7 note, new **I9**, worked examples A1, U1,
+W1–W3, X1) and `queue/LoopPresenter.kt` (`LoopPresentation`, projection table, P-I3, new **P-I5**,
+the consistency check, P1–P10). No signature, type, default or wire shape changes. Amends ADR-038
+("total = everything before the stop screen") and ADR-049 C3 ("header shows four parts summing to
+until_stop"), as quoted in the sections above.
+
+| Core member | Before (ADR-038 / ADR-049) | Now (ADR-054) | Wire |
+|---|---|---|---|
+| `LoopState.untilStop` | `learning + later + review + new` | `learning + review + new` of `untilStopParts` | `loop.until_stop` |
+| `UntilStopParts.later` | summed | same value (`== laterToday`), **not** summed; later-today hint only | `loop.until_stop_parts.later` |
+| `LoopPresentation.untilStop` | sum of the four projected parts | `learning + review + new` of the projected parts | client header / bar |
+| `untilStop == 0` | iff stop phase | iff `WAITING` or a stop phase (I9) | — |
+
+Implementation ticket LOOP-34 (core, server, android, web, CLI tests and goldens; merges together
+with C-34). Tests to change first, from the KDoc numbers:
+- `queue/ReviewLoopTest.kt`: A1 40 (was 66); U1 60, 42 with 12 new cards; its follow-ups 59, 58,
+  57 (every answer lowers it by one), and +1 when a learning card comes due; W1 step 1 9 `(9,14,0,0)`,
+  step 2 0 `(0,23,0,0)`, step 3 10 `(0,23,0,10)`, step 4 0; W2 0 `(0,2,0,0)` and 145 `(0,2,135,10)`;
+  W3 step 3 16 `(1,3,0,15)`; X1 step 3 0. B3 0 and B4 145 are unchanged.
+- `queue/QueuePropertyTest` / C-30 properties: `untilStop == 0` iff `phase != REVIEWING` (replaces
+  "iff stop phase"); `untilStopParts.learning + review + new == untilStop`.
+- `ReviewLoopInvariantFuzzTest`: assert **I9** after every step and **P-I5** for the presenter
+  (I1 … I9, P-I1 … P-I5); it must fail if `later` is summed back into `untilStop`.
+- `LoopPresenterTest`: P1 60, P2 59, P3 58, P4 1, P6 0 (and `WAITING` 0 with `(0,1,0,0)`), P10 37;
+  a held LEARNING card whose floor takes one from `later` raises `untilStop` by one.
+- `queue/QueueParityScenarioTest.kt` and every parity golden that pins `until_stop`: the
+  expectations in `contracts/api/shell/parity/` were recomputed by C-34 (20 values in 7 scenarios);
+  re-record the server and shell goldens to match.
+
+Edge cases: `WAITING` with `laterToday > 0` has `untilStop == 0` (the countdown and hint show what
+is coming); a learning card that comes due raises `untilStop` (and the bar's total) by one; an
+answer whose card comes back already due stays in the
+total; `kinds` still does not affect it; with keep going and no target the new part is the batch as
+before.

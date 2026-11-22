@@ -72,10 +72,13 @@ import {
  * `keep_going_new_target` (C-31).
  * ADR-049: `phase = waiting` iff nothing is served and `later_today.count > 0`; a stop
  * screen (`goal_reached`, `done_for_today`, `empty`) implies `ready.total = 0`,
- * `later_today.count = 0` and `until_stop = 0`, and `until_stop = 0` implies a stop screen;
+ * `later_today.count = 0` and `until_stop = 0`. ADR-054 (amends ADR-049's "`until_stop
+ * = 0` implies a stop screen"): `until_stop >= 1` iff `phase = reviewing`, so
+ * `until_stop = 0` iff `phase` is `waiting` or a stop screen;
  * `keep_going_available` is true in `goal_reached` / `done_for_today`, false in `empty`,
  * false in `reviewing`, and false with `keep_going = true` unless a
- * `keep_going_new_target` was sent (C-31); `until_stop_parts` sums to `until_stop`.
+ * `keep_going_new_target` was sent (C-31); `until_stop = until_stop_parts.learning +
+ * until_stop_parts.review + until_stop_parts.new` (ADR-054: `later` is not summed).
  * C-31 (ADR-051), for every response: `ready.total > 0` implies `phase = reviewing` with
  * a non-empty `items` (unless `kinds` excluded them); and with `keep_going = false`,
  * `until_stop_parts.new <= max(0, new.goal - new.today)` (ADR-052: an unfinished
@@ -147,31 +150,39 @@ export interface ReviewLoop {
      */
     reviews: ReviewLoopReviews;
     /**
-     * ADR-038 (additive). Answers left until the stop screen (core `LoopState.untilStop`);
-     * the review progress bar's total is `done + until_stop` (client rule C3). Each card
-     * counts once, so the total grows when a card comes back (Again) or a new card enters
-     * its learning steps.
-     * - `keep_going = false`: `ready.learning + later_today.count + ready.review` + the new
-     *   cards that can still be introduced today (the smaller of the goal's remainder and
-     *   what the decks can supply under their limits; kanji cards served ahead of their
-     *   word and deck entries not yet materialized included; **not** bounded by `limit`).
-     *   These are the answers before the stop screen (`goal_reached` / `done_for_today`
-     *   / `empty`). ADR-049: in `waiting` it equals `later_today.count` (>= 1); at a stop
-     *   screen it is always 0, and 0 only there.
+     * ADR-038 (additive), redefined by ADR-054 (C-34). **Cards doable right now** (core
+     * `LoopState.untilStop`): always `until_stop_parts.learning + until_stop_parts.review
+     * + until_stop_parts.new`; learning cards on their timers (`later_today.count`,
+     * `until_stop_parts.later`) are **not** counted. The review progress bar's total is
+     * `done + until_stop` (client rule C3). Each card counts once. Every answer lowers it
+     * by one (a card answered Again, or a new card entering its learning steps, moves to
+     * `later`, outside the total), so `done + until_stop` holds steady while answering; it
+     * grows when a learning card comes due (that card joins it) or cards arrive from
+     * elsewhere.
+     * - `keep_going = false`: `ready.learning + ready.review` + the new cards that can
+     *   still be introduced today (the smaller of the goal's remainder and what the decks
+     *   can supply under their limits; kanji cards served ahead of their word and deck
+     *   entries not yet materialized included; **not** bounded by `limit`).
      * - `keep_going = true` without `keep_going_new_target`: the stream is endless, so it
-     *   is what is in sight: `ready.learning + later_today.count + backlog.reviews` + the
-     *   new cards this response drew (about `limit`; a kanji group may overshoot).
+     *   is what is in sight: `ready.learning + backlog.reviews` + the new cards this
+     *   response drew (about `limit`; a kanji group may overshoot).
      * - `keep_going = true` with `keep_going_new_target` (C-31): `ready.learning +
-     *   later_today.count + backlog.reviews` + the new cards left to the target (the
-     *   smaller of `target - new.today` and what the decks can supply; **not** bounded by
-     *   `limit`). It reaches 0 exactly when the stop screen returns. Example: goal 40
-     *   met, target 80, nothing else due → 40; after 25 of them, 3 on their timers and 1
-     *   due → 19.
-     * Unaffected by `kinds`. `phase = reviewing` implies `until_stop >= 1`. Sent by every
-     * server and local API implementing ADR-038; absent (older) → clients use `ready.total`.
-     * Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 66. Goal 40
-     * with 10 introduced, 30 reviews due, 5 learning cards on a timer → 65. Both limits
-     * reached with 135 reviews beyond the cap → 0; the same with `keep_going=true&limit=10` → 145.
+     *   backlog.reviews` + the new cards left to the target (the smaller of `target -
+     *   new.today` and what the decks can supply; **not** bounded by `limit`). Example:
+     *   goal 40 met, target 80, nothing else due → 40; after 25 of them, 3 on their
+     *   timers and 1 due → 16 (1 + 0 + 15).
+     * **Invariant (ADR-054):** `until_stop >= 1` iff `phase = reviewing` (a card can be
+     * served now); `until_stop = 0` iff `phase` is `waiting`, `goal_reached`,
+     * `done_for_today` or `empty`. In `waiting` it is 0 even though `later_today.count >=
+     * 1`; the client shows the countdown and the later-today hint, not a number to do.
+     * Unaffected by `kinds`. Sent by every server and local API implementing ADR-038;
+     * absent (older) → clients use `ready.total`.
+     * Examples: 0 ready, 26 later, goal 40 with 0 introduced, 100 new cards → 40 (not
+     * 66). Goal 40 with 10 introduced, 30 reviews due, 5 learning cards on a timer → 60;
+     * after one review answered Again → 59 (the bar's total `done + until_stop` stays
+     * 60). Goal met, 9 learning cards ready, 14 on their timers → 9; none ready
+     * (`waiting`) → 0. Both limits reached with 135 reviews beyond the cap → 0; the same
+     * with `keep_going=true&limit=10` → 145.
      * 
      */
     untilStop?: number;

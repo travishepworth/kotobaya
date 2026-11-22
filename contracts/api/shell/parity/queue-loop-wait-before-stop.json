@@ -6,11 +6,11 @@
   ],
   "narrative": [
     "The case reported on 2026-11-19, scaled down (9 ready / 14 later / 707 new there; 1 / 2 / 2 here). scheduler.reviews_unlimited is true, new_per_day is 3. Cards ...10, ...20 and ...30 were introduced today and answered Again at 09:59:00, 09:59:55 and 09:59:58: they are in the first learning step (60 s) and fall due at 10:00:00, 10:00:55 and 10:00:58. The goal is reached (3/3). No review is due. Cards ...40 and ...50 are new.",
-    "Step 0, 10:00:01: ...10 is ready, two are later today. reviewing, never goal_reached; until_stop 3 = until_stop_parts 1 learning + 2 later + 0 reviews + 0 new, the numbers the header and Home show; keep_going_available is false because a card is served.",
-    "Step 1 graduates ...10 (Easy). Step 2, 10:00:03: nothing is ready, two learning cards fall due later today and new cards remain. Under ADR-037 this was goal_reached; under ADR-049 it is waiting with next_due_at 10:00:55, keep_going_available true, until_stop 2. No card is served early. The deprecated more_available is true and next_learning_due_at is set, as before.",
-    "Step 3, the same instant with keep_going=true&limit=1: reviewing with the new card ...40 (the learning cards are not served early); until_stop 0 + 2 + 0 + 1 = 3; keep_going_available false; ready, later_today, backlog, reviews and new equal step 2.",
-    "Step 4, 10:00:55, without the flag (a new visit, or the timer of rule C4/C6): ...20 came due and is served: reviewing, 1 learning + 1 later.",
-    "Step 5 graduates ...20. Step 6, 10:00:57: waiting again for ...30 (next_due_at 10:00:58), until_stop 1.",
+    "Step 0, 10:00:01: ...10 is ready, two are later today. reviewing, never goal_reached; until_stop 1 = until_stop_parts 1 learning + 0 reviews + 0 new (ADR-054: the 2 later are shown only in the later-today hint, not summed); keep_going_available is false because a card is served.",
+    "Step 1 graduates ...10 (Easy). Step 2, 10:00:03: nothing is ready, two learning cards fall due later today and new cards remain. Under ADR-037 this was goal_reached; under ADR-049 it is waiting with next_due_at 10:00:55, keep_going_available true, until_stop 0 (waiting: nothing doable now, ADR-054). No card is served early. The deprecated more_available is true and next_learning_due_at is set, as before.",
+    "Step 3, the same instant with keep_going=true&limit=1: reviewing with the new card ...40 (the learning cards are not served early); until_stop 0 learning + 0 reviews + 1 new = 1 (parts later 2, not summed); keep_going_available false; ready, later_today, backlog, reviews and new equal step 2.",
+    "Step 4, 10:00:55, without the flag (a new visit, or the timer of rule C4/C6): ...20 came due and is served: reviewing, 1 learning + 1 later; until_stop 1.",
+    "Step 5 graduates ...20. Step 6, 10:00:57: waiting again for ...30 (next_due_at 10:00:58), until_stop 0.",
     "Step 7, 10:00:58: ...30 is served. Step 8 graduates it.",
     "Step 9, 10:01:00: nothing is ready and nothing falls due later today: only now goal_reached, with until_stop 0, all four parts 0 and keep_going_available true.",
     "Step 10, keep_going=true&limit=1: reviewing with the new card ...40; the mode-independent numbers equal step 9."
@@ -297,7 +297,7 @@
               "goal": 3,
               "available": true
             },
-            "until_stop": 3,
+            "until_stop": 1,
             "keep_going_available": false,
             "until_stop_parts": {
               "learning": 1,
@@ -375,7 +375,7 @@
               "goal": 3,
               "available": true
             },
-            "until_stop": 2,
+            "until_stop": 0,
             "keep_going_available": true,
             "until_stop_parts": {
               "learning": 0,
@@ -431,7 +431,7 @@
               "goal": 3,
               "available": true
             },
-            "until_stop": 3,
+            "until_stop": 1,
             "keep_going_available": false,
             "until_stop_parts": {
               "learning": 0,
@@ -485,7 +485,7 @@
               "goal": 3,
               "available": true
             },
-            "until_stop": 2,
+            "until_stop": 1,
             "keep_going_available": false,
             "until_stop_parts": {
               "learning": 1,
@@ -556,7 +556,7 @@
               "goal": 3,
               "available": true
             },
-            "until_stop": 1,
+            "until_stop": 0,
             "keep_going_available": true,
             "until_stop_parts": {
               "learning": 0,

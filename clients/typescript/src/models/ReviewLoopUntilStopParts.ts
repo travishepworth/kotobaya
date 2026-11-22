@@ -14,21 +14,24 @@
 
 import { mapValues } from '../runtime';
 /**
- * ADR-049 (additive). `until_stop` split into the four numbers the review header and
- * Home show (core `LoopState.untilStopParts`; client rule C3):
- * `learning + later + review + new = until_stop`, always. Depends on `keep_going`
- * exactly as `until_stop` does (`review`, `new`). Unaffected by `kinds`. Sent by every
- * server and local API implementing ADR-049; absent (older) → clients show
- * `ready.learning`, `later_today.count` and `ready.review`.
+ * ADR-049 (additive), amended by ADR-054 (C-34). The numbers behind the review header,
+ * Home and the later-today hint (core `LoopState.untilStopParts`; client rule C3):
+ * `learning + review + new = until_stop`, always; `later` is information for the
+ * later-today hint only and is **not** summed into `until_stop` (nor shown as a header
+ * chip or in Home's big number). Depends on `keep_going` exactly as `until_stop` does
+ * (`review`, `new`). Unaffected by `kinds`. Sent by every server and local API
+ * implementing ADR-049; absent (older) → clients show `ready.learning` and
+ * `ready.review`, with `later_today.count` in the hint.
  * Example (goal 40 reached, 9 learning cards ready, 14 on their timers, no reviews):
- * `{learning: 9, later: 14, review: 0, new: 0}` = `until_stop` 23.
+ * `{learning: 9, later: 14, review: 0, new: 0}`, `until_stop` 9 (header "9 learning",
+ * hint "14 later today").
  * 
  * @export
  * @interface ReviewLoopUntilStopParts
  */
 export interface ReviewLoopUntilStopParts {
     /**
-     * Learning/relearning cards on their timer that come back before `day_ends_at`. Always equal to `later_today.count`.
+     * Learning/relearning cards on their timer that come back before `day_ends_at`. Always equal to `later_today.count`. Not part of `until_stop` (ADR-054); shown only in the later-today hint.
      */
     later: number;
     /**

@@ -775,7 +775,8 @@ is orphaned (LOOP-SRV deletes it when re-recording); `web` reads `counts` / `mor
 
 What was decided:
 - `ReviewQueue.loop.until_stop` (integer): answers left until the stop screen; the review progress
-  bar is `done / (done + until_stop)`. Not in `required` only so that old servers stay valid;
+  bar is `done / (done + until_stop)`. (Amended by ADR-054 / C-34: only cards doable now; see
+  "C-34 changes".) Not in `required` only so that old servers stay valid;
   clients fall back to `ready.total` when it is absent.
 - Keep going lasts one review visit (client rule C2 rewritten): held in memory, never stored;
   a new visit, a restart, a day change or 10 idle minutes end it.
@@ -802,6 +803,7 @@ Alternatives rejected:
 Three choices most worth a second look:
 1. `until_stop` includes learning cards that are due later today, so at the "done for today"
    screen it can be above zero (those cards will come back). It follows ADR-038's formula.
+   (Reversed by ADR-054 / C-34: later-today cards are no longer counted.)
 2. With keep going, `until_stop` depends on the request's `limit` (the batch). It is the only
    loop number that does.
 3. The older parity scenarios were moved to kana-only words so that kanji-first does not change
@@ -913,9 +915,10 @@ What was decided:
   `goal_reached` / `done_for_today` and during `waiting` when new cards or a backlog remain.
   Absent (older server): clients use `phase` in (`goal_reached`, `done_for_today`).
 - `ReviewQueue.loop.until_stop_parts` = `{learning, later, review, new}`: `until_stop` split into
-  the numbers the review header and Home show; the sum is always `until_stop`. Absent (older
+  the numbers the review header and Home show; the sum is always `until_stop`. (Amended by
+  ADR-054 / C-34: `until_stop = learning + review + new`; `later` is shown only in the hint.) Absent (older
   server): clients show `ready.learning`, `later_today.count`, `ready.review`.
-- Client rules: C3 (header and Home show the four parts; single-number surfaces keep
+- Client rules: C3 (header and Home show the four parts, amended by ADR-054 to three; single-number surfaces keep
   `ready.total`), C4 (the waiting screen resumes by itself and may offer Keep going), new C6 (every
   surface that stays on screen refetches once at `later_today.next_due_at` in every phase, not only
   in `waiting`; at a stop screen that member is null).
@@ -1048,3 +1051,35 @@ Also changed, smaller:
 - One file outside this ticket's listed paths was touched: one line in `contracts/db/check.sh`
   (the allow-list of device-only tables gained `response_cache`); without it the new table
   fails the device-versus-server schema comparison.
+
+## C-34 changes (ADR-054; values change, no shape change)
+
+What was decided:
+- `loop.until_stop` = `until_stop_parts.learning + review + new`: the cards doable right now.
+  `until_stop_parts.later` stays (same meaning, `= later_today.count`) but is **not** summed.
+- Invariant: `until_stop >= 1` iff `phase = reviewing`; `until_stop = 0` in `waiting` and at the
+  three stop screens. Core: new loop invariant I9 and presenter invariant P-I5.
+- C3: the header and Home show `learning`, `review`, `new` (hide-if-0 unchanged); `later` only in
+  the later-today hint line, never as a chip or in Home's big number. The bar is
+  `done / (done + until_stop)`: every answer moves one card from `until_stop` to `done` (steady
+  total); the total grows when a learning card comes due.
+- Every worked example fixed (ADR-049 example 23 → 9; response example 255 → 229; 66 → 40;
+  65 → 60; 19 → 16). Parity: 20 `until_stop` expectations in 7 scenarios recomputed, with their
+  narratives; `check_shell.py` gains `parity_until_stop` (sum rule and the zero rule) with two
+  self-tests.
+- No new member, operation, table or op; no `LOCAL_API_VERSION` bump (the field keeps its type;
+  an older bundle merely shows the larger old number).
+
+Alternatives rejected:
+- A new member (`ready_now`) next to the old `until_stop`. Two totals invite clients to pick the
+  wrong one; ADR-054 says "this applies to everything".
+- Dropping `until_stop_parts.later`. The hint needs it and it is free; removing it would be a
+  breaking change.
+
+Three choices most worth a second look:
+1. The bar's total now grows whenever a learning card comes due (one step per card), instead of
+   when it is answered Again. Accepted by ADR-054 ("may grow").
+2. Older web bundles on a new server read the new, smaller `until_stop` with their old four-chip
+   header: the chips then do not add up to the bar until the bundle updates (same pin, minutes).
+3. Presenter rows `returns today` now lower `untilStop` by one; the `LEARNING` fallback that takes
+   from `later` leaves it unchanged. Implementers must follow the table, not "always −1".

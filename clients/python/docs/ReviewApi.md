@@ -271,8 +271,12 @@ instant):
   budget when `scheduler.reviews_unlimited`).
 - *ready now* = ready learning + ready reviews. New cards are not part of it.
 - *later today*: learning/relearning cards due later, before `day_ends_at`. Never served
-  early; while a card can be shown they are only a number, and once nothing can be shown
-  they make the phase `waiting` and hold back the stop screen (ADR-049).
+  early; while a card can be shown they are only a number (the later-today hint, never
+  part of `until_stop`, ADR-054), and once nothing can be shown they make the phase
+  `waiting` and hold back the stop screen (ADR-049).
+- *doable now* (ADR-054) = ready learning + ready reviews + the new cards that can be
+  served now (within the goal, or the keep-going batch / target): `loop.until_stop`.
+  It is 0 exactly when nothing can be served, i.e. in `waiting` and at the stop screens.
 - *backlog*: every due review an uncapped build would take; *beyond limit* = backlog -
   ready reviews.
 - *new today / new goal*: cards introduced today / `scheduler.new_per_day`.
@@ -317,10 +321,16 @@ when nothing is left for today (`ready.total` = 0, `later_today.count` = 0,
 `until_stop` = 0). (Before ADR-049 rules 2 and 3 were the other way round, so the stop
 screen showed while learning cards were minutes away.) A learning card that falls due
 makes the next response `reviewing` again, and that card is first.
-Example (ADR-049): goal 40 with 40 introduced, no reviews due, 707 new cards, 9 learning
-cards due and 14 on their timers: `reviewing` (the 9; `until_stop` 23); once none is
-ready: `waiting` with `keep_going_available: true`; `goal_reached` only after the last
-of them was answered into a state that is not due again today.
+**`until_stop` > 0 iff a card can be served now (ADR-054):** `phase = reviewing` ⇔
+`until_stop >= 1`; `waiting` and the stop screens ⇔ `until_stop = 0`. (Before ADR-054
+`until_stop` also counted the learning cards on their timers, so the header showed
+cards while the stop or waiting screen was up.)
+Example (ADR-049, amended by ADR-054): goal 40 with 40 introduced, no reviews due, 707
+new cards, 9 learning cards due and 14 on their timers: `reviewing` (the 9;
+`until_stop` 9, `until_stop_parts` `{learning: 9, later: 14, review: 0, new: 0}`, the
+14 shown only in the later-today hint); once none is ready: `waiting` with
+`until_stop` 0 and `keep_going_available: true`; `goal_reached` only after the last of
+them was answered into a state that is not due again today.
 
 Client rules (normative for web, the shell SPA and the CLI):
 - **C1 Due first.** A client may hold a page of `items`, but before showing each next
@@ -367,15 +377,20 @@ Client rules (normative for web, the shell SPA and the CLI):
 - **C3 Display.** The headline "ready now" number of a surface that shows **one**
   number (widget, notification, CLI status line, a badge) is **always**
   `loop.ready.total`, with or without keep going, so every such surface shows the same
-  number at the same instant. The **review header and Home** (ADR-049) show the four
-  numbers of `loop.until_stop_parts`, each with its label, in this order: `learning`
-  ("learning"), `later` ("later"), `review` ("to review"), `new` ("new"); a part that
-  is 0 may be hidden, a part that is not 0 MUST be shown, and no client adds, subtracts
-  or re-derives them. Their sum is `loop.until_stop`, the remainder of the progress
-  bar, so header and bar always agree (the report behind ADR-049: Home 9, header 9, bar
-  23). Home sends `keep_going=false` and shows the same four numbers the review header
-  shows for a normal request at that instant; when `until_stop_parts` is absent (older
-  server) both show `ready.learning`, `later_today.count` and `ready.review` instead.
+  number at the same instant. The **review header and Home** (ADR-049, amended by
+  ADR-054) show the three numbers `learning` ("learning"), `review` ("to review") and
+  `new` ("new") of `loop.until_stop_parts`, each with its label, in this order; a part
+  that is 0 may be hidden, a part that is not 0 MUST be shown, and no client adds,
+  subtracts or re-derives them. Their sum is `loop.until_stop`, the remainder of the
+  progress bar, so header and bar always agree, and Home's big number (when it shows
+  one) is `loop.until_stop`. `until_stop_parts.later` is **not** a header chip, **not**
+  part of Home's big number and **not** in the bar: it is shown only in the
+  later-today hint line (below). (The reports behind ADR-049 and ADR-054: Home 9,
+  header 9, bar 23; later Home 4, header "of 15" with 2 ready and 13 on their timers,
+  and the stop screen came while cards were still counted.) Home sends
+  `keep_going=false` and shows the same numbers the review header shows for a normal
+  request at that instant; when `until_stop_parts` is absent (older server) both show
+  `ready.learning` and `ready.review` instead, with `later_today.count` in the hint.
   Home's state follows `loop.phase`: `reviewing` offers Start review; `waiting` shows
   the countdown to `later_today.next_due_at` (Start review stays available and leads to
   the waiting screen); `goal_reached` / `done_for_today` / `empty` show the day as done
@@ -383,12 +398,17 @@ Client rules (normative for web, the shell SPA and the CLI):
   backlog line, `loop.backlog.reviews`, displayed iff `loop.backlog.beyond_limit > 0`,
   in both modes (while keeping going past the cap the headline is therefore
   `ready.learning` and the backlog line carries the reviews being cleared). A "later
-  today" hint only when `loop.later_today.count > 0`; the new bar as `loop.new.today` /
+  today" hint line (e.g. "14 later today", with the countdown to
+  `later_today.next_due_at`) only when `loop.later_today.count > 0`; it is the only
+  place `later` appears (ADR-054); the new bar as `loop.new.today` /
   `loop.new.goal` (it may exceed the goal after keep going: clamp the bar, show the
   number). The **review progress bar** (ADR-038) is `done / (done + loop.until_stop)`
   with `done` = the answers this client sent in the current visit (an undo takes one
-  off); the total may grow (Again, a new card entering its learning steps). When
-  `until_stop` is absent (older server) the client uses `loop.ready.total` instead.
+  off). Every answer moves one card out of `until_stop` and into `done` (Again and a new
+  card entering its learning steps move it to `later`, outside the total), so `done +
+  until_stop` holds steady while answering; the total grows when a learning card comes
+  due (it joins `until_stop` from `later`) or cards arrive from elsewhere (ADR-054).
+  When `until_stop` is absent (older server) the client uses `loop.ready.total` instead.
 - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
   fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous
   timer-driven fetch (the client's clock may differ from the server's; if the card is
@@ -422,10 +442,12 @@ Client rules (normative for web, the shell SPA and the CLI):
   while a card is on screen only for the header numbers and MUST NOT replace the card
   being shown.
 - **C7 Render the presenter's output only (C-31, ADR-051).** Web and the shell SPA
-  decide the review screen, the four header numbers and the progress bar's remainder by
+  decide the review screen, the header numbers (and the later-today hint) and the progress bar's remainder by
   calling the core `LoopPresenter.present(state, pending, hasLocalCard, localHeadKind,
   dayEndsAt)` (contract `kotobaya.contracts.queue.LoopPresenter`, exported by
-  `@kotobaya/core`) and render its `screen`, `parts` and `untilStop`. Inputs: `state` =
+  `@kotobaya/core`) and render its `screen`, `parts` and `untilStop` (ADR-054:
+  `untilStop` = `parts.learning + parts.review + parts.new`; `parts.later` feeds only
+  the later-today hint). Inputs: `state` =
   `loop` of the latest response applied; `dayEndsAt` = that response's `day_ends_at`;
   `pending` = every answer given since that response's request was sent whose effect it
   therefore does not show (kind of the item, rating, and the `card.state` / `card.due_at`

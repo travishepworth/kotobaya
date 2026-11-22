@@ -7,7 +7,7 @@
   "narrative": [
     "先生 (card ...10, the older note) and 学校 (card ...50) were graduated two days ago with Easy (review state, not due). The kanji notes 先 (card ...20) and 生 (card ...30) exist and are new; 学 and 校 have no kanji note. The new deckless word うっかり (card ...40) was created before the kanji notes.",
     "Step 0: backfill comes before every other new card, the oldest word first: 先 and 生 (existing new cards of 先生), then 学 and 校, whose kanji notes the fetch mints for the already studied 学校 (ADR-043), then うっかり although it is older than every kanji note. until_stop is 5.",
-    "Step 1 answers 先 Good. Step 2: 生, 学, 校, then うっかり; 先 is later today, so until_stop is still 5."
+    "Step 1 answers 先 Good. Step 2: 生, 学, 校, then うっかり; 先 is later today and not doable now, so until_stop is 4 (ADR-054: later is not in the total)."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",
@@ -268,7 +268,7 @@
           "/items/2/card/note/kanji_literal": "校",
           "/items/3/card/id": "0193a1b2-0002-7000-8000-000000000040",
           "/loop/later_today/count": 1,
-          "/loop/until_stop": 5
+          "/loop/until_stop": 4
         },
         "lengths": {
           "/items": 4

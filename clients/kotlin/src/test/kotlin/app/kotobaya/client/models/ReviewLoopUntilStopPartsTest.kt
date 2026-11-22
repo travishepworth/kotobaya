@@ -33,7 +33,7 @@ class ReviewLoopUntilStopPartsTest : ShouldSpec() {
         // uncomment below to create an instance of ReviewLoopUntilStopParts
         //val modelInstance = ReviewLoopUntilStopParts()
 
-        // to test the property `later` - Learning/relearning cards on their timer that come back before `day_ends_at`. Always equal to `later_today.count`.
+        // to test the property `later` - Learning/relearning cards on their timer that come back before `day_ends_at`. Always equal to `later_today.count`. Not part of `until_stop` (ADR-054); shown only in the later-today hint.
         should("test later") {
             // uncomment below to test the property
             //modelInstance.later shouldBe ("TODO")

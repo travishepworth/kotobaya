@@ -7,8 +7,8 @@
   ],
   "narrative": [
     "Default settings. The only two cards were introduced today and answered Again at 09:59:55 and 09:59:56: they are in the first learning step and fall due at 10:00:55 and 10:00:56. There is no review and no new card.",
-    "Step 0, keep_going=true, and step 1, without: nothing is ready and keep going has nothing either, so the phase is waiting with next_due_at 10:00:55 in both modes (never goal_reached / done_for_today, which would be a dead end).",
-    "Step 2, 10:00:55: the first card is served (reviewing); the second is still later today.",
+    "Step 0, keep_going=true, and step 1, without: nothing is ready and keep going has nothing either, so the phase is waiting with next_due_at 10:00:55 and until_stop 0 (ADR-054) in both modes (never goal_reached / done_for_today, which would be a dead end).",
+    "Step 2, 10:00:55: the first card is served (reviewing); the second is still later today. until_stop 1.",
     "Steps 3-4 graduate both cards (Easy). Steps 5-6: nothing ready, nothing later: empty, with and without keep_going."
   ],
   "clock_ms": 1795168800000,
@@ -158,7 +158,7 @@
               "goal": 20,
               "available": false
             },
-            "until_stop": 2,
+            "until_stop": 0,
             "keep_going_available": false,
             "until_stop_parts": {
               "learning": 0,
@@ -209,7 +209,7 @@
               "goal": 20,
               "available": false
             },
-            "until_stop": 2,
+            "until_stop": 0,
             "keep_going_available": false,
             "until_stop_parts": {
               "learning": 0,
@@ -264,7 +264,7 @@
               "goal": 20,
               "available": false
             },
-            "until_stop": 2,
+            "until_stop": 1,
             "keep_going_available": false,
             "until_stop_parts": {
               "learning": 1,
