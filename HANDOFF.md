@@ -1,23 +1,27 @@
-# HANDOFF C-34
+# HANDOFF LOOP-34
 
 STATUS: DONE
-BRANCH: t/C-34-until-stop-ready-now
-CHECK: `make check MODULE=contracts` → green
+BRANCH: t/LOOP-34-until-stop-ready-now (rebased on C-34 @19926c8d)
+CHECK: core, web, server, acceptance, android → green (one android flake, BlobInterceptTest, passes alone)
 
 ## Changed (≤ 6 lines)
-- openapi.yaml: `until_stop` = learning + review + new; C3 shows three chips, `later` only in the hint; every single to-do number (Home, header, widget, notification, CLI/waybar) is `until_stop` with keep_going=false, and no surface shows `ready.total` as its headline; `until_stop>=1` iff reviewing (materialization included); examples fixed (23→9, 255→229, 66→40, 65→60, 19→16)
-- ReviewLoop.kt / LoopPresenter.kt KDoc: I9, P-I5, I3, projection table, worked examples; "steady total" now says "usually" and lists the I7 exceptions
-- parity: 20 `until_stop` values in 7 scenarios plus narratives (attempt 2: fixed two narratives that still read as sums)
-- check_shell.py `parity_until_stop`: sum rule, 0 when waiting or terminal, ≥1 when reviewing, per-part pointers; 4 self-tests
-- SHELL.md (`getReviewQueue` row: widget and notification show `untilStop`), both SUMMARY.md files, core README ("What to show"): ADR-038/049 marked amended; C-34 sections; the README "already due" edge case is scoped to the loop; clients regenerated
+- core loop/presenter/JS bridge: `untilStop = learning + review + new`
+- core tests: ReviewLoopReadyNowTest; fuzz asserts I3/I9/P-I5; fingerprint re-recorded, the pre-054 hash still asserted
+- goldens: only 22 `until_stop` lines changed; LoopInvariants adds I9
+- web: no header `later` chip; Home number = `loop.untilStop`; Home waiting shows the hint
+- android widget/notification: `state.untilStop`; progress = done/(done+due)
+- CLI untouched (watch.py never sums `later`)
 
 ## Acceptance → tests
-- make check green → `make check MODULE=contracts`
-- no text sums `later` → `parity_until_stop` + grep
+- Reported case → ReviewLoopReadyNowTest.reportedCaseTwoReadyThirteenLaterGoalMetCountsTwo
+- Fuzz → ReviewLoopInvariantFuzzTest.invariantsHoldAfterEveryStep
+- Pending returns today → …pendingAnswerThatReturnsTodayLeavesUntilStop
+- Home == header → …homeNumberEqualsHeaderTotalAtDoneZero
 
 ## New dependencies
 - none
 
 ## For the reviewer (≤ 3 lines)
-- I worked out `later` by hand for 5 kanji pointer expectations that pin no parts.
-- Presenter equality now needs every returning pending answer to have `dueAt > now`.
+- Edited outside my paths: LoopPresenterJsTest (65→58), WidgetTest (3→4).
+- Not fixed (not mine): KotobayaWidget.kt:119 "N of M" adds `due + new`, so new cards count twice; "X due · Y new" overlaps.
+- Fuzz equality skips steps where a learning card came due after the shown state.
