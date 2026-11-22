@@ -91,7 +91,7 @@ public fun presentLoop(
         phase = phase, keepGoing = false, readyLearning = parts.learning, readyReviews = 0, laterToday = parts.later,
         nextDueAt = null, backlog = 0, backlogBeyondLimit = 0, reviewsToday = 0, reviewsLimit = null, newToday = 0,
         newGoal = 0, newAvailable = false, legacy = LegacyCounts(0, 0, 0, false),
-        untilStop = parts.learning + parts.later + parts.review + parts.new, untilStopParts = parts,
+        untilStop = parts.learning + parts.review + parts.new, untilStopParts = parts,
     )
     val answers = pending.map {
         PendingAnswer(

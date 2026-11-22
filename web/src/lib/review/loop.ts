@@ -66,7 +66,10 @@ export function countdown(at: Date | null, now: number): string {
 	return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
 
-/** ADR-049 C3: the four numbers the review header and Home show; they sum to `until_stop` (the bar's total). */
+/**
+ * ADR-049 C3, amended by ADR-054: learning + review + new are the header and Home chips and sum to `until_stop` (the
+ * cards doable now); `later` is only the later-today hint, never a chip and never summed.
+ */
 export interface LoopParts {
 	learning: number;
 	later: number;

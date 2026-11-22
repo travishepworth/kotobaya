@@ -15,7 +15,7 @@ import kotobaya.contracts.queue.UntilStopParts
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** C-31 `LoopPresenter` worked examples P1 … P10 and the KDoc's edge cases. Parts are `(learning, later, review, new)`. */
+/** C-31 `LoopPresenter` worked examples P1 … P10 and the KDoc's edge cases. Parts are `(learning, later, review, new)`; `untilStop` = learning + review + new (ADR-054). */
 class LoopPresenterTest {
     private val now = NOW
     private val d = TOKYO_DAY.endMs
@@ -23,7 +23,7 @@ class LoopPresenterTest {
     private fun state(phase: LoopPhase, l: Int, la: Int, rv: Int, n: Int) = LoopState(
         phase = phase, keepGoing = false, readyLearning = l, readyReviews = rv, laterToday = la, nextDueAt = null,
         backlog = rv, backlogBeyondLimit = 0, reviewsToday = 0, reviewsLimit = 200, newToday = 0, newGoal = 40,
-        newAvailable = n > 0, legacy = LegacyCounts(n, l, rv, false), untilStop = l + la + rv + n,
+        newAvailable = n > 0, legacy = LegacyCounts(n, l, rv, false), untilStop = l + rv + n,
         keepGoingAvailable = false, untilStopParts = UntilStopParts(l, la, rv, n),
     )
 
@@ -34,7 +34,7 @@ class LoopPresenterTest {
     private fun present(s: LoopState, pending: List<PendingAnswer> = emptyList(), head: QueueItemKind? = null, held: Boolean = head != null, dayEnd: Long = d) =
         DefaultLoopPresenter.present(s, pending, held, head, dayEnd)
 
-    private fun expect(screen: LoopScreen, l: Int, la: Int, rv: Int, n: Int) = LoopPresentation(screen, UntilStopParts(l, la, rv, n), l + la + rv + n)
+    private fun expect(screen: LoopScreen, l: Int, la: Int, rv: Int, n: Int) = LoopPresentation(screen, UntilStopParts(l, la, rv, n), l + rv + n)
 
     private val againReview = pa(REVIEW, 1, CardState.RELEARNING, now + 600_000)
     private val newGood = pa(NEW, 3, CardState.LEARNING, now + 600_000)
@@ -43,14 +43,14 @@ class LoopPresenterTest {
     fun p1NothingPending() {
         val got = present(reviewing(0, 5, 30, 30), head = REVIEW)
         assertEquals(expect(LoopScreen.CARD, 0, 5, 30, 30), got)
-        assertEquals(65, got.untilStop)
+        assertEquals(60, got.untilStop)
     }
 
     @Test
     fun p2AgainOnAReview() {
         val got = present(reviewing(0, 5, 30, 30), listOf(againReview), REVIEW)
         assertEquals(expect(LoopScreen.CARD, 0, 6, 29, 30), got)
-        assertEquals(65, got.untilStop)
+        assertEquals(59, got.untilStop)
     }
 
     @Test
@@ -62,7 +62,7 @@ class LoopPresenterTest {
     fun p4LearningGraduating() {
         val got = present(reviewing(2, 1, 0, 0), listOf(pa(LEARNING, 3, CardState.REVIEW, now + 172_800_000)), LEARNING)
         assertEquals(expect(LoopScreen.CARD, 1, 1, 0, 0), got)
-        assertEquals(2, got.untilStop)
+        assertEquals(1, got.untilStop)
     }
 
     @Test
@@ -102,7 +102,7 @@ class LoopPresenterTest {
         val s = reviewing(0, 0, 0, 40).copy(keepGoing = true)
         val got = present(s, List(3) { pa(NEW, 3, CardState.LEARNING, now + 60_000) }, NEW)
         assertEquals(expect(LoopScreen.CARD, 0, 3, 0, 37), got)
-        assertEquals(40, got.untilStop)
+        assertEquals(37, got.untilStop)
     }
 
     @Test

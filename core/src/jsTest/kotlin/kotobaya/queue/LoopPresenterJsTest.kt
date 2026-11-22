@@ -17,7 +17,7 @@ class LoopPresenterJsTest {
             JsPendingAnswer("review", 1, "relearning", 1704125400000.0),
             JsPendingAnswer("new", 3, "learning", 1704125400000.0),
         )
-        assertEquals(listOf("card", 0, 7, 29, 29, 65), presentLoop(loop("reviewing", 0, 5, 30, 30), pending, true, "review", dayEnd).flat())
+        assertEquals(listOf("card", 0, 7, 29, 29, 58), presentLoop(loop("reviewing", 0, 5, 30, 30), pending, true, "review", dayEnd).flat())
     }
 
     @Test

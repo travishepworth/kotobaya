@@ -81,7 +81,7 @@ class DueNotificationsTest {
         assertEquals("142 due · 38 new", n.dueCountText(142, 38))
     }
 
-    /** ADR-037: the ongoing count is what can be answered now; learning cards due later today are not in it. */
+    /** ADR-054: the ongoing count is `untilStop` (doable now); learning cards due later today are not in it. */
     @Test
     fun countIsReadyNow() {
         val rec = Recorder()

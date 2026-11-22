@@ -551,7 +551,7 @@
           "limit" : 200,
           "today" : 0
         },
-        "until_stop" : 5,
+        "until_stop" : 4,
         "until_stop_parts" : {
           "later" : 1,
           "learning" : 0,
@@ -1049,7 +1049,7 @@
           "limit" : 200,
           "today" : 1
         },
-        "until_stop" : 5,
+        "until_stop" : 3,
         "until_stop_parts" : {
           "later" : 2,
           "learning" : 0,
@@ -1428,7 +1428,7 @@
           "limit" : 200,
           "today" : 2
         },
-        "until_stop" : 4,
+        "until_stop" : 2,
         "until_stop_parts" : {
           "later" : 2,
           "learning" : 0,
@@ -1662,7 +1662,7 @@
           "limit" : 200,
           "today" : 2
         },
-        "until_stop" : 3,
+        "until_stop" : 1,
         "until_stop_parts" : {
           "later" : 2,
           "learning" : 0,
@@ -1773,7 +1773,7 @@
           "limit" : 200,
           "today" : 2
         },
-        "until_stop" : 2,
+        "until_stop" : 0,
         "until_stop_parts" : {
           "later" : 2,
           "learning" : 0,
@@ -1991,7 +1991,7 @@
           "limit" : 200,
           "today" : 2
         },
-        "until_stop" : 3,
+        "until_stop" : 1,
         "until_stop_parts" : {
           "later" : 2,
           "learning" : 0,

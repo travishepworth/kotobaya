@@ -1,6 +1,6 @@
 <script lang="ts">
-	// Today hero (ADR-037): rendered from `loop` only. `reviewing`: the ready-now number (always `ready.total`,
-	// C3) and Start; `goal_reached` / `done_for_today`: Keep going; `waiting`: a countdown to the next learning
+	// Today hero (ADR-037): rendered from `loop` only. `reviewing`: the doable-now number (ADR-054: `until_stop`,
+	// learning + review + new, the total the review header starts from) and Start; `goal_reached` / `done_for_today`: Keep going; `waiting`: a countdown to the next learning
 	// card; `empty`: all done. Under it the later-today hint, the new-card bar and the backlog line.
 	import Button from '../ui/Button.svelte';
 	import Icon from '../ui/Icon.svelte';
@@ -26,8 +26,11 @@
 	});
 
 	const loop = $derived(view.loop);
-	const ready = $derived(loop.ready.total);
-	// ADR-049 C3: the same four numbers as the review header; `later` is in the hint line below while reviewing.
+	// ADR-054: the big number is `loop.until_stop` (learning + review + new doable now), the total the review header
+	// starts from at done = 0 (with nothing pending the presenter returns the response's numbers, P-I4); a server
+	// older than ADR-038 sends none and `ready.total` stands in, as in the header.
+	const ready = $derived(loop.untilStop ?? loop.ready.total);
+	// The chips: learning, review, new; `later` is only in the later-today hint line (LoopMeta), never a chip.
 	const parts = $derived(presentedParts(view));
 </script>
 
@@ -38,7 +41,7 @@
 			<span class="n kb-num" data-testid="loop-ready">{ready.toLocaleString()}</span>
 			<span class="unit">{ready === 1 ? tr('loop.card') : tr('loop.cards')}</span>
 		</p>
-		{#if ready > 0 || parts.new > 0}
+		{#if ready > 0}
 			<ul class="breakdown" data-testid="loop-parts">
 				<li><i class="learning"></i>{tr('loop.ready.learning', { n: parts.learning })}</li>
 				<li><i class="review"></i>{tr('loop.ready.review', { n: parts.review.toLocaleString() })}</li>
@@ -74,16 +77,12 @@
 				<p class="countdown kb-num" data-testid="loop-countdown">
 					{tr('loop.waiting.title', { time: countdown(loop.laterToday.nextDueAt, now) })}
 				</p>
-				<ul class="breakdown" data-testid="loop-parts">
-					{#if parts.later > 0}<li><i class="learning"></i>{tr('loop.part.later', { n: parts.later })}</li>{/if}
-					{#if parts.review > 0}<li><i class="review"></i>{tr('loop.part.review', { n: parts.review.toLocaleString() })}</li>{/if}
-					{#if parts.new > 0}<li><i class="new"></i>{tr('loop.part.new', { n: parts.new.toLocaleString() })}</li>{/if}
-				</ul>
 			{:else}
 				<h2 id="due-title">{tr('loop.empty.title')}</h2>
 				<p class="muted">{view.loop.keepGoing ? tr('loop.empty.keepGoing') : tr('loop.empty.body')}</p>
 			{/if}
-			<LoopMeta {view} {now} hint={view.phase !== 'waiting'} />
+			<!-- ADR-054: while waiting, the later-today hint carries the learning cards (no chips: nothing is doable now). -->
+			<LoopMeta {view} {now} />
 		</div>
 	</div>
 	{#if keepGoingAvailable(view)}

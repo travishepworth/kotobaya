@@ -26,7 +26,7 @@ public object DefaultLoopPresenter : LoopPresenter {
         if (!hasLocalCard && pending.isEmpty()) {
             // Rule 3: the state's own phase and parts.
             val p = state.untilStopParts
-            return LoopPresentation(screenOf(state.phase), p, p.learning + p.later + p.review + p.new)
+            return LoopPresentation(screenOf(state.phase), p, p.learning + p.review + p.new)
         }
         val s = state.untilStopParts
         var learning = maxOf(0, s.learning)
@@ -54,7 +54,8 @@ public object DefaultLoopPresenter : LoopPresenter {
         }
         val parts = UntilStopParts(learning, later, review, new)
         val screen = if (hasLocalCard) LoopScreen.CARD else LoopScreen.SETTLING
-        return LoopPresentation(screen, parts, learning + later + review + new)
+        // ADR-054 (P-I3, P-I5): `later` is the hint, not part of the total.
+        return LoopPresentation(screen, parts, learning + review + new)
     }
 
     private fun screenOf(phase: LoopPhase): LoopScreen = when (phase) {

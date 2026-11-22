@@ -60,7 +60,8 @@ class ReviewLoopWaitTest {
     private fun LoopState.counts(): LoopState =
         copy(phase = LoopPhase.EMPTY, keepGoing = false, untilStop = 0, keepGoingAvailable = false, untilStopParts = UntilStopParts())
 
-    private fun UntilStopParts.sum(): Int = learning + later + review + new
+    /** ADR-054: the total is the cards doable now; `later` is only the hint. */
+    private fun UntilStopParts.sum(): Int = learning + review + new
 
     /** Graduates card [n] past today (no `today` row needed for the loop's phase). */
     private fun QueueInput.graduate(vararg n: Int): QueueInput {
@@ -88,7 +89,7 @@ class ReviewLoopWaitTest {
                 laterToday = 14, nextDueAt = NOW + 30_000L, backlog = 0, backlogBeyondLimit = 0,
                 reviewsToday = 0, reviewsLimit = null, newToday = 40, newGoal = 40, newAvailable = true,
                 legacy = LegacyCounts(new = 0, learning = 23, review = 0, moreAvailable = false),
-                untilStop = 23,
+                untilStop = 9, // ADR-054: the 14 later are only the hint
                 keepGoingAvailable = false,
                 untilStopParts = UntilStopParts(learning = 9, later = 14, review = 0, new = 0),
             ),
@@ -110,7 +111,7 @@ class ReviewLoopWaitTest {
         assertEquals(0, r.state.readyLearning)
         assertEquals(23, r.state.laterToday)
         assertEquals(NOW + 23_000L, r.state.nextDueAt)
-        assertEquals(23, r.state.untilStop)
+        assertEquals(0, r.state.untilStop) // ADR-054: nothing doable now
         assertEquals(UntilStopParts(0, 23, 0, 0), r.state.untilStopParts)
         assertTrue(r.state.keepGoingAvailable)
         assertTrue(r.state.legacy.moreAvailable)
@@ -121,7 +122,7 @@ class ReviewLoopWaitTest {
         assertEquals((1001..1010).toList(), kg.queue.cards())
         assertTrue(kg.state.keepGoing)
         assertFalse(kg.state.keepGoingAvailable)
-        assertEquals(33, kg.state.untilStop)
+        assertEquals(10, kg.state.untilStop)
         assertEquals(UntilStopParts(0, 23, 0, 10), kg.state.untilStopParts)
         assertEquals(r.state.counts(), kg.state.counts())
     }
@@ -142,7 +143,7 @@ class ReviewLoopWaitTest {
         assertEquals(0, r.state.readyLearning)
         assertEquals(14, r.state.laterToday)
         assertEquals(NOW + 30_000L, r.state.nextDueAt)
-        assertEquals(14, r.state.untilStop)
+        assertEquals(0, r.state.untilStop)
         assertEquals(UntilStopParts(0, 14, 0, 0), r.state.untilStopParts)
         assertEquals(r.state.untilStop, r.state.untilStopParts.sum())
         assertTrue(r.state.keepGoingAvailable)
@@ -153,7 +154,7 @@ class ReviewLoopWaitTest {
         val ra = again.eval()
         assertEquals(LoopPhase.WAITING, ra.state.phase)
         assertEquals(23, ra.state.laterToday)
-        assertEquals(23, ra.state.untilStop)
+        assertEquals(0, ra.state.untilStop)
         assertEquals(UntilStopParts(0, 23, 0, 0), ra.state.untilStopParts)
     }
 
@@ -200,7 +201,7 @@ class ReviewLoopWaitTest {
         val r = eval(i)
         assertEquals(LoopPhase.WAITING, r.state.phase)
         assertTrue(r.state.keepGoingAvailable)
-        assertEquals(2, r.state.untilStop)
+        assertEquals(0, r.state.untilStop)
         assertEquals(UntilStopParts(0, 2, 0, 0), r.state.untilStopParts)
         assertEquals(NOW + 6 * minute, r.state.nextDueAt)
         assertEquals(135, r.state.backlogBeyondLimit)
@@ -208,7 +209,7 @@ class ReviewLoopWaitTest {
         val kg = eval(i.keepGoing())
         assertEquals(LoopPhase.REVIEWING, kg.state.phase)
         assertEquals((201..335).toList() + (1001..1010).toList(), kg.queue.cards())
-        assertEquals(147, kg.state.untilStop)
+        assertEquals(145, kg.state.untilStop)
         assertEquals(UntilStopParts(0, 2, 135, 10), kg.state.untilStopParts)
         assertFalse(kg.state.keepGoingAvailable)
         assertEquals(r.state.counts(), kg.state.counts())
@@ -274,7 +275,7 @@ class ReviewLoopWaitTest {
         assertEquals(LoopPhase.WAITING, before.state.phase)
         assertEquals(1, before.state.laterToday)
         assertEquals(TOKYO_DAY.endMs - 1, before.state.nextDueAt)
-        assertEquals(1, before.state.untilStop)
+        assertEquals(0, before.state.untilStop)
         assertEquals(UntilStopParts(0, 1, 0, 0), before.state.untilStopParts)
         assertTrue(before.state.keepGoingAvailable)
 
@@ -335,7 +336,7 @@ class ReviewLoopWaitTest {
         val r = eval(input(newCards(5) + relearning(2001, NOW + 10 * minute), limits = l, today = doneToday(2, 0))).state
         assertEquals(LoopPhase.WAITING, r.phase)
         assertTrue(r.keepGoingAvailable)
-        assertEquals(1, r.untilStop)
+        assertEquals(0, r.untilStop)
         val done = eval(input(newCards(5), limits = l, today = doneToday(2, 0))).state
         assertEquals(LoopPhase.GOAL_REACHED, done.phase)
     }
@@ -349,7 +350,7 @@ class ReviewLoopWaitTest {
         assertTrue(r.queue.items.isEmpty())
         assertFalse(r.state.keepGoingAvailable)
         assertEquals(UntilStopParts(0, 1, 0, 3), r.state.untilStopParts)
-        assertEquals(4, r.state.untilStop)
+        assertEquals(3, r.state.untilStop)
     }
 
     @Test

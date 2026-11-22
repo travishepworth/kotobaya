@@ -35,7 +35,7 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * C-31 (ADR-051): invariants I1 … I5, I7 and I8 of the `ReviewLoop` KDoc after every step of a
+ * C-31 (ADR-051): invariants I1 … I5, I7, I8 and I9 (ADR-054) of the `ReviewLoop` KDoc after every step of a
  * seeded random session ("Fuzz test shape"), and I6: the presenter fed what a client holds
  * (LOOP-31-CORE-B).
  *
@@ -489,9 +489,15 @@ class ReviewLoopInvariantFuzzTest {
                 p.learning == 0 && p.later == 0 && p.review == 0 && p.new == 0) { "terminal ${s.phase} with $s" }
         }
         // I3
-        must("I3", p.learning + p.later + p.review + p.new == s.untilStop) { "parts $p sum != untilStop ${s.untilStop}" }
+        must("I3", p.learning + p.review + p.new == s.untilStop) { "parts $p: learning + review + new != untilStop ${s.untilStop}" }
         must("I3", p.learning >= 0 && p.later >= 0 && p.review >= 0 && p.new >= 0) { "negative part $p" }
         must("I3", p.learning == s.readyLearning && p.later == s.laterToday) { "parts $p vs ready ${s.readyLearning} later ${s.laterToday}" }
+        // I9 (ADR-054): the total counts only what is doable now.
+        must("I9", (s.untilStop > 0) == (s.phase == LoopPhase.REVIEWING)) { "untilStop ${s.untilStop} on phase ${s.phase} ($p)" }
+        must("I9", (s.untilStop > 0) == q.nonEmpty()) { "untilStop ${s.untilStop} but served non-empty=${q.nonEmpty()} ($p)" }
+        if (s.untilStop == 0) {
+            must("I9", s.phase == LoopPhase.WAITING || terminal) { "untilStop 0 on phase ${s.phase}" }
+        }
         // I4
         when (s.phase) {
             LoopPhase.EMPTY -> must("I4", !kInf && !s.keepGoingAvailable) { "EMPTY with K∞ non-empty=$kInf, keepGoingAvailable=${s.keepGoingAvailable}" }
@@ -592,7 +598,7 @@ class ReviewLoopInvariantFuzzTest {
         }
         // P-I3
         must("I6", p.learning >= 0 && p.later >= 0 && p.review >= 0 && p.new >= 0) { "P-I3 negative part: ${ctx()}" }
-        must("I6", p.learning + p.later + p.review + p.new == pres.untilStop) { "P-I3 untilStop is not the sum: ${ctx()}" }
+        must("I6", p.learning + p.review + p.new == pres.untilStop) { "P-I3 untilStop is not learning + review + new: ${ctx()}" }
         if (pres.screen == LoopScreen.CARD) must("I6", pres.untilStop >= 1) { "P-I3 CARD with untilStop 0: ${ctx()}" }
         if (hasLocal) {
             val part = when (head) {
@@ -605,6 +611,15 @@ class ReviewLoopInvariantFuzzTest {
         // P-I4
         if (w.pending.isEmpty() && !hasLocal) {
             must("I6", p == s.untilStopParts && pres.screen == screenOf(s.phase)) { "P-I4 presenter added something: ${ctx()}" }
+            // P-I5 with nothing pending and nothing held: a total iff the loop serves a card.
+            must("I6", (pres.untilStop > 0) == (s.phase == LoopPhase.REVIEWING)) { "P-I5 untilStop vs phase ${s.phase}: ${ctx()}" }
+        }
+        // P-I5 (ADR-054): a total only on a card or settling screen; waiting and end screens show 0.
+        if (pres.untilStop > 0) {
+            must("I6", pres.screen == LoopScreen.CARD || pres.screen == LoopScreen.SETTLING) { "P-I5 untilStop > 0 on ${pres.screen}: ${ctx()}" }
+        }
+        if (pres.screen == LoopScreen.WAITING || pres.screen in terminalScreens) {
+            must("I6", pres.untilStop == 0) { "P-I5 ${pres.screen} with untilStop ${pres.untilStop}: ${ctx()}" }
         }
         // Consistency with the loop: state' = the truth (every pending answer applied, same limits).
         val lim = w.input.limits
@@ -618,9 +633,29 @@ class ReviewLoopInvariantFuzzTest {
             // REVIEW/NEW sibling that the state counted, which no PendingAnswer can tell (CONTRACT_CHANGE_REQUEST,
             // LOOP-31-CORE-B HANDOFF; seed 171 of the first run). The bound above covers it.
             if (w.plain && !w.input.limits.burySiblings) {
-                must("I6", pres.untilStop == truth.untilStop && p.review == tp.review && p.new == tp.new &&
-                    p.learning + p.later == tp.learning + tp.later) {
+                must("I6", p.review == tp.review && p.new == tp.new && p.learning + p.later == tp.learning + tp.later) {
                     "plain consistency: $p vs re-evaluated $tp: ${ctx()}"
+                }
+                // ADR-054: equal totals when no learning card came due since the shown state (a returning
+                // answer due again already, or a `later` card whose timer ran out while answers were held back,
+                // is `learning` in the truth but `later` in the projection; the presenter has no clock).
+                val now = w.input.now
+                val noneDueYet = w.pending.all { a ->
+                    val st = a.resultingState
+                    val returning = (st == CardState.LEARNING || st == CardState.RELEARNING) && (a.dueAt ?: Long.MIN_VALUE) < w.shownInput.day.endMs
+                    !returning || (a.dueAt ?: Long.MIN_VALUE) > now
+                } && w.input.candidates.none { c ->
+                    (c.state == CardState.LEARNING || c.state == CardState.RELEARNING) &&
+                        (c.dueAt ?: Long.MIN_VALUE) > w.shownInput.now && (c.dueAt ?: Long.MIN_VALUE) <= now
+                }
+                if (noneDueYet) {
+                    must("I6", pres.untilStop == truth.untilStop) { "plain consistency: untilStop ${pres.untilStop} vs re-evaluated ${truth.untilStop}: ${ctx()}" }
+                }
+                // ADR-054: the header total never stays above 0 when the next applied state waits or ends.
+                if (truth.phase != LoopPhase.REVIEWING) {
+                    must("I6", pres.untilStop == 0) {
+                        "header total ${pres.untilStop} while the applied state is ${truth.phase} ($tp): ${ctx()}"
+                    }
                 }
             }
         }
@@ -686,7 +721,7 @@ class ReviewLoopInvariantFuzzTest {
                 }
             }
             val p = state.untilStopParts
-            return LoopPresentation(screen, p, p.learning + p.later + p.review + p.new)
+            return LoopPresentation(screen, p, p.learning + p.review + p.new)
         }
     }
 

@@ -11,7 +11,7 @@ data class HotWord(val entrySeq: Long, val expression: String, val reading: Stri
 
 /** Everything the widget shows, read from the local database only. */
 data class WidgetSnapshot(
-    /** Due reviews plus learning cards (the same "due" the notification shows). */
+    /** ADR-054 `untilStop`: learning + reviews + new doable now (the same number the notification and Home show). */
     val due: Int,
     val new: Int,
     /** Cards due in each of the next 24 hours; hour 0 includes overdue. */
@@ -24,7 +24,7 @@ data class WidgetSnapshot(
     /** 0.0..1.0 share of today's work finished; 1.0 when there was nothing to do. */
     val progress: Float
         get() {
-            val total = doneToday + due + new
+            val total = doneToday + due // ADR-054: `due` already holds the new cards doable now
             return if (total == 0) 1f else doneToday.toFloat() / total
         }
 
@@ -90,8 +90,8 @@ class WidgetData(private val loader: LocalQueueLoader, private val source: Widge
         val state = loaded.state
         val day = loaded.input.day
         return WidgetSnapshot(
-            // ADR-037: what can be answered now; cards waiting for a learning step (laterToday) are not counted
-            due = state.readyLearning + state.readyReviews,
+            // ADR-054: the one number everywhere: `untilStop` (learning + review + new doable now; laterToday is not counted)
+            due = state.untilStop,
             new = state.legacy.new,
             forecast = loader.forecast24h(),
             doneToday = source.doneSince(day.startMs),

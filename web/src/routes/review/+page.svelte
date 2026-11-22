@@ -160,8 +160,8 @@
 	// ADR-051 C7: the header parts and the bar remainder are the core presenter's output; nothing is counted here.
 	const parts = $derived(s.presentation?.parts ?? { learning: 0, later: 0, review: 0, new: 0 });
 	const done = $derived(s.history.length);
-	// ADR-038 C3: total = done + `until_stop` (every answer left before the stop screen, so it grows on Again); a
-	// server older than ADR-038 sends none and the ready count stands in.
+	// ADR-054 C3: total = done + `until_stop` (the cards doable right now; learning cards on their timer are only in
+	// the later-today hint); a server older than ADR-038 sends none and the ready count stands in.
 	const total = $derived(done + (s.presentation && s.loop?.untilStop !== undefined ? s.presentation.untilStop : remaining));
 	// A heavy day (e.g. after a break): a calm tip instead of a wall of numbers.
 	// Shown before the first answer of a visit only, and dismissable: once you are going it is just in the way.
@@ -310,9 +310,6 @@
 				{#if s.loaded && s.loop && !s.view?.legacy}
 					<p class="counts">
 						<span class="count learning" data-testid="hdr-learning"><i aria-hidden="true"></i>{tr('loop.part.learning', { n: parts.learning })}</span>
-						{#if parts.later > 0}
-							<span class="count later" data-testid="hdr-later"><i aria-hidden="true"></i>{tr('loop.part.later', { n: parts.later })}</span>
-						{/if}
 						<span class="count due" data-testid="hdr-review"><i aria-hidden="true"></i>{tr('loop.part.review', { n: parts.review })}</span>
 						{#if parts.new > 0}
 							<span class="count new" data-testid="hdr-new"><i aria-hidden="true"></i>{tr('loop.part.new', { n: parts.new })}</span>
@@ -606,10 +603,6 @@
 	}
 	.count.learning i {
 		background: var(--kb-color-state-learning);
-	}
-	.count.later i {
-		background: var(--kb-color-state-learning);
-		opacity: 0.5;
 	}
 	.count.due i {
 		background: var(--kb-color-state-review);

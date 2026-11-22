@@ -46,7 +46,7 @@ class DueNotifications(
         val day = studyDayOf(now, settings.timezone, settings.dayRolloverHour).day
         val loaded = loader.load() // AND-PERF: one build per trigger (was two: counts, then nextDueInstant)
         val state = loaded.state
-        val due = state.readyLearning + state.readyReviews // ADR-037: ready now; later-today learning is not counted
+        val due = state.untilStop // ADR-054: the one number everywhere (doable now; later-today learning is not counted)
         val lastSync = signals.lastSyncAtMs()
         if (notifier.canPost()) {
             Channels.ensure(context)

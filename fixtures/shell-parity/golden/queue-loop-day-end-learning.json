@@ -208,7 +208,7 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 1,
+        "until_stop" : 0,
         "until_stop_parts" : {
           "later" : 1,
           "learning" : 0,

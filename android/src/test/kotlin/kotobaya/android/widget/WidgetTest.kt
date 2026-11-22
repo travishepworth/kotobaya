@@ -74,13 +74,13 @@ class WidgetTest {
     fun snapshotHasCountsForecastProgressAndHotWord() {
         fixture()
         val s = data.snapshot()
-        assertEquals(3, s.due) // the loader counts a card due later in the study day too
+        assertEquals(4, s.due) // ADR-054: untilStop = 3 ready (one due later in the study day too) + 1 new
         assertEquals(1, s.new)
         assertEquals(2, s.forecast[0])
         assertEquals(1, s.forecast[2])
         assertEquals(24, s.forecast.size)
         assertEquals(1, s.doneToday)
-        assertEquals(0.2f, s.progress) // 1 done of 1 + 3 + 1
+        assertEquals(0.2f, s.progress) // 1 done of 1 + 4 (ADR-054: the new card is in `due`)
         assertTrue(s.hotWord?.expression in setOf("w1", "w2")) // the lapsed words; the day picks one
         assertEquals(false, s.isEmpty)
     }

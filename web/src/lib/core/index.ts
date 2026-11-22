@@ -389,7 +389,10 @@ export type LoopScreen = 'card' | 'settling' | 'waiting' | 'goal_reached' | 'don
 /** Core `QueueItemKind` (wire, lower case): the header part a card is counted in. */
 export type QueueItemKind = 'learning' | 'review' | 'new';
 
-/** `loop.until_stop_parts`: learning ready now, learning later today, reviews, new cards. */
+/**
+ * `loop.until_stop_parts`: learning ready now, learning later today, reviews, new cards. ADR-054: learning + review + new
+ * is `until_stop`; `later` is only the later-today hint.
+ */
 export interface UntilStopParts {
 	learning: number;
 	later: number;

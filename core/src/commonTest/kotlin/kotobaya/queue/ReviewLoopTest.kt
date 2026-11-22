@@ -123,7 +123,7 @@ class ReviewLoopTest {
                 laterToday = 26, nextDueAt = NOW + 5 * minute, backlog = 0, backlogBeyondLimit = 0,
                 reviewsToday = 0, reviewsLimit = null, newToday = 0, newGoal = 40, newAvailable = true,
                 legacy = LegacyCounts(new = 40, learning = 26, review = 0, moreAvailable = false),
-                untilStop = 66,
+                untilStop = 40, // ADR-054: the 26 later are only the hint
                 keepGoingAvailable = false,
                 untilStopParts = UntilStopParts(0, 26, 0, 40),
             ),
@@ -609,6 +609,7 @@ class ReviewLoopTest {
     fun goldenFingerprintIsIdenticalOnEveryPlatform() {
         // A literal over many scenarios: jvm and js must both reproduce it.
         var h = 17L
+        var pre054 = 17L
         for (n in 0 until 40) {
             val i = input(
                 dueReviews(n * 3 % 23) + newCards(n * 7 % 31) + laterLearning(n % 5),
@@ -617,7 +618,12 @@ class ReviewLoopTest {
             )
             val r = eval(i)
             for (c in r.queue.shape() + "|" + r.state.toString()) h = h * 31 + c.code
+            // LOOP-34: with the pre-ADR-054 total put back, the CORE-30 literal again: only `untilStop` changed.
+            val p = r.state.untilStopParts
+            val old = r.state.copy(untilStop = p.learning + p.later + p.review + p.new)
+            for (c in r.queue.shape() + "|" + old.toString()) pre054 = pre054 * 31 + c.code
         }
+        assertEquals(PRE_ADR_054_FINGERPRINT, pre054)
         assertEquals(GOLDEN_FINGERPRINT, h)
     }
 
@@ -625,23 +631,25 @@ class ReviewLoopTest {
 
     @Test
     fun untilStopWorkedExamples() {
-        // A1 66, B3 0, B4 145 are asserted above; U1: goal 40, 10 introduced, 30 due under the cap, 5 later.
+        // A1 40, B3 0, B4 145 are asserted above; U1: goal 40, 10 introduced, 30 due under the cap, 5 later
+        // (ADR-054: the 5 later are only the hint, not in the total).
         val u1 = input(dueReviews(30) + laterLearning(5) + newCards(200), limits = loopLimits(unlimited = false), today = doneToday(0, 10))
         val r = eval(u1)
         assertEquals(LoopPhase.REVIEWING, r.state.phase)
-        assertEquals(65, r.state.untilStop)
-        assertEquals(47, eval(u1.copy(candidates = dueReviews(30) + laterLearning(5) + newCards(12))).state.untilStop)
-        // Again on a review keeps it (moves from ready to later), Good on a new card keeps it, Good on a review lowers it.
+        assertEquals(60, r.state.untilStop)
+        assertEquals(42, eval(u1.copy(candidates = dueReviews(30) + laterLearning(5) + newCards(12))).state.untilStop)
+        // ADR-054: every answer lowers it by one: Again on a review (ready to later), Good on a new card (new to
+        // later), Good on a review (leaves today).
         val sim = QueueSim(u1)
         sim.answer(1, Ans.AGAIN)
         val again = sim.eval().state
         assertEquals(29, again.readyReviews)
         assertEquals(6, again.laterToday)
-        assertEquals(65, again.untilStop)
+        assertEquals(59, again.untilStop)
         sim.answer(1001, Ans.GOOD)
-        assertEquals(65, sim.eval().state.untilStop)
+        assertEquals(58, sim.eval().state.untilStop)
         sim.answer(2, Ans.GOOD)
-        assertEquals(64, sim.eval().state.untilStop)
+        assertEquals(57, sim.eval().state.untilStop)
     }
 
     @Test
@@ -669,6 +677,9 @@ class ReviewLoopTest {
         // that field stripped the hash is still the pre-CORE-28 5076156702524499125 (queues unchanged).
         // CORE-30: re-recorded because `LoopState.toString()` now carries `keepGoingAvailable` and
         // `untilStopParts` and ADR-049 turns some stop phases into WAITING; the queue builder is untouched.
-        const val GOLDEN_FINGERPRINT: Long = 5446840590562372352L
+        // LOOP-34: re-recorded because ADR-054 drops `later` from `untilStop`; [PRE_ADR_054_FINGERPRINT] (the
+        // CORE-30 literal) proves nothing else changed.
+        const val GOLDEN_FINGERPRINT: Long = -272736643978814423L
+        const val PRE_ADR_054_FINGERPRINT: Long = 5446840590562372352L
     }
 }

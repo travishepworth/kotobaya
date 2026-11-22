@@ -46,7 +46,7 @@ public object DefaultReviewLoop : ReviewLoop {
                 if (input.limits.reviewsUnlimited) LoopPhase.GOAL_REACHED else LoopPhase.DONE_FOR_TODAY
             else -> LoopPhase.EMPTY
         }
-        // ADR-038 / ADR-049: answers left until the stop screen, split as the header shows them; follows the mode.
+        // ADR-049 / ADR-054: the header parts plus `later` for the later-today hint; follows the mode.
         val parts = UntilStopParts(
             learning = readyLearning,
             later = n.laterToday,
@@ -74,7 +74,8 @@ public object DefaultReviewLoop : ReviewLoop {
                 review = readyReviews,
                 moreAvailable = normal.moreAvailable,
             ),
-            untilStop = parts.learning + parts.later + parts.review + parts.new,
+            // ADR-054 (I9): only the cards doable now; `later` is not summed.
+            untilStop = parts.learning + parts.review + parts.new,
             // C-31: pressing Keep going would serve a card now (equals `!keepGoing && moreAvailable` without a target).
             keepGoingAvailable = !served.nonEmpty() && kNonEmpty,
             untilStopParts = parts,

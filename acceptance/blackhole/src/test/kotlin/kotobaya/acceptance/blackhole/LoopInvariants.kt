@@ -5,16 +5,18 @@ import kotobaya.contracts.sync.JsonBool
 import kotobaya.contracts.sync.JsonObject
 
 /**
- * I1 … I4 of the `ReviewLoop` KDoc (ADR-051), checked on one `getReviewQueue` response. Core's own checker
+ * I1 … I4 and I9 (ADR-054) of the `ReviewLoop` KDoc (ADR-051), checked on one `getReviewQueue` response. Core's own checker
  * (`ReviewLoopInvariantFuzzTest`) works on its internal `QueueInput` / `LoopResult` and is private to core's tests, so
- * this is the same four rules on the wire shape the SPA sees (`ReviewQueue` + `loop`):
+ * this is the same rules on the wire shape the SPA sees (`ReviewQueue` + `loop`):
  *
  * - I1 cards ready (learning + review) => phase `reviewing` with items; phase `reviewing` <=> something is served.
  * - I2 a terminal phase (`goal_reached`, `done_for_today`, `waiting`, `empty`) => nothing ready, nothing later, nothing
  *   until stop... except `waiting`, whose point is the learning cards that are later today (rule C4).
- * - I3 `until_stop_parts` are non-negative, agree with `ready` / `later_today`, and sum to `until_stop`.
+ * - I3 `until_stop_parts` are non-negative, agree with `ready` / `later_today`, and learning + review + new is
+ *   `until_stop` (ADR-054: `later` is not summed).
  * - I4 `empty` => no Keep going; `reviewing` => no Keep going; every other phase => `keep_going_available` is exactly
  *   "pressing it serves a card" (checked by the caller with the probe result).
+ * - I9 (ADR-054) `until_stop > 0` <=> phase `reviewing`: `waiting` and the stop screens show 0.
  *
  * On a phone `to_materialize` must be 0 (SHELL.md 4.3): the device materializes itself.
  */
@@ -47,9 +49,13 @@ object LoopInvariants {
             if (phase != "waiting") must("I2", later == 0L && untilStop == 0L) { "$phase with later $later, until_stop $untilStop" }
         }
         // I3
-        must("I3", parts.values.sum() == untilStop) { "parts $parts do not sum to until_stop $untilStop" }
+        must("I3", parts.getValue("learning") + parts.getValue("review") + parts.getValue("new") == untilStop) {
+            "parts $parts: learning + review + new != until_stop $untilStop"
+        }
         must("I3", parts.values.all { it >= 0 }) { "negative part $parts" }
         must("I3", parts.getValue("learning") == readyL && parts.getValue("later") == later) { "parts $parts vs ready $readyL, later $later" }
+        // I9
+        must("I9", (untilStop > 0L) == (phase == "reviewing")) { "until_stop $untilStop on phase $phase" }
         // I4 (the "exactly" half is the caller's probe)
         when (phase) {
             "empty", "reviewing" -> must("I4", !available) { "$phase with keep_going_available" }

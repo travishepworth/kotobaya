@@ -220,15 +220,14 @@ class QueuePropertyTest {
                 on,
                 "seed $seed",
             )
-            // ADR-049: untilStop == 0 iff a stop screen, in both modes.
+            // ADR-054 (I9): untilStop == 0 iff nothing is served now (waiting or a stop screen), in both modes.
             for (st in listOf(off, on)) {
-                val stop = st.phase == LoopPhase.GOAL_REACHED || st.phase == LoopPhase.DONE_FOR_TODAY || st.phase == LoopPhase.EMPTY
-                assertEquals(stop, st.untilStop == 0, "untilStop 0 iff stop phase (${st.phase}), seed $seed")
+                assertEquals(st.phase != LoopPhase.REVIEWING, st.untilStop == 0, "untilStop 0 iff not reviewing (${st.phase}), seed $seed")
             }
-            // ADR-038: without keep going untilStop is the ready and later learning, the ready reviews and availableToday.
+            // ADR-054: without keep going untilStop is the ready learning, the ready reviews and availableToday.
             assertTrue(on.untilStop >= 0 && off.untilStop >= 0, "seed $seed")
             if (off.phase == LoopPhase.REVIEWING) assertTrue(off.untilStop >= 1, "reviewing with untilStop 0, seed $seed")
-            if (off.untilStop == 0) assertTrue(off.phase != LoopPhase.REVIEWING && off.phase != LoopPhase.WAITING, "seed $seed")
+            if (off.untilStop == 0) assertTrue(off.phase != LoopPhase.REVIEWING, "seed $seed")
         }
     }
 
@@ -265,7 +264,7 @@ class QueuePropertyTest {
             }
             if (st.phase == LoopPhase.EMPTY) assertFalse(k.nonEmpty(), "empty with K non-empty, seed $seed")
             val parts = st.untilStopParts
-            assertEquals(st.untilStop, parts.learning + parts.later + parts.review + parts.new, "parts sum, seed $seed")
+            assertEquals(st.untilStop, parts.learning + parts.review + parts.new, "parts sum (later excluded, ADR-054), seed $seed")
             assertTrue(parts.learning >= 0 && parts.later >= 0 && parts.review >= 0 && parts.new >= 0, "seed $seed")
             assertEquals(st.readyLearning, parts.learning, "seed $seed")
             assertEquals(st.laterToday, parts.later, "seed $seed")

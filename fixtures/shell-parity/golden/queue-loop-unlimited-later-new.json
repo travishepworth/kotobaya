@@ -1443,7 +1443,7 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 15,
+        "until_stop" : 12,
         "until_stop_parts" : {
           "later" : 3,
           "learning" : 0,
@@ -2891,7 +2891,7 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 15,
+        "until_stop" : 13,
         "until_stop_parts" : {
           "later" : 2,
           "learning" : 1,
@@ -4334,7 +4334,7 @@
           "limit" : null,
           "today" : 0
         },
-        "until_stop" : 13,
+        "until_stop" : 12,
         "until_stop_parts" : {
           "later" : 1,
           "learning" : 2,

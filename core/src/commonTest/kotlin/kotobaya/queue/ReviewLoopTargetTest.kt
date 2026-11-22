@@ -85,7 +85,7 @@ class ReviewLoopTargetTest {
         val r = eval(i)
         assertEquals(LoopPhase.REVIEWING, r.state.phase)
         assertEquals(listOf(2001) + (1026..1035).toList(), r.queue.cards())
-        assertEquals(19, r.state.untilStop)
+        assertEquals(16, r.state.untilStop)
         assertEquals(UntilStopParts(1, 3, 0, 15), r.state.untilStopParts)
     }
 
@@ -203,7 +203,7 @@ class ReviewLoopTargetTest {
         val onTimer = (2001..2002).map { learning(it, NOW + 5 * minute) }
         val home = eval(x1(27, onTimer).press(40).leave())
         assertEquals(LoopPhase.WAITING, home.state.phase)
-        assertEquals(2, home.state.untilStop)
+        assertEquals(0, home.state.untilStop) // ADR-054: waiting, the 2 are only the hint
         assertEquals(UntilStopParts(0, 2, 0, 0), home.state.untilStopParts)
         assertTrue(home.state.keepGoingAvailable)
 

@@ -101,7 +101,7 @@ class QueueParityScenarioTest {
         assertEquals(listOf(10, 60, 40), s2.queue.cards())
         assertEquals(0, s2.state.readyLearning + s2.state.readyReviews)
         assertEquals(1, s2.state.laterToday)
-        assertEquals(4, s2.state.untilStop)
+        assertEquals(3, s2.state.untilStop)
         assertEquals(1, s2.state.newToday)
     }
 
@@ -165,7 +165,7 @@ class QueueParityScenarioTest {
         val s2 = sim.eval()
         assertEquals(listOf(30, sim.minted.getValue("学"), sim.minted.getValue("校"), 40), s2.queue.cards())
         assertEquals(1, s2.state.laterToday)
-        assertEquals(5, s2.state.untilStop)
+        assertEquals(4, s2.state.untilStop)
     }
 
     @Test
@@ -489,23 +489,23 @@ class QueueParityScenarioTest {
         assertEquals(1, s0.state.laterToday)
         assertEquals(NOW + 55_000L, s0.state.nextDueAt)
         assertEquals(2, s0.state.backlog)
-        assertEquals(5, s0.state.untilStop)
+        assertEquals(4, s0.state.untilStop)
         sim.answer(10, Ans.AGAIN)
         val s2 = sim.eval()
         assertEquals(1, s2.state.readyReviews)
         assertEquals(2, s2.state.laterToday)
         assertEquals(NOW + 55_000L, s2.state.nextDueAt)
-        assertEquals(5, s2.state.untilStop)
+        assertEquals(3, s2.state.untilStop)
         sim.answer(20, Ans.GOOD)
         val s4 = sim.eval()
         assertEquals(0, s4.state.readyReviews)
         assertEquals(2, s4.state.laterToday)
         assertEquals(2, s4.state.reviewsToday)
-        assertEquals(4, s4.state.untilStop)
+        assertEquals(2, s4.state.untilStop)
         assertEquals(2, s4.queue.items.size)
         sim.answer(40, Ans.EASY)
         val s6 = sim.eval()
-        assertEquals(3, s6.state.untilStop)
+        assertEquals(1, s6.state.untilStop)
         assertEquals(listOf(50), s6.queue.cards())
         sim.answer(50, Ans.EASY)
         val s8 = sim.eval()
@@ -513,18 +513,18 @@ class QueueParityScenarioTest {
         assertEquals(LoopPhase.WAITING, s8.state.phase)
         assertTrue(s8.state.keepGoingAvailable)
         assertEquals(UntilStopParts(0, 2, 0, 0), s8.state.untilStopParts)
-        assertEquals(2, s8.state.untilStop)
+        assertEquals(0, s8.state.untilStop)
         assertEquals(2, s8.state.laterToday)
         assertEquals(emptyList(), s8.queue.items)
         // Step 9: keep going, limit 5: one new card drawn.
         val s9 = DefaultReviewLoop.evaluate(sim.input.copy(limits = sim.input.limits.copy(keepGoing = true, keepGoingNewBatch = 5)))
         assertEquals(LoopPhase.REVIEWING, s9.state.phase)
         assertTrue(s9.state.keepGoing)
-        assertEquals(3, s9.state.untilStop)
+        assertEquals(1, s9.state.untilStop)
         assertEquals(listOf(60), s9.queue.cards())
         assertEquals(UntilStopParts(0, 2, 0, 1), s9.state.untilStopParts)
         assertEquals(
-            s8.state.copy(phase = s9.state.phase, keepGoing = true, untilStop = 3, keepGoingAvailable = false, untilStopParts = s9.state.untilStopParts),
+            s8.state.copy(phase = s9.state.phase, keepGoing = true, untilStop = 1, keepGoingAvailable = false, untilStopParts = s9.state.untilStopParts),
             s9.state,
         )
     }
@@ -562,7 +562,7 @@ class QueueParityScenarioTest {
         val s0 = sim.eval()
         assertEquals(LoopPhase.REVIEWING, s0.state.phase)
         assertEquals(listOf(10), s0.queue.cards())
-        assertEquals(3, s0.state.untilStop)
+        assertEquals(1, s0.state.untilStop)
         assertEquals(UntilStopParts(1, 2, 0, 0), s0.state.untilStopParts)
         assertFalse(s0.state.keepGoingAvailable)
         // Step 1-2: graduate 10, nothing ready -> waiting (was goal_reached).
@@ -575,13 +575,13 @@ class QueueParityScenarioTest {
         assertEquals(t0 + 55_000L, s2.queue.nextLearningDueAt)
         assertTrue(s2.state.keepGoingAvailable)
         assertTrue(s2.state.legacy.moreAvailable)
-        assertEquals(2, s2.state.untilStop)
+        assertEquals(0, s2.state.untilStop)
         assertEquals(UntilStopParts(0, 2, 0, 0), s2.state.untilStopParts)
         // Step 3: keep going, limit 1: the new card, no learning card early.
         val s3 = kgEval(sim, 1)
         assertEquals(LoopPhase.REVIEWING, s3.state.phase)
         assertEquals(listOf(40), s3.queue.cards())
-        assertEquals(3, s3.state.untilStop)
+        assertEquals(1, s3.state.untilStop)
         assertEquals(UntilStopParts(0, 2, 0, 1), s3.state.untilStopParts)
         assertFalse(s3.state.keepGoingAvailable)
         assertEquals(stripMode(s2.state), stripMode(s3.state))
@@ -597,7 +597,7 @@ class QueueParityScenarioTest {
         val s6 = sim.eval()
         assertEquals(LoopPhase.WAITING, s6.state.phase)
         assertEquals(t0 + 58_000L, s6.state.nextDueAt)
-        assertEquals(1, s6.state.untilStop)
+        assertEquals(0, s6.state.untilStop)
         // Step 7-8.
         sim.input = sim.input.copy(now = t0 + 58_000L)
         assertEquals(listOf(30), sim.eval().queue.cards())
@@ -650,7 +650,7 @@ class QueueParityScenarioTest {
         assertEquals(LoopPhase.WAITING, s3.state.phase)
         assertEquals(1, s3.state.laterToday)
         assertEquals(end - 1, s3.state.nextDueAt)
-        assertEquals(1, s3.state.untilStop)
+        assertEquals(0, s3.state.untilStop)
         assertEquals(UntilStopParts(0, 1, 0, 0), s3.state.untilStopParts)
         assertTrue(s3.state.keepGoingAvailable)
         assertEquals(2, s3.state.newToday)

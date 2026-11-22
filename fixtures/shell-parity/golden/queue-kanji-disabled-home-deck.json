@@ -1100,7 +1100,7 @@
           "limit" : 200,
           "today" : 0
         },
-        "until_stop" : 4,
+        "until_stop" : 3,
         "until_stop_parts" : {
           "later" : 1,
           "learning" : 0,
