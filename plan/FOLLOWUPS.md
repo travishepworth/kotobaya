@@ -546,3 +546,4 @@
 - C-32 (review minor): REST DELETE /decks/{id} returns 409 deck_read_only for a media deck whose media is already deleted (push path now accepts); could return 204 (DeckApi.kt:176).
 - LF-A8b/LF-GOLD: grammar list title sort code-point vs Postgres collation; golden has 1 item so no visible diff — add a multi-item scenario.
 - PERF-SNAP (review minors): start's Promise.all catch can overlap a confirm with the in-flight queue fetch when loadStatic fails; Try again should call confirmSnapshot() (reset tries) instead of reload(). Both harmless.
+- C-34 (architect r3 minor): openapi.yaml:2287 C3 header total at done = 0 — add "outside keep going" (keep-going visit shows keep-going until_stop).

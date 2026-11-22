@@ -1522,3 +1522,14 @@
 2026-11-22T00:00:00Z ADR-054 DECIDE (human) review total = cards doable now; later-today learning not counted
 2026-11-22T00:00:00Z C-34 DISPATCH architect attempt 1 (LOOP-34 follows on its branch; merge together)
 2026-11-22T00:00:00Z C-34 DECIDE (human) NEVER use Fable: architect agent -> opus; C-34 attempt 1 stopped (no output), re-dispatched on opus
+2026-11-22T00:00:00Z C-34 HANDOFF DONE; CHECK_GREEN contracts -> reviewer + architect 2nd pass (opus)
+2026-11-22T00:00:00Z LOOP-34 DISPATCH writer-senior (opus) attempt 1, from t/C-34
+2026-11-22T00:00:00Z C-34 REVIEW_APPROVE r1 (4 minors; #3 Home number ambiguity -> LOOP-34 corrected: Home big number = until_stop)
+2026-11-22T00:00:00Z C-34 REVIEW_CHANGES architect 2nd pass (6 wording findings, no behaviour) -> attempt 2 with reviewer minors
+2026-11-22T00:00:00Z C-34 REVIEW_CHANGES architect r2 (SHELL.md still names ready.total as headline) -> attempt 3: until_stop on every single-number surface
+2026-11-22T00:00:00Z LOOP-34 scope add: widget + notification use untilStop; CLI split to CLI-34 (blocked on uncommitted CLI work on main)
+2026-11-22T00:00:00Z C-34 REVIEW_APPROVE architect r3 (19926c8d); waits for LOOP-34 to merge together
+2026-11-22T00:00:00Z LOOP-34 HANDOFF r1 (core/web/server/acceptance/android green) -> attempt 2: KotobayaWidget 'N of M' double-counts new
+2026-11-22T00:00:00Z LOOP-34 REVIEW_CHANGES r1 (2 major: notification + WidgetData double-count new; Home ETA) -> folded into attempt 2
+2026-11-22T00:00:00Z LOOP-34 REVIEW_APPROVE r2 (4dd73830); quick-settings tile now active when only new cards are doable (by design)
+2026-11-22T00:00:00Z C-34 + LOOP-34 MERGE 4dd73830 (core/web/server/android green on orchestrator re-run)

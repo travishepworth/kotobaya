@@ -916,5 +916,6 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LF-A1b — Shell: StoreBusy -> retry/503 not 500; debounce races (LF-A1 review minors) · model: opus · risk: med · deps: LF-A1, LF-A2 · status: RUNNING (ticket: plan/tickets/LF-A1b.md)
 - LF-GOLD — Record shell parity goldens for local-first scenarios · model: haiku · risk: low · deps: LF-A3, LF-A6, LF-A8, LF-A8b, LOOP-31-AND · status: TODO (ticket: plan/tickets/LF-GOLD.md)
 - LF-A8b — Shell: confusables, grammar, media writes local (rest of LF-A8) · model: opus · risk: high · deps: LF-A8 · status: RUNNING (ticket: plan/tickets/LF-A8b.md)
-- C-34 — Contracts: review total = cards doable right now (ADR-054) · model: opus · risk: high · deps: none · status: RUNNING (ticket: plan/tickets/C-34.md)
-- LOOP-34 — Review total counts only cards doable right now (ADR-054) · model: opus · risk: high · deps: C-34 · status: TODO (ticket: plan/tickets/LOOP-34.md)
+- C-34 — Contracts: review total = cards doable right now (ADR-054) · model: opus · risk: high · deps: none · status: MERGED 19926c8d (ticket: plan/tickets/C-34.md)
+- LOOP-34 — Review total counts only cards doable right now (ADR-054) · model: opus · risk: high · deps: C-34 · status: MERGED 4dd73830 (ticket: plan/tickets/LOOP-34.md)
+- CLI-34 — CLI/waybar number = until_stop (ADR-054) · model: sonnet · risk: low · deps: C-34, LOOP-34, uncommitted CLI work on main · status: TODO (ticket: plan/tickets/CLI-34.md)

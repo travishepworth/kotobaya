@@ -77,11 +77,10 @@ Next: pick from FOLLOWUPS (no open bugs). Leave alone: .claude/settings.json; sc
 ## Running
 | Ticket | Agent | Attempt | Branch | Started |
 |---|---|---|---|---|
-| C-34 | architect | 1 | t/C-34-until-stop-ready-now | 2026-11-22 |
 
 
 ## Queued
-- LOOP-34 (writer-senior): after C-34, branch from t/C-34; C-34 + LOOP-34 merge to main together (server/android red on C-34 alone). Then api+web deploy + APK. ADR-054 (user report: Home 4, header "of 15").
+- ADR-054 (Home 4 vs header "of 15"): C-34 + LOOP-34 MERGED 4dd73830. NEXT: api+web deploy + APK per deploy/RELEASE.md. CLI-34 waits on uncommitted CLI work on main (asked user).
 (PERF-LF MERGED 2026-11-21; android check green after rebase.)
 P11 perf (2026-11-21). Rule from the user: an idea becomes a ticket only once it is validated against code and measurements.
 - PERF-GATE: MERGED 43d08609 (review CHANGES r1 -> fixed: setprop reset). NEXT: phone run needs user go (install test APK + script force-stops/starts app): `make perf-device ARGS="--user 10"` and with --speed. Was VALIDATED (BridgeCore.kt:98 clock includes gate, lane and mutex waits; no benchmark, profile or minify setup). Next after the PERF-LF merge.

@@ -33,3 +33,4 @@ Home: 4 to review. Review header: "of 15". Live state: ready 2, later_today 13, 
 Contract text (C-34). Queue order, phases, keep going rules: unchanged.
 
 ## Notes from previous attempts
+- Orchestrator correction (during attempt 1): Do step 5 "Home's big number stays ready.total" is wrong. Home's big number = `loop.until_stop` (openapi C3 after C-34), the same total the review header starts from; Home chips learning/review/new, later only in the hint line.
