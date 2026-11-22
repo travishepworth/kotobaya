@@ -45,9 +45,10 @@
 	});
 
 	const summary = $derived(stats.summary);
-	// ADR-037: the hero reads `loop` only (the ready-now number is always `ready.total`, C3).
+	// ADR-037: the hero reads `loop` only. ADR-054 C3: the number is `until_stop` (learning + review + new doable now,
+	// the hero's big number); a server older than ADR-038 sends none and `ready.total` stands in.
 	const view = $derived(queue.view);
-	const ready = $derived(view?.loop.ready.total ?? 0);
+	const ready = $derived(view?.loop.untilStop ?? view?.loop.ready.total ?? 0);
 	const emptyAccount = $derived(!!summary && summary.totals.cards === 0 && decks.loaded && !decks.loadFailed && decks.items.length === 0);
 	// RC-WEB: decide "empty account or not" before drawing either layout, so a late summary never swaps the page.
 	// A loop with anything to do or a deck settle it at once (no waiting on the slow summary); a failed summary or
@@ -58,7 +59,7 @@
 			!!summary ||
 			stats.summaryP.failed
 	);
-	// Time for the ready cards: average answer time today, else ~10 s a card.
+	// Time for the cards doable now: average answer time today, else ~10 s a card.
 	const eta = $derived.by(() => {
 		const d = summary?.doneToday;
 		const perCard = d && d.reviews > 0 && d.timeMs > 0 ? d.timeMs / d.reviews : 10_000;

@@ -107,7 +107,8 @@ private fun Counts(s: WidgetSnapshot) {
         Text(context.getString(R.string.widget_all_done), style = TextStyle(color = FG, fontSize = 16.sp, fontWeight = FontWeight.Bold))
     } else {
         Text(
-            context.getString(R.string.widget_counts, s.due, s.new),
+            // ADR-054: "X due · Y new" are the parts of the one number `s.due` (untilStop); they sum to it.
+            context.getString(R.string.widget_counts, s.ready, s.new),
             style = TextStyle(color = FG, fontSize = 18.sp, fontWeight = FontWeight.Bold),
         )
     }
@@ -116,7 +117,7 @@ private fun Counts(s: WidgetSnapshot) {
 @Composable
 private fun Progress(s: WidgetSnapshot) {
     val context = LocalContext.current
-    val total = s.doneToday + s.due + s.new
+    val total = s.doneToday + s.due // ADR-054: `due` (untilStop) already holds the new cards
     Text(context.getString(R.string.widget_progress, s.doneToday, total), style = TextStyle(color = MUTED, fontSize = 12.sp))
     Row(modifier = GlanceModifier.fillMaxWidth().height(6.dp).background(TRACK).cornerRadius(3.dp)) {
         val filled = (s.progress * 100).toInt().coerceIn(0, 100)

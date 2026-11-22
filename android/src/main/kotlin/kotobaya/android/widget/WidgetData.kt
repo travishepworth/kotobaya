@@ -11,15 +11,22 @@ data class HotWord(val entrySeq: Long, val expression: String, val reading: Stri
 
 /** Everything the widget shows, read from the local database only. */
 data class WidgetSnapshot(
-    /** ADR-054 `untilStop`: learning + reviews + new doable now (the same number the notification and Home show). */
+    /**
+     * ADR-054 `untilStop`: learning + reviews + new doable now, the one number of every surface (Home, the review
+     * header at done = 0, the notification, the tile). Learning cards on their timer are not in it.
+     */
     val due: Int,
+    /** `untilStopParts.new`: the new cards doable now, a **part** of [due] (never added to it). */
     val new: Int,
     /** Cards due in each of the next 24 hours; hour 0 includes overdue. */
     val forecast: List<Int>,
     val doneToday: Int,
     val hotWord: HotWord?,
 ) {
-    val isEmpty: Boolean get() = due == 0 && new == 0
+    /** The "due" chip: learning + reviews doable now. With [new] it sums to [due] (no double count, ADR-054). */
+    val ready: Int get() = due - new
+
+    val isEmpty: Boolean get() = due == 0
 
     /** 0.0..1.0 share of today's work finished; 1.0 when there was nothing to do. */
     val progress: Float
@@ -92,7 +99,7 @@ class WidgetData(private val loader: LocalQueueLoader, private val source: Widge
         return WidgetSnapshot(
             // ADR-054: the one number everywhere: `untilStop` (learning + review + new doable now; laterToday is not counted)
             due = state.untilStop,
-            new = state.legacy.new,
+            new = state.untilStopParts.new,
             forecast = loader.forecast24h(),
             doneToday = source.doneSince(day.startMs),
             hotWord = pickHotWord(source.hotCandidates(), day.startMs),

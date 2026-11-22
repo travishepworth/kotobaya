@@ -84,6 +84,17 @@ class DueNotificationsTest {
     /** ADR-054: the ongoing count is `untilStop` (doable now); learning cards due later today are not in it. */
     @Test
     fun countIsReadyNow() {
+        assertEquals("9 due · 0 new", postedTitle(newCards = 0))
+    }
+
+    /** ADR-054: "X due · Y new" are the parts of untilStop: 9 reviews + 5 new = 14, never "14 due · 5 new". */
+    @Test
+    fun newCardsAreAPartOfTheCountNotAddedTwice() {
+        assertEquals("9 due · 5 new", postedTitle(newCards = 5))
+    }
+
+    /** 9 overdue reviews, 26 learning cards due in an hour (later today), then [newCards] new cards; the posted title. */
+    private fun postedTitle(newCards: Int): String {
         val rec = Recorder()
         val n = build(rec, Signals(null))
         GlobalContext.get().get<AppDatabase>().localQueueQueries.liveDecks().executeAsList() // creates the schema on the file
@@ -91,14 +102,18 @@ class DueNotificationsTest {
             context.getDatabasePath(kotobaya.android.db.APP_DB_FILE).path, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE,
         )
         try {
-            for (i in 1..35) {
+            for (i in 1..35 + newCards) {
                 val id = "0193a1b2-0001-7000-8000-%012d".format(i)
                 sql.execSQL(
                     "INSERT INTO note (id, note_type_id, type, entry_seq, fields, created_by_device_id, created_at, updated_at) VALUES " +
                         "('$id', '00000000-0000-7000-8000-000000000101', 'vocab', ${100 + i}, " +
                         "'{\"expression\":\"w$i\",\"reading\":\"r$i\",\"meaning\":\"m$i\"}', 'dev', $i, $i)",
                 )
-                val (state, due) = if (i <= 9) "review" to now - 3_600_000 else "learning" to now + 3_600_000
+                val (state, due) = when {
+                    i <= 9 -> "review" to "${now - 3_600_000}"
+                    i <= 35 -> "learning" to "${now + 3_600_000}"
+                    else -> "new" to "NULL"
+                }
                 val card = "0193a1b2-0002-7000-8000-%012d".format(i)
                 sql.execSQL(
                     "INSERT INTO card (id, note_id, kind, state, due_at, lapses, created_at, updated_at) VALUES " +
@@ -109,7 +124,7 @@ class DueNotificationsTest {
             sql.close()
         }
         n.onDueChanged()
-        assertEquals("9 due · 0 new", title(rec.posted.single { it.first == DueNotifications.ID_DUE }.second))
+        return title(rec.posted.single { it.first == DueNotifications.ID_DUE }.second)
     }
 
     @Test

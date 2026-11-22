@@ -50,7 +50,9 @@ class DueNotifications(
         val lastSync = signals.lastSyncAtMs()
         if (notifier.canPost()) {
             Channels.ensure(context)
-            notifier.post(ID_DUE, dueCountNotification(due, state.legacy.new))
+            // ADR-054: "X due · Y new" are the parts of untilStop (learning + review, new); they sum to `due`.
+            val parts = state.untilStopParts
+            notifier.post(ID_DUE, dueCountNotification(parts.learning + parts.review, parts.new))
             maybeNudge(now, day.startMs, due, settings)
             maybeStale(now, lastSync)
         }

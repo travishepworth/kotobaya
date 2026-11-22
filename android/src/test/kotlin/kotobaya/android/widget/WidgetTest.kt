@@ -123,24 +123,45 @@ class WidgetTest {
 
     @Test
     fun threeSizesComposeWithData() = runBlocking {
-        val s = WidgetSnapshot(3, 2, List(24) { it % 5 }, 4, HotWord(7, "猫", "ねこ", "cat"))
+        val s = WidgetSnapshot(5, 2, List(24) { it % 5 }, 4, HotWord(7, "猫", "ねこ", "cat"))
         runGlanceAppWidgetUnitTest {
             setContext(context)
             setAppWidgetSize(sizes[0])
             provideComposable { WidgetContent(s, sizes[0]) }
-            onNode(hasText("3 due · 2 new")).assertExists()
+            onNode(hasText("3 due · 2 new")).assertExists() // the parts of untilStop 5
         }
         runGlanceAppWidgetUnitTest {
             setContext(context)
             setAppWidgetSize(sizes[1])
             provideComposable { WidgetContent(s, sizes[1]) }
-            onNode(hasText("Today: 4 of 9")).assertExists()
+            onNode(hasText("Today: 4 of 9")).assertExists() // done 4 of 4 + untilStop 5
         }
         runGlanceAppWidgetUnitTest {
             setContext(context)
             setAppWidgetSize(sizes[2])
             provideComposable { WidgetContent(s, sizes[2]) }
             onNode(hasText("猫")).assertExists()
+        }
+    }
+
+    /** ADR-054: learning 2, review 0, new 10 → untilStop 12; the chips sum to 12 and "of" is done + 12 (no `+ new`). */
+    @Test
+    fun noDoubleCountOfNewCards() = runBlocking {
+        for (i in 1..12) addVocab(i, 100L + i, "w$i")
+        addCard(1, 1, "learning", now - 1000)
+        addCard(2, 2, "learning", now - 500)
+        for (i in 3..12) addCard(i, i, "new", null)
+        val s = data.snapshot()
+        assertEquals(12, s.due)
+        assertEquals(10, s.new)
+        assertEquals(2, s.ready)
+        assertEquals(s.due, s.ready + s.new)
+        runGlanceAppWidgetUnitTest {
+            setContext(context)
+            setAppWidgetSize(sizes[1])
+            provideComposable { WidgetContent(s, sizes[1]) }
+            onNode(hasText("2 due · 10 new")).assertExists()
+            onNode(hasText("Today: ${s.doneToday} of ${s.doneToday + 12}")).assertExists()
         }
     }
 
