@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Writes and changes frozen contracts (DB schema, OpenAPI, sync ops, core interfaces) and the hardest correctness tickets (sync, replay). Second reviewer on high-risk tickets touching contracts, sync, or replay.
-model: fable
+model: opus
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 

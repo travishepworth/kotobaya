@@ -125,7 +125,7 @@ Pick the agent by the ticket's `model` field:
 
 | Ticket `model` | Agent | Use for |
 |---|---|---|
-| `fable` | `architect` | Contracts and the hardest correctness work (sync, replay) |
+| `fable` (= opus; Fable is never used) | `architect` | Contracts and the hardest correctness work (sync, replay) |
 | `opus` | `writer-senior` | High-risk logic: FSRS, queue builder, auth, parser, AnkiDroid stand-in |
 | `sonnet` | `writer` | Most features |
 | `haiku` | `writer-light` | Mechanical work: generated clients, fixtures, docs, build scripts |
@@ -231,8 +231,8 @@ At the end of each phase, run `make test`. Green → open the human gate for tha
 ## 9. Escalation and budget rules
 
 - Attempts per ticket at one tier: **2** (initial + one fix round). Then escalate one tier:
-  haiku → sonnet → opus → fable. Record the escalation.
-- After a `fable` attempt fails, or **5 total attempts**: mark BLOCKED_HUMAN and add it to the next
+  haiku → sonnet → opus. Record the escalation. **Never use Fable** (user rule, 2026-11-22): `architect` runs on Opus.
+- After an `architect` (opus) attempt fails, or **5 total attempts**: mark BLOCKED_HUMAN and add it to the next
   gate (single-session: to `plan/HUMAN_CHECKS.md`, then carry on).
 - A ticket that escalated twice is a smell: ask whether it should be split, and split it.
 - Never run more than `MAX_PARALLEL_WRITERS` writers or 2 reviewers at once.
