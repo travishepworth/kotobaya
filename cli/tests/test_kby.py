@@ -456,3 +456,21 @@ def test_tooltip_later_reads_until_stop_parts_then_later_today(kenv: Env) -> Non
     kenv.append(loop_raw(phase="waiting", ready=0, later_today=26))
     out = json.loads(kenv.run(KBY, "-f", FAKE_ONESHOT="1").stdout.splitlines()[-1])
     assert "26 learning later" in out["tooltip"]
+
+
+def test_card_state_reaches_serve_and_the_default_widget(kenv: Env) -> None:
+    new = json.loads(FRONT)
+    new["card"]["state"] = "new"
+    review = json.loads(FRONT)
+    review["card"]["state"] = "review"
+    lines = [json.dumps(x, ensure_ascii=False) for x in (new, review)]
+    s = kenv.serve()
+    s.next()
+    kenv.append(*lines)
+    assert s.next()["card"]["state"] == "new"
+    assert s.next()["card"]["state"] == "review"
+    assert s.stop() == 0
+    kenv.append(*lines, FRONT)
+    out = kenv.run(KBY, "-f", "--text", FAKE_ONESHOT="1").stdout.splitlines()
+    assert out[-3].endswith("[New] 猫")
+    assert "[New]" not in out[-2] and "[New]" not in out[-1]

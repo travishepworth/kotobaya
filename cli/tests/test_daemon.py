@@ -420,6 +420,18 @@ def test_card_state_carries_kind_label_from_note_type() -> None:
     assert labels == ["Vocab", "Kanji", "Phrase", "Grammar", "Sentence", "Custom", None]
 
 
+
+def test_card_state_passes_through_and_is_omitted_when_unknown() -> None:
+    states = []
+    for i, card_state in enumerate(["new", "learning", "review", "relearning", None]):
+        s = Session()
+        s.conn = "ok"
+        entry = CardEntry(f"c{i}", "meaning", state=card_state)
+        s.apply_queue(QueueSnapshot([entry], Counts(1, 0, 0), DAY_END), check_current=False)
+        states.append(check_state(s.state())["card"].get("state"))
+    assert states == ["new", "learning", "review", "relearning", None]
+
+
 class _Sub:
     def __init__(self) -> None:
         self.lines: list[str] = []

@@ -225,6 +225,7 @@ class HttpBackend:
                     text=text,
                     note_type=None if note is None else str(note.type.value),
                     learn_due=learn_due or None,
+                    state=str(getattr(item.card.state, "value", item.card.state)),
                 )
             )
         c = queue.counts

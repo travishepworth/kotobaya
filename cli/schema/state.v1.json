@@ -37,6 +37,7 @@
             "id": {"type": "string"},
             "kind": {"type": "string"},
             "kind_label": {"type": "string", "description": "Note type of the card in English title case (Vocab, Kanji, Grammar, Phrase, Sentence, Custom). Omitted when the server did not send the note."},
+            "state": {"type": "string", "enum": ["new", "learning", "review", "relearning"], "description": "FSRS state of the card (Card.state); new = never reviewed. Omitted by older daemons."},
             "front": {"type": "string"},
             "back": {"type": "string"},
             "reading": {"type": "string"},

@@ -54,6 +54,7 @@ class CardEntry:
     # C1: rating name -> due_at (ISO UTC) of the preview when that answer leaves the card in
     # learning/relearning (preview interval 0 days); absent for answers that graduate the card.
     learn_due: dict[str, str] | None = None
+    state: str | None = None  # Card.state (new/learning/review/relearning), None when unknown
 
 
 @dataclass(frozen=True)
@@ -281,6 +282,8 @@ class Session:
         card: dict[str, object] = {"id": entry.card_id, "kind": entry.kind}
         if entry.note_type:
             card["kind_label"] = kind_label(entry.note_type)
+        if entry.state:
+            card["state"] = entry.state
         if entry.text:
             # While hidden only the front leaves the daemon; the rest is answer-side.
             for name in TEXT_FIELDS if self.revealed else ("front",):

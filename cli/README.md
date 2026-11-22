@@ -100,7 +100,8 @@ and retries with backoff (0.5 s doubling to 10 s). `watch` needs no token and no
 the daemon's socket.
 
 Template fields: `conn`, `new`, `learning`, `later`, `review`, `pending`, `day_ends_at`, `notice`,
-`last_rating`, `undoable` (`true`/`false`), `card_id`, `kind`, `front`, `back`, `reading`,
+`last_rating`, `undoable` (`true`/`false`), `card_id`, `kind`, `kind_label`, `card_state` (`new`, `learning`,
+`review`, `relearning`; empty from an older daemon), `is_new` (`true`/`false`), `front`, `back`, `reading`,
 `sentence`, `revealed` (`true`/`false`), `preview_again`, `preview_hard`, `preview_good`,
 `preview_easy`. Card text is empty until the server sends it. An unknown field is rejected at
 startup.
@@ -184,7 +185,8 @@ it and the `kotobaya watch` child.
             "keep_going":{"enabled":false}}}
 ```
 
-- `card` is `null` or `{"id","kind","front"}`, plus `reading`, `sentence`, `back` only when
+- `card` is `null` or `{"id","kind","front"}`, plus `kind_label` and `state` (`new`, `learning`,
+  `review`, `relearning`) when the daemon sends them, plus `reading`, `sentence`, `back` only when
   revealed (absent, never empty, when the server has none).
 - `rev` changes on every line (`-` stands for "no card"); send it back with each action.
 - `notice` appears on one line only. `hint` (next interval per grade) only when known.

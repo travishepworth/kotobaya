@@ -17,7 +17,7 @@ WIDGET_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kotobaya/widgets"
 
 DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip refresh keep_going stop_keep_going "
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
-card_id kind kind_label kind_badge kind_prefix front back reading sentence revealed preview_again preview_hard preview_good
+card_id kind kind_label kind_badge kind_prefix card_state is_new new_badge front back reading sentence revealed preview_again preview_hard preview_good
 preview_easy next_due_at next_due_in can_keep_going keep_hint
 phase ready later_today later_next_in backlog backlog_beyond_limit new_today new_goal counts_text loop_line"
 
@@ -57,7 +57,7 @@ SERVE (machine interface for GUI widgets; data only, no widget confs)
                "text":"語 12" (12 = ready now), "counts":{"new","learning","review"} (deprecated),
                "phase":null|"reviewing|goal_reached|done_for_today|waiting|empty", "ready", "later_today",
                "backlog", "backlog_beyond_limit", "new_today", "new_goal" (null from an older daemon),
-               "card":null|{"id","kind","kind_label" (Kanji/Vocab/..),"front"; "reading","sentence","back" only when revealed},
+               "card":null|{"id","kind","kind_label" (Kanji/Vocab/..),"state" (new/learning/review/relearning),"front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
                "keep_going":bool, "more_available":bool, "can_keep_going":bool,
                "next_due_at":null|"<UTC ISO>" and "next_due_in":null|"m:ss" (state waiting: nothing due now,
@@ -265,7 +265,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
           else "語 \($st)" end),
    counts: {new: $c.new, learning: $c.learning, review: $c.review},
    card: (if $k == null then null
-          else ({id: $k.id, kind: $k.kind, kind_label: $k.kind_label, front: $k.front}
+          else ({id: $k.id, kind: $k.kind, kind_label: $k.kind_label, state: $k.state, front: $k.front}
                 + (if $rev then {reading: $k.reading, sentence: $k.sentence, back: $k.back} else {} end))
                | nonull end),
    last: {rating: ($s.last.rating // null), undoable: $undo},
@@ -381,7 +381,7 @@ default_widget() {
 # {counts_text} is the ready-now number (cards you can answer now; new cards and learning cards
 # due later are not in it); against a daemon older than ADR-037 it reads new/learning/review.
 text         = 語 {counts_text}
-text.front   = 語 {counts_text}  {kind_badge}{front:30}
+text.front   = 語 {counts_text}  {new_badge}{kind_badge}{front:30}
 text.back    = 語 {front:20} 【{reading:15}】 {back:40}
 text.waiting = 語 next in {next_due_in}
 text.done    = 語 ✓
@@ -529,6 +529,9 @@ def flat($s):
          later_next_in: (later_in(.later_next_due_at) // "")}
        else {} end)
     # Only when the card has a type label (older daemons omit it), so the flat JSON stays as before.
+    # Only when the daemon sends the card state (older daemons omit it).
+    + (if $k.state then {card_state: $k.state, is_new: ($k.state == "new" | tostring),
+                        new_badge: (if $k.state == "new" then "[New] " else "" end)} else {} end)
     + (if $k.kind_label then {kind_label: $k.kind_label, kind_badge: "[\($k.kind_label)] ", kind_prefix: "\($k.kind_label) · "} else {} end)
     # Only while waiting, so the flat JSON of every other state stays as before; a template
     # field that is absent reads as empty.
