@@ -2175,7 +2175,8 @@ paths:
         - *ready reviews*: review cards due before `day_ends_at` (overdue included) within the
           remaining review budget (`scheduler.reviews_per_day`, deck `reviews_per_day`; no
           budget when `scheduler.reviews_unlimited`).
-        - *ready now* = ready learning + ready reviews. New cards are not part of it.
+        - *ready now* = ready learning + ready reviews (`loop.ready.total`). New cards are not
+          part of it. A wire field only: since ADR-054 no surface shows it as its headline.
         - *later today*: learning/relearning cards due later, before `day_ends_at`. Never served
           early; while a card can be shown they are only a number (the later-today hint, never
           part of `until_stop`, ADR-054), and once nothing can be shown they make the phase
@@ -2281,12 +2282,15 @@ paths:
           (plus the learning steps of those 7); back in Review, press: `T` = 27 + 20 = 47, a
           fresh batch of 20. A card that comes due during a batch (a learning step, a review)
           is served before the next new card.
-        - **C3 Display.** The headline "ready now" number of a surface that shows **one**
-          number (widget, notification, CLI status line, a badge) is **always**
-          `loop.ready.total`, with or without keep going, so every such surface shows the same
-          number at the same instant. **Home is not such a surface:** its big number is
-          `loop.until_stop` (equal to the review header's total at `done` = 0), never
-          `ready.total`. The **review header and Home** (ADR-049, amended by
+        - **C3 Display (amended by ADR-054: "this applies to everything").** **Every** surface
+          that shows a single "to do" number - Home's big number, the review header's total
+          (at `done` = 0), the Android home-screen widget, the due notification (and its nudge
+          threshold), the CLI status line / waybar text, a badge - shows `loop.until_stop` of
+          a request with `keep_going=false` (rule C2: these surfaces never keep going), so
+          every such surface shows the same number at the same instant and it is 0 exactly on
+          the waiting and stop screens. `loop.ready.total` stays on the wire but **no surface
+          uses it as its headline** (before ADR-054 the single-number surfaces showed it). The
+          **review header and Home** (ADR-049, amended by
           ADR-054) show the three numbers `learning` ("learning"), `review` ("to review") and
           `new` ("new") of `loop.until_stop_parts`, each with its label, in this order; a part
           that is 0 may be hidden, a part that is not 0 MUST be shown, and no client adds,
@@ -2305,8 +2309,9 @@ paths:
           the waiting screen); `goal_reached` / `done_for_today` / `empty` show the day as done
           (the first two with the way into Keep going). The backlog is shown only in a separate
           backlog line, `loop.backlog.reviews`, displayed iff `loop.backlog.beyond_limit > 0`,
-          in both modes (while keeping going past the cap the headline is therefore
-          `ready.learning` and the backlog line carries the reviews being cleared). A "later
+          in both modes (the backlog beyond the cap is never in a headline number, which comes
+          from a `keep_going=false` request; while keeping going past the cap the review
+          header's `review` part and the backlog line carry the reviews being cleared). A "later
           today" hint line (e.g. "14 later today", with the countdown to
           `later_today.next_due_at`) only when `loop.later_today.count > 0`; it is the only
           place `later` appears (ADR-054); the new bar as `loop.new.today` /
@@ -2321,7 +2326,9 @@ paths:
           card that comes back already due stays in the total. The total grows when a learning
           card comes due (it joins `until_stop` from `later`) or cards arrive from elsewhere
           (ADR-054).
-          When `until_stop` is absent (older server) the client uses `loop.ready.total` instead.
+          When `until_stop` is absent (older server) the client uses `loop.ready.total` instead,
+          for the bar and for every single-number surface (the only use of `ready.total` as a
+          displayed number).
         - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
           fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous
           timer-driven fetch (the client's clock may differ from the server's; if the card is

@@ -733,7 +733,8 @@ checks listed at the top of that file, including negative self-tests).
 - **Client rules C1-C5** in the `getReviewQueue` description: refetch when a learning card may have
   come due; keep going persisted per client for the study day (`localStorage["kotobaya.keepGoingDay"]`
   on web and in the shell SPA); what to display (the headline is always `loop.ready.total`, the
-  backlog only in its own line, in both modes); empty `items` rendered from `phase` only; C-27
+  backlog only in its own line, in both modes; superseded by ADR-054: every headline is
+  `loop.until_stop`); empty `items` rendered from `phase` only; C-27
   retries.
 - **`scheduler.new_per_session`** is ignored (SCHEMA.md 6); `updateSettings` still accepts it.
 - **Shell**: `LOCAL_API_VERSION` 2 (SHELL.md 7.2: a field a new SPA requires was added);
@@ -919,7 +920,7 @@ What was decided:
   ADR-054 / C-34: `until_stop = learning + review + new`; `later` is shown only in the hint.) Absent (older
   server): clients show `ready.learning`, `later_today.count`, `ready.review`.
 - Client rules: C3 (header and Home show the four parts, amended by ADR-054 to three; single-number surfaces keep
-  `ready.total`), C4 (the waiting screen resumes by itself and may offer Keep going), new C6 (every
+  `ready.total`, superseded by ADR-054: they show `until_stop`), C4 (the waiting screen resumes by itself and may offer Keep going), new C6 (every
   surface that stays on screen refetches once at `later_today.next_due_at` in every phase, not only
   in `waiting`; at a stop screen that member is null).
 - Deprecated members keep their frozen meaning. `more_available` can now be true in phase
@@ -1060,7 +1061,10 @@ What was decided:
 - Invariant: `until_stop >= 1` iff `phase = reviewing`; `until_stop = 0` in `waiting` and at the
   three stop screens. Core: new loop invariant I9 and presenter invariant P-I5.
 - C3: the header and Home show `learning`, `review`, `new` (hide-if-0 unchanged); `later` only in
-  the later-today hint line, never as a chip or in Home's big number. The bar is
+  the later-today hint line, never as a chip or in Home's big number. Every single "to do"
+  number (Home, header at `done` = 0, Android widget, due notification, CLI / waybar text) is
+  `loop.until_stop` of a `keep_going=false` request; `ready.total` stays on the wire but is no
+  surface's headline (SHELL.md `getReviewQueue` row aligned). The bar is
   `done / (done + until_stop)`: every answer moves one card from `until_stop` to `done` (steady
   total); the total grows when a learning card comes due.
 - Every worked example fixed (ADR-049 example 23 → 9; response example 255 → 229; 66 → 40;

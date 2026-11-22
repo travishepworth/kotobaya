@@ -257,9 +257,12 @@ going for "one visit" and to count `newShownThisSession`. All of that is gone.
   the request's `keep_going`; native count-only callers pass `false`.
 - **Loader.** `TodayReview.reviewedAt` = `review_log.reviewed_at` for every row (the rule 5 mix
   needs the answer order).
-- **What to show.** Items: `LoopResult.queue.items`. Phase: `LoopState.phase`. Ready-now count
-  (widget, notification, and every client's headline): always `readyLearning + readyReviews`, with
-  or without keep going, so the widget needs no keep-going state and shows what the SPA shows. New bar: `newToday / newGoal`. The "New" badge: `QueueItem.isNew`.
+- **What to show.** Items: `LoopResult.queue.items`. Phase: `LoopState.phase`. The single "to do"
+  number (widget, notification and its nudge threshold, CLI / waybar text, SPA Home, the review
+  header at `done` = 0): `LoopState.untilStop` of an evaluation with `keepGoing = false`
+  (ADR-054 / C-34; before it, `readyLearning + readyReviews`), so the widget needs no keep-going
+  state and shows what the SPA shows. `readyLearning + readyReviews` (`ready.total`) is no
+  surface's headline. New bar: `newToday / newGoal`. The "New" badge: `QueueItem.isNew`.
 - **Materialization (C-27).** Materialize exactly `LoopResult.queue.toMaterialize` (the served
   build) and re-evaluate; never the other build's entries. A count-only caller (widget) does not
   materialize.

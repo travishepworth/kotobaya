@@ -434,7 +434,8 @@ Three choices most worth a second look:
    same as pressing it at the done screen a minute later would. It is offered, never automatic.
 3. **With keep going the "to review" part is the whole backlog**, not the capped number, so the
    header still adds up to the bar in that mode. The single "ready now" number of widget and
-   notifications is unchanged.
+   notifications is unchanged. (ADR-054 / C-34: widget and notifications now show `untilStop` of
+   a normal evaluation, like Home.)
 
 ## C-31 changes: keep going in batches, fixed loop invariants, one presenter (ADR-051, ADR-052)
 
@@ -501,6 +502,9 @@ Alternatives rejected:
 - Keeping `later` in the total and hiding it in the header only. The header and the bar would
   disagree again, and the bar would still not be full at the waiting screen.
 - A second member for "ready now". The user asked for one rule everywhere.
+- Keeping `ready.total` as the widget / notification / CLI number. ADR-054 applies to every
+  surface: each single "to do" number is `untilStop` of a normal (`keepGoing = false`)
+  evaluation, so the widget, the notification and Home always agree.
 
 Three choices most worth a second look:
 1. **Waiting shows 0** although cards are minutes away; the hint and the countdown carry them.
