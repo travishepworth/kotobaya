@@ -753,7 +753,8 @@ with C-34). Tests to change first, from the KDoc numbers:
   re-record the server and shell goldens to match.
 
 Edge cases: `WAITING` with `laterToday > 0` has `untilStop == 0` (the countdown and hint show what
-is coming); a learning card that comes due raises `untilStop` (and the bar's total) by one; an
-answer whose card comes back already due stays in the
-total; `kinds` still does not affect it; with keep going and no target the new part is the batch as
+is coming); a learning card that comes due raises `untilStop` (and the bar's total) by one; in the
+**loop** (`ReviewLoop.evaluate`, not the presenter) an answer whose card comes back already due
+is ready learning and stays in the total, while the presenter's projection still moves it to
+`later` (its table; corrected by the next state); `kinds` still does not affect it; with keep going and no target the new part is the batch as
 before.

@@ -491,7 +491,9 @@ What was decided:
 - **The total reaches 0 exactly when the waiting or done screen shows** (new invariant I9 for the
   loop, P-I5 for the presenter). Waiting now shows 0 to do plus the countdown and the hint.
 - **Every answer lowers the total by one**, Again included (the card moves to "later"), and `done`
-  grows by one, so the bar's total holds steady while you answer; it grows when a card comes due.
+  grows by one, so the bar's total usually holds steady while you answer (not while keeping going
+  without a batch target, when a sibling is buried, or when a card comes back already due); it
+  grows when a card comes due.
 - KDoc only: no signature, type or default changed. Amends ADR-038 and ADR-049 C3 where this file
   and the README quote them.
 

@@ -156,9 +156,9 @@ export interface ReviewLoop {
      * `until_stop_parts.later`) are **not** counted. The review progress bar's total is
      * `done + until_stop` (client rule C3). Each card counts once. Every answer lowers it
      * by one (a card answered Again, or a new card entering its learning steps, moves to
-     * `later`, outside the total), so `done + until_stop` holds steady while answering; it
-     * grows when a learning card comes due (that card joins it) or cards arrive from
-     * elsewhere.
+     * `later`, outside the total), so `done + until_stop` usually holds steady while
+     * answering (usually: not with `keep_going=true` without a target, whose batch refills after every answer; not when the first answer of the day to a learning card buries a counted sibling (−2); not when a card comes back already due (it stays in the total)); it grows when a learning card comes due (that card joins it) or
+     * cards arrive from elsewhere.
      * - `keep_going = false`: `ready.learning + ready.review` + the new cards that can
      *   still be introduced today (the smaller of the goal's remainder and what the decks
      *   can supply under their limits; kanji cards served ahead of their word and deck
@@ -172,7 +172,8 @@ export interface ReviewLoop {
      *   goal 40 met, target 80, nothing else due → 40; after 25 of them, 3 on their
      *   timers and 1 due → 16 (1 + 0 + 15).
      * **Invariant (ADR-054):** `until_stop >= 1` iff `phase = reviewing` (a card can be
-     * served now); `until_stop = 0` iff `phase` is `waiting`, `goal_reached`,
+     * served now, or a deck entry / kanji note awaits materialization, C-27 / rule C5: the
+     * new part counts it); `until_stop = 0` iff `phase` is `waiting`, `goal_reached`,
      * `done_for_today` or `empty`. In `waiting` it is 0 even though `later_today.count >=
      * 1`; the client shows the countdown and the later-today hint, not a number to do.
      * Unaffected by `kinds`. Sent by every server and local API implementing ADR-038;

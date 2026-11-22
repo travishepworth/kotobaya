@@ -11,7 +11,7 @@
     "Step 2, 03:59:02: ...20 is answered Again with reviewed_at 03:58:59.999 (a late submission; answers are not gated by the goal): due_at 03:59:59.999, 1 ms before day_ends_at.",
     "Step 3, 03:59:03: that card is later today: waiting, later_today.count 1, next_due_at 03:59:59.999, until_stop 0 (parts 0/1/0/0: later is not in the total, ADR-054), keep_going_available true; new.today 2 exceeds the goal 1. ...10 is still not counted.",
     "Step 4, 03:59:59.999: ...20 is ready and served (reviewing, 1 learning); ...10 is neither ready nor later today.",
-    "Step 5, 04:00:01, study day 2026-11-21: both learning cards are ready learning of the new day, in (due_at, card id) order ...20 then ...10, followed by the new card ...30 (goal 1, 0 introduced): until_stop 3 = 2 learning + 0 later + 0 reviews + 1 new."
+    "Step 5, 04:00:01, study day 2026-11-21: both learning cards are ready learning of the new day, in (due_at, card id) order ...20 then ...10, followed by the new card ...30 (goal 1, 0 introduced): until_stop 3 = 2 learning + 0 reviews + 1 new (later 0, not summed)."
   ],
   "clock_ms": 1795168800000,
   "device_id": "01931f3e-0000-7000-8000-0000000000d4",

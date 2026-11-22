@@ -43,10 +43,12 @@ Named checks (each prints one line; the run fails if any fails):
                                queue.loop_* tags of ADR-037); a scenario covering a queue.loop_* tag expects
                                /loop/phase (or a whole /loop with phase) in at least one step; a retired tag
                                is used by none
-  parity_until_stop            C-34 (ADR-054): in every expect.body that pins both `until_stop` and `until_stop_parts`
-                               (whole /loop or pointers), until_stop = parts.learning + parts.review + parts.new
-                               (`later` is not summed); one that pins both phase and until_stop has until_stop 0
-                               when the phase is waiting / goal_reached / done_for_today / empty
+  parity_until_stop            C-34 (ADR-054): in every expect.body that pins `until_stop` and the parts learning,
+                               review and new (whole /loop, /loop/until_stop_parts, or per-part pointers
+                               /loop/until_stop_parts/<part>), until_stop = learning + review + new (`later` is
+                               not summed); one that pins both phase and until_stop has until_stop 0 when the
+                               phase is waiting / goal_reached / done_for_today / empty, and >= 1 when it is
+                               reviewing
   selftest_*                   negative cases: the checks above really fail on a removed operationId, an
                                invented one, a bad class, a broken seed op, a seed the server would reject
                                and a missing mandatory scenario; C-31: on a `cached` / `local` operation that
@@ -480,7 +482,11 @@ def loop_numbers(body: dict) -> tuple[object, object, object]:
     phase = body.get("/loop/phase", whole.get("phase"))
     until_stop = body.get("/loop/until_stop", whole.get("until_stop"))
     parts = body.get("/loop/until_stop_parts", whole.get("until_stop_parts"))
-    return phase, until_stop, parts
+    merged = dict(parts) if isinstance(parts, dict) else {}
+    for part in ("learning", "later", "review", "new"):
+        if f"/loop/until_stop_parts/{part}" in body:
+            merged[part] = body[f"/loop/until_stop_parts/{part}"]
+    return phase, until_stop, (merged or None)
 
 
 def check_until_stop(scenarios: dict[str, dict]) -> list[str]:
@@ -491,12 +497,14 @@ def check_until_stop(scenarios: dict[str, dict]) -> list[str]:
             body = (step.get("expect") or {}).get("body") or {}
             phase, until_stop, parts = loop_numbers(body)
             where = f"parity/{name}.json steps[{i}]"
-            if isinstance(until_stop, int) and isinstance(parts, dict):
-                want = sum(parts.get(k, 0) for k in ("learning", "review", "new"))
+            if isinstance(until_stop, int) and isinstance(parts, dict) and all(k in parts for k in ("learning", "review", "new")):
+                want = sum(parts[k] for k in ("learning", "review", "new"))
                 if until_stop != want:
                     errs.append(f"{where}: until_stop {until_stop} != learning + review + new = {want} (ADR-054: later is not summed)")
             if isinstance(until_stop, int) and phase in STOPPED_PHASES and until_stop != 0:
                 errs.append(f"{where}: phase {phase} with until_stop {until_stop}; nothing is doable now, so it must be 0 (ADR-054)")
+            if isinstance(until_stop, int) and phase == "reviewing" and until_stop < 1:
+                errs.append(f"{where}: phase reviewing with until_stop {until_stop}; a servable card makes it >= 1 (ADR-054)")
     return errs
 
 
@@ -706,6 +714,12 @@ def main() -> int:
     expect_failure("selftest_parity_until_stop_sums_later", check_until_stop(summed), "learning + review + new = 1")
     waiting = {"t": {"steps": [{"expect": {"body": {"/loop/phase": "waiting", "/loop/until_stop": 2}}}]}}
     expect_failure("selftest_parity_until_stop_waiting", check_until_stop(waiting), "must be 0")
+    reviewing = {"t": {"steps": [{"expect": {"body": {"/loop/phase": "reviewing", "/loop/until_stop": 0}}}]}}
+    expect_failure("selftest_parity_until_stop_reviewing_zero", check_until_stop(reviewing), "makes it >= 1")
+    per_part = {"t": {"steps": [{"expect": {"body": {"/loop/until_stop": 3, "/loop/until_stop_parts/learning": 1,
+                                                     "/loop/until_stop_parts/later": 2, "/loop/until_stop_parts/review": 0,
+                                                     "/loop/until_stop_parts/new": 0}}}]}}
+    expect_failure("selftest_parity_until_stop_per_part", check_until_stop(per_part), "learning + review + new = 1")
 
     failed = 0
     for name, errs in results.items():

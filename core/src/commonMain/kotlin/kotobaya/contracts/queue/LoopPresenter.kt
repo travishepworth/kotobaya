@@ -109,7 +109,7 @@ public data class LoopPresentation(
      * is **not** added): the remainder of the progress bar, `done / (done + untilStop)` with
      * `done` = the answers of this visit (pending ones included). A pending answer whose card
      * returns today moves it into `later`, so it leaves `untilStop` while `done` grows by one:
-     * `done + untilStop` holds steady. Example: `59`.
+     * `done + untilStop` usually holds steady (exceptions: [LoopState.untilStop]). Example: `59`.
      */
     public val untilStop: Int,
 )

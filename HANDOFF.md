@@ -5,11 +5,11 @@ BRANCH: t/C-34-until-stop-ready-now
 CHECK: `make check MODULE=contracts` → green
 
 ## Changed (≤ 6 lines)
-- openapi.yaml: `until_stop` = learning + review + new; C3 has three header chips, `later` only in the hint; invariant `until_stop>=1` iff reviewing; examples fixed (23→9, 255→229, 66→40, 65→60, 19→16)
-- ReviewLoop.kt / LoopPresenter.kt KDoc: new I9 and P-I5, I3, projection table, A1/U1/W1–W3/X1 and P1–P10 numbers
-- parity: 20 `until_stop` values in 7 scenarios recomputed, plus their narratives and one title
-- check_shell.py: new `parity_until_stop` check (sum rule, 0 when waiting or terminal) with 2 self-tests
-- SHELL.md, api and core SUMMARY.md, core README: ADR-038/049 marked amended; new C-34 sections; clients regenerated
+- openapi.yaml: `until_stop` = learning + review + new; C3 shows three chips, `later` only in the hint; Home's big number is `until_stop`, not `ready.total`; `until_stop>=1` iff reviewing (materialization included); examples fixed (23→9, 255→229, 66→40, 65→60, 19→16)
+- ReviewLoop.kt / LoopPresenter.kt KDoc: I9, P-I5, I3, projection table, worked examples; "steady total" now says "usually" and lists the I7 exceptions
+- parity: 20 `until_stop` values in 7 scenarios plus narratives (attempt 2: fixed two narratives that still read as sums)
+- check_shell.py `parity_until_stop`: sum rule, 0 when waiting or terminal, ≥1 when reviewing, per-part pointers; 4 self-tests
+- SHELL.md, both SUMMARY.md files, core README: ADR-038/049 marked amended; C-34 sections; the README "already due" edge case is scoped to the loop; clients regenerated
 
 ## Acceptance → tests
 - make check green → `make check MODULE=contracts`
@@ -19,6 +19,5 @@ CHECK: `make check MODULE=contracts` → green
 - none
 
 ## For the reviewer (≤ 3 lines)
-- 5 kanji pointer expectations had no parts; I worked out `later` for each by hand (Good answers go to learning, Easy answers graduate).
-- I also edited parity narrative text and the queue-until-stop title (not only values), so no text still sums `later`.
+- I worked out `later` by hand for 5 kanji pointer expectations that pin no parts.
 - Presenter equality now needs every returning pending answer to have `dueAt > now`.

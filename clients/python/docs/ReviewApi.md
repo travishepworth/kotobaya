@@ -321,7 +321,8 @@ when nothing is left for today (`ready.total` = 0, `later_today.count` = 0,
 `until_stop` = 0). (Before ADR-049 rules 2 and 3 were the other way round, so the stop
 screen showed while learning cards were minutes away.) A learning card that falls due
 makes the next response `reviewing` again, and that card is first.
-**`until_stop` > 0 iff a card can be served now (ADR-054):** `phase = reviewing` ⇔
+**`until_stop` > 0 iff a card can be served now, or a deck entry / kanji note awaits
+materialization (C-27, rule C5) (ADR-054):** `phase = reviewing` ⇔
 `until_stop >= 1`; `waiting` and the stop screens ⇔ `until_stop = 0`. (Before ADR-054
 `until_stop` also counted the learning cards on their timers, so the header showed
 cards while the stop or waiting screen was up.)
@@ -377,7 +378,9 @@ Client rules (normative for web, the shell SPA and the CLI):
 - **C3 Display.** The headline "ready now" number of a surface that shows **one**
   number (widget, notification, CLI status line, a badge) is **always**
   `loop.ready.total`, with or without keep going, so every such surface shows the same
-  number at the same instant. The **review header and Home** (ADR-049, amended by
+  number at the same instant. **Home is not such a surface:** its big number is
+  `loop.until_stop` (equal to the review header's total at `done` = 0), never
+  `ready.total`. The **review header and Home** (ADR-049, amended by
   ADR-054) show the three numbers `learning` ("learning"), `review` ("to review") and
   `new` ("new") of `loop.until_stop_parts`, each with its label, in this order; a part
   that is 0 may be hidden, a part that is not 0 MUST be shown, and no client adds,
@@ -406,8 +409,12 @@ Client rules (normative for web, the shell SPA and the CLI):
   with `done` = the answers this client sent in the current visit (an undo takes one
   off). Every answer moves one card out of `until_stop` and into `done` (Again and a new
   card entering its learning steps move it to `later`, outside the total), so `done +
-  until_stop` holds steady while answering; the total grows when a learning card comes
-  due (it joins `until_stop` from `later`) or cards arrive from elsewhere (ADR-054).
+  until_stop` usually holds steady while answering. Exceptions: with `keep_going=true`
+  and no `keep_going_new_target` the new part is the batch and refills after every
+  answer; the day's first answer to a learning card may bury a counted sibling (−2); a
+  card that comes back already due stays in the total. The total grows when a learning
+  card comes due (it joins `until_stop` from `later`) or cards arrive from elsewhere
+  (ADR-054).
   When `until_stop` is absent (older server) the client uses `loop.ready.total` instead.
 - **C4 Empty `items`** is rendered from `loop.phase` only. `waiting` schedules **one**
   fetch at `next_due_at` + 1 s, and never sooner than 3 s after the previous

@@ -10,7 +10,7 @@
     "Step 1 answers review ...10 Again: it moves to relearning (later today). Step 2: 0 + 1 + 2 = 3, so the bar total done + until_stop stays 4 (1 + 3). until_stop_parts is 0 learning / 2 later / 1 review / 2 new.",
     "Step 3 answers review ...20 Good. Step 4: 0 + 0 + 2 = 2.",
     "Step 5 introduces ...40 with Easy (it graduates, no learning step). Step 6: 0 + 0 + 1 = 1.",
-    "Step 7 introduces ...50 with Easy. Step 8: the goal is reached and nothing is ready, but two learning cards fall due later today, so the phase is waiting, not done_for_today (ADR-049): until_stop is 0 (parts 0 learning + 2 later + 0 reviews + 0 new; nothing is doable now), next_due_at is 10:00:55, and keep_going_available is true because the new card ...60 remains.",
+    "Step 7 introduces ...50 with Easy. Step 8: the goal is reached and nothing is ready, but two learning cards fall due later today, so the phase is waiting, not done_for_today (ADR-049): until_stop is 0 (until_stop_parts 0/2/0/0; nothing is doable now), next_due_at is 10:00:55, and keep_going_available is true because the new card ...60 remains.",
     "Step 9, keep_going=true&limit=5: reviewing; until_stop = 0 learning + 0 backlog + 1 new card drawn = 1 (until_stop_parts 0/2/0/1), keep_going_available false. The other loop numbers equal step 8."
   ],
   "clock_ms": 1795168800000,

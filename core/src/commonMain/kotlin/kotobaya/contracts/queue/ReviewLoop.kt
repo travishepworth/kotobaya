@@ -259,8 +259,11 @@ public data class LoopState(
      * only in the later-today hint. The review progress bar's total is `done + untilStop`, `done`
      * = the answers the client has sent in this visit. Each card counts once. Every answer moves
      * one card out of it: Again on a review moves it from [readyReviews] to [laterToday]
-     * (`untilStop - 1`, `done + 1`: the bar's total holds steady), introducing a new card moves it
-     * from the new part to [laterToday] (the same), a card that leaves today just leaves. The
+     * (`untilStop - 1`, `done + 1`: the bar's total usually holds steady), introducing a new card
+     * moves it from the new part to [laterToday] (the same), a card that leaves today just leaves.
+     * Exceptions (as I7): keep going without a target (the batch-bounded new part refills after
+     * every answer); the day's first answer to a LEARNING card burying a counted NEW / REVIEW
+     * sibling (`untilStop - 2`); a card that comes back already due (it stays in the total). The
      * total grows when a learning card comes due (it moves from [laterToday] to [readyLearning]:
      * `untilStop + 1`) or when cards arrive from elsewhere (pull, undo).
      *
@@ -560,7 +563,8 @@ public data class LoopResult(
  *   (`learning + review + new`, ADR-054), `untilStopParts (0, 5, 30, 30)`. Then, one after the
  *   other: a review answered Again: `readyReviews 29, laterToday 6` → 59; a new card answered
  *   Good: new part 29, `laterToday 7` → 58; a review answered Good → 57. Each answer lowers it by
- *   one while `done` grows by one, so the bar's total `done + untilStop` stays 60. When one of
+ *   one while `done` grows by one, so the bar's total `done + untilStop` stays 60 (no keep
+ *   going, no sibling burying, no step of 0 here; see [LoopState.untilStop] for the exceptions). When one of
  *   the 7 learning cards comes due: `readyLearning 1, laterToday 6` → 58, the total grows by one.
  * - **W1** (ADR-049, the reported case; A; goal 40, 40 introduced today, 0 due reviews, 707 new
  *   cards; 23 of today's cards are in learning steps, all due within 8 minutes, before the day
