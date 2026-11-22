@@ -271,3 +271,8 @@ Known gaps: offline search/dictionary/decks/browse not yet local (L4-L8); pairin
 ## Provisional decisions (run 36, local-first round)
 - ADR-052 (confirmed by user): Keep going adds one goal-sized batch per press; due cards are served first; leaving review drops the unfinished batch.
 - ADR-053: full dictionary auto-downloads on Wi-Fi/unmetered.
+
+## ADR-054 release (2026-11-22: api 0.1.32, web 0.1.37, APK 0.1.44)
+- Phone and web: Home's number == review header total at the start; the total reaches 0 exactly when the waiting/done screen shows; no "later" chip in the header (only the "N more later" hint).
+- Widget, notification, quick-settings tile show the same number. Notification now also counts new cards left under the goal.
+- Perf gate for 0.1.44 not yet run (phone disconnected): `make perf-device ARGS="--user 10"`.

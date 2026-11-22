@@ -4,6 +4,8 @@ Phase: P10 Android -> web UI shell (SHELL-*)   Gate: none open
 Updated: run 39 (2026-11-21)
 Egress OK: worker pod reaches raw.githubusercontent.com (run 22). adb: no device (run 22).
 
+## RUN 40 (2026-11-22): ADR-054 release. LIVE: helm rev 47: api 0.1.32 + web 0.1.37 (pin a87c815a), worker 0.1.21. No migrations. Health ok, api logs clean. Predeploy dump ~/kotobaya-backups/predeploy-api-0.1.32-20261122T050218Z.dump (42.1 MB, restore -l ok). values.yaml updated (tags only). APK 0.1.44 (code 144, cert ec6b7f45 ok) INSTALLED users 0 + 10. Perf gate PENDING: phone dropped off adb mid-run. Web screenshot check not done. Release worktree .claude/worktrees/rel34 (on /home: /tmp quota too small for make test). CLI-34 waits on uncommitted CLI work (asked user).
+
 ## RUN 39 (2026-11-21): local-first round DONE — t/LF-int merged to main ffb952de (make test green), pushed.
 LIVE: helm rev 46 (2026-11-21): api 0.1.31 + web 0.1.36 (pin ffb952de), worker 0.1.21. No migrations. Health ok. Predeploy dump ~/kotobaya-backups/predeploy-api-0.1.31-20261121T012755Z.dump. values.yaml now matches live (was stale; backup in scratchpad/values.yaml.bak).
 APK 0.1.41 (code 141, cert ec6b7f45 ok) INSTALLED 2026-11-21 (user 0 + 10). No screenshots (user said no). User to check: FirstSync, needs-connection hints, Home placeholders, offline review.
