@@ -1,7 +1,7 @@
 # CLI-34 — CLI/waybar number = until_stop (ADR-054)
 
 - Phase: P11 · Model: sonnet (writer) · Risk: low
-- Deps: C-34, LOOP-34; and the uncommitted CLI work on main (cli/src/kotobaya_cli/daemon/*, watch.py, kby) committed first
+- Deps: C-34, LOOP-34 (CLI card-state work committed on main)
 - Branch: t/CLI-34-until-stop
 - Owned paths (only edit these): cli/src/kotobaya_cli/, cli/bin/kby, cli/schema/state.v1.json, cli/README.md, cli/tests/
 - Module(s) for CI: cli

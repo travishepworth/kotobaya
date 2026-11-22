@@ -1,0 +1,85 @@
+#RUN cold 1
+--------- beginning of main
+11-21 21:55:48.982  8179  8199 I KTB-PERF: gate open after 67 ms (replayed=false)
+11-21 21:55:50.199  8179  8197 I KTB-PERF: call op=getPrincipal status=200 gate=1 lane=0 mutex=0 compute=1 total=40 encode=2
+11-21 21:55:50.201  8179  8202 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=16 total=31 encode=1
+11-21 21:55:50.224  8179  8201 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=38 total=67 encode=1
+11-21 21:55:50.772  8179  8197 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=65 total=80 encode=5
+11-21 21:55:50.816  8179  8395 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=55 total=109 encode=1
+11-21 21:55:50.817  8179  8396 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=60 total=114 encode=0
+11-21 21:55:53.692  8179  8203 I KTB-PERF: call op=listHotKanji status=200 gate=0 lane=1 mutex=1 compute=2572 total=2598 encode=405
+11-21 21:55:54.034  8179  8203 I KTB-PERF: call op=listHotWords status=200 gate=0 lane=2567 mutex=0 compute=744 total=3342 encode=3
+11-21 21:55:54.048  8179  8200 I KTB-PERF: call op=getReviewQueue status=200 gate=0 lane=0 mutex=0 compute=3312 total=3338 encode=4
+11-21 21:55:54.655  8179  8200 I KTB-PERF: call op=listDecks status=200 gate=0 lane=3308 mutex=0 compute=623 total=3966 encode=1
+11-21 21:55:55.860  8179  8200 I KTB-PERF: call op=getStatsSummary status=200 gate=1 lane=3925 mutex=0 compute=1202 total=5166 encode=2
+11-21 21:55:55.917  8179  8200 I KTB-PERF: call op=getStatsHeatmap status=200 gate=1 lane=5114 mutex=0 compute=58 total=5221 encode=3
+11-21 21:55:55.980  8179  8200 I KTB-PERF: call op=getStatsRetention status=200 gate=0 lane=5160 mutex=0 compute=65 total=5281 encode=0
+#RUN cold 2
+--------- beginning of main
+11-21 21:55:59.696  8495  8514 I KTB-PERF: gate open after 76 ms (replayed=false)
+11-21 21:56:00.420  8495  8515 I KTB-PERF: call op=getPrincipal status=200 gate=1 lane=0 mutex=0 compute=1 total=22 encode=27
+11-21 21:56:00.421  8495  8515 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=21 total=34 encode=16
+11-21 21:56:00.421  8495  8514 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=24 total=34 encode=13
+11-21 21:56:00.470  8495  8514 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=15 total=25 encode=1
+11-21 21:56:00.886  8495  8542 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=18 total=28 encode=341
+11-21 21:56:00.886  8495  8543 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=24 total=31 encode=338
+11-21 21:56:00.968  8495  8514 I KTB-PERF: call op=listHotWords status=200 gate=0 lane=1 mutex=0 compute=517 total=522 encode=1
+11-21 21:56:01.798  8495  8541 I KTB-PERF: call op=getReviewQueue status=200 gate=0 lane=0 mutex=0 compute=1267 total=1274 encode=3
+11-21 21:56:01.970  8495  8541 I KTB-PERF: call op=listDecks status=200 gate=0 lane=515 mutex=0 compute=1002 total=1525 encode=1
+11-21 21:56:02.124  8495  8541 I KTB-PERF: call op=listHotKanji status=200 gate=0 lane=1511 mutex=0 compute=154 total=1678 encode=1
+11-21 21:56:03.185  8495  8541 I KTB-PERF: call op=getStatsSummary status=200 gate=0 lane=1663 mutex=0 compute=1059 total=2739 encode=1
+11-21 21:56:03.312  8495  8541 I KTB-PERF: call op=getStatsHeatmap status=200 gate=0 lane=2719 mutex=0 compute=127 total=2865 encode=2
+11-21 21:56:03.416  8495  8513 I KTB-PERF: call op=getStatsRetention status=200 gate=0 lane=2844 mutex=0 compute=106 total=2970 encode=1
+#RUN cold 3
+--------- beginning of main
+11-21 21:56:10.339  8666  8684 I KTB-PERF: gate open after 68 ms (replayed=false)
+11-21 21:56:11.047  8666  8682 I KTB-PERF: call op=getPrincipal status=200 gate=0 lane=0 mutex=0 compute=1 total=17 encode=28
+11-21 21:56:11.048  8666  8682 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=23 total=32 encode=14
+11-21 21:56:11.049  8666  8688 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=26 total=29 encode=12
+11-21 21:56:11.113  8666  8688 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=10 total=25 encode=0
+11-21 21:56:11.554  8666  8690 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=70 total=75 encode=330
+11-21 21:56:11.554  8666  8688 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=47 total=52 encode=353
+11-21 21:56:12.276  8666  8711 I KTB-PERF: call op=listDecks status=200 gate=0 lane=0 mutex=0 compute=1180 total=1185 encode=2
+11-21 21:56:12.458  8666  8685 I KTB-PERF: call op=getReviewQueue status=200 gate=0 lane=0 mutex=0 compute=1296 total=1306 encode=2
+11-21 21:56:12.560  8666  8685 I KTB-PERF: call op=listHotWords status=200 gate=0 lane=1178 mutex=0 compute=284 total=1469 encode=2
+11-21 21:56:13.772  8666  8685 I KTB-PERF: call op=getStatsSummary status=200 gate=0 lane=1462 mutex=0 compute=1212 total=2682 encode=1
+11-21 21:56:13.940  8666  8711 I KTB-PERF: call op=listHotKanji status=200 gate=0 lane=2672 mutex=0 compute=168 total=2849 encode=2
+11-21 21:56:14.010  8666  8711 I KTB-PERF: call op=getStatsRetention status=200 gate=0 lane=2835 mutex=0 compute=70 total=2919 encode=1
+11-21 21:56:14.046  8666  8683 I KTB-PERF: call op=getStatsHeatmap status=200 gate=0 lane=2902 mutex=0 compute=37 total=2956 encode=1
+#RUN cold 4
+--------- beginning of main
+11-21 21:56:21.151  8839  8857 I KTB-PERF: gate open after 77 ms (replayed=false)
+11-21 21:56:21.850  8839  8855 I KTB-PERF: call op=getPrincipal status=200 gate=1 lane=0 mutex=0 compute=0 total=18 encode=26
+11-21 21:56:21.852  8839  8855 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=19 total=31 encode=15
+11-21 21:56:21.852  8839  8859 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=20 total=26 encode=14
+11-21 21:56:21.917  8839  8859 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=16 total=20 encode=1
+11-21 21:56:22.358  8839  8857 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=16 total=25 encode=372
+11-21 21:56:22.358  8839  8859 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=18 total=25 encode=372
+11-21 21:56:23.073  8839  8863 I KTB-PERF: call op=getReviewQueue status=200 gate=0 lane=0 mutex=0 compute=1101 total=1109 encode=2
+11-21 21:56:23.198  8839  8858 I KTB-PERF: call op=listDecks status=200 gate=0 lane=1 mutex=0 compute=1293 total=1301 encode=1
+11-21 21:56:24.073  8839  8857 I KTB-PERF: call op=getStatsRetention status=200 gate=0 lane=1291 mutex=1 compute=871 total=2170 encode=4
+11-21 21:56:24.275  8839  8857 I KTB-PERF: call op=listHotWords status=200 gate=0 lane=2160 mutex=0 compute=205 total=2377 encode=2
+11-21 21:56:24.517  8839  8857 I KTB-PERF: call op=getStatsSummary status=200 gate=0 lane=2364 mutex=0 compute=242 total=2619 encode=2
+11-21 21:56:24.739  8839  8857 I KTB-PERF: call op=listHotKanji status=200 gate=0 lane=2606 mutex=0 compute=221 total=2840 encode=3
+11-21 21:56:24.774  8839  8855 I KTB-PERF: call op=getStatsHeatmap status=200 gate=0 lane=2825 mutex=0 compute=37 total=2876 encode=1
+#RUN cold 5
+--------- beginning of main
+11-21 21:56:31.797  9016  9032 I KTB-PERF: gate open after 59 ms (replayed=false)
+11-21 21:56:32.509  9016  9040 I KTB-PERF: call op=getPrincipal status=200 gate=1 lane=0 mutex=0 compute=1 total=25 encode=28
+11-21 21:56:32.510  9016  9040 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=19 total=34 encode=20
+11-21 21:56:32.510  9016  9073 I KTB-PERF: call op=getShellInfo status=200 gate=0 lane=0 mutex=0 compute=26 total=38 encode=13
+11-21 21:56:32.562  9016  9073 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=16 total=30 encode=0
+11-21 21:56:32.610  9016  9071 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=22 total=28 encode=1
+11-21 21:56:32.610  9016  9073 I KTB-PERF: call op=getSyncStatus status=200 gate=0 lane=0 mutex=0 compute=21 total=27 encode=1
+11-21 21:56:33.635  9016  9041 I KTB-PERF: call op=listDecks status=200 gate=0 lane=0 mutex=0 compute=1096 total=1101 encode=1
+11-21 21:56:33.860  9016  9071 I KTB-PERF: call op=getReviewQueue status=200 gate=0 lane=0 mutex=0 compute=1242 total=1247 encode=3
+11-21 21:56:33.969  9016  9073 I KTB-PERF: call op=listHotWords status=200 gate=0 lane=1092 mutex=0 compute=333 total=1434 encode=2
+11-21 21:56:34.114  9016  9073 I KTB-PERF: call op=listHotKanji status=200 gate=0 lane=1424 mutex=1 compute=146 total=1579 encode=2
+11-21 21:56:35.292  9016  9071 I KTB-PERF: call op=getStatsSummary status=200 gate=0 lane=1568 mutex=0 compute=1178 total=2756 encode=1
+11-21 21:56:35.357  9016  9071 I KTB-PERF: call op=getStatsRetention status=200 gate=0 lane=2742 mutex=0 compute=66 total=2822 encode=1
+11-21 21:56:35.394  9016  9032 I KTB-PERF: call op=getStatsHeatmap status=200 gate=1 lane=2808 mutex=0 compute=36 total=2858 encode=2
+#RUN warm 1
+#RUN warm 2
+#RUN warm 3
+#RUN warm 4
+#RUN warm 5
