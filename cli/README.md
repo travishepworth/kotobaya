@@ -55,8 +55,9 @@ user's button mode, so `good` and `again` work in both modes. On the socket the 
 
 **Review loop (ADR-037).** The daemon renders what the server's `loop` says and decides nothing
 itself. The state carries `phase` (`reviewing`, `goal_reached`, `done_for_today`, `waiting`,
-`empty`), `ready` (cards answerable now: learning due + reviews; new cards and learning cards due
-later are not in it), `later_today` (+ `later_next_due_at`), `backlog`, `backlog_beyond_limit`,
+`empty`), `until_stop` (ADR-054: cards doable now = learning + review + new, never learning cards on
+their timers; the number `text` and `{counts_text}` show), `ready` (learning due + reviews, kept for
+compatibility), `later_today` (+ `later_next_due_at`), `backlog`, `backlog_beyond_limit`,
 `reviews_today`, `reviews_limit`, `new_today`, `new_goal`. `counts`, `more_available` and
 `can_keep_going` stay but are deprecated (`can_keep_going` = phase is `goal_reached` or
 `done_for_today`, nothing shown, keep going off). `next_due_at` is set only in phase `waiting`
@@ -121,8 +122,8 @@ startup.
 }
 ```
 
-Add `"custom/kotobaya"` to `modules-right` (or another list). The text is `N learning · M review`, with `N new` before and `K later` between them only when above 0
-(ADR-049, the web header's four parts). Numbers come from `until_stop_parts`; an older daemon falls
+Add `"custom/kotobaya"` to `modules-right` (or another list). The text is `N learning · M review`, with `N new` before them only when above 0
+(ADR-054: `later` is never a chip; it is in the tooltip). Numbers come from `until_stop_parts`; an older daemon falls
 back to the deprecated `counts`, where `learning` includes the cards due later.
 The `class` is `ok`, `offline` or `auth`, for CSS styling.
 

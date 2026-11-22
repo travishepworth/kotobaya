@@ -81,6 +81,7 @@
     "next_due_at": {"type": ["string", "null"], "description": "ADR-033: with no card shown, the UTC instant the next learning card falls due today (the daemon refetches then); null otherwise. Only in phase waiting (C4: the one timer)."},
     "phase": {"enum": ["reviewing", "goal_reached", "done_for_today", "waiting", "empty", null], "description": "ADR-037 loop phase of the last response; null until loaded or while not conn ok."},
     "ready": {"type": ["integer", "null"], "minimum": 0, "description": "Ready now = ready learning + ready reviews (new cards excluded)."},
+    "until_stop": {"type": ["integer", "null"], "minimum": 0, "description": "ADR-054: cards doable now (learning + review + new, never later). The number widgets show. Null from an older server or while not conn ok."},
     "later_today": {"type": ["integer", "null"], "minimum": 0, "description": "Learning cards due later today."},
     "later_next_due_at": {"type": ["string", "null"], "description": "UTC instant of the earliest of those; null when none."},
     "backlog": {"type": ["integer", "null"], "minimum": 0, "description": "Due reviews regardless of the review limit."},

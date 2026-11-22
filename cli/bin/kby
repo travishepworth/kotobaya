@@ -19,7 +19,7 @@ DAEMON_ACTIONS=" reveal again hard good easy nothing something okay undo skip re
 FIELDS="state conn new learning review total due pending day_ends_at notice last_rating undoable
 card_id kind kind_label kind_badge kind_prefix card_state is_new new_badge front back reading sentence revealed preview_again preview_hard preview_good
 preview_easy next_due_at next_due_in can_keep_going keep_hint
-phase ready later_today later_next_in backlog backlog_beyond_limit new_today new_goal counts_text loop_line"
+phase ready until_stop later_today later_next_in backlog backlog_beyond_limit new_today new_goal counts_text loop_line"
 
 die() { printf 'kby: %s\n' "$*" >&2; exit 1; }
 
@@ -54,8 +54,8 @@ SERVE (machine interface for GUI widgets; data only, no widget confs)
                                   Offline / auth / error never end it: they are lines too.
   line (v 1): {"v":1, "state":"loading|front|back|waiting|done|offline|auth|server_too_old|error",
                "rev":"<card_id>:<n>" (changes every line; send it back as `kby do ... --rev`),
-               "text":"語 12" (12 = ready now), "counts":{"new","learning","review"} (deprecated),
-               "phase":null|"reviewing|goal_reached|done_for_today|waiting|empty", "ready", "later_today",
+               "text":"語 12" (12 = until_stop: cards doable now), "counts":{"new","learning","review"} (deprecated),
+               "phase":null|"reviewing|goal_reached|done_for_today|waiting|empty", "ready", "until_stop", "later_today",
                "backlog", "backlog_beyond_limit", "new_today", "new_goal" (null from an older daemon),
                "card":null|{"id","kind","kind_label" (Kanji/Vocab/..),"state" (new/learning/review/relearning),"front"; "reading","sentence","back" only when revealed},
                "last":{"rating":null|"good"..,"undoable":bool}, "notice":null|"..." (one line only),
@@ -250,7 +250,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
 | ($force // statename($s)) as $st
 | (if $s == null then null else $s.card end) as $k
 | (($s.counts // null) // {new: 0, learning: 0, review: 0}) as $c
-| (if ($s.ready // null) != null then $s.ready else ($c.new + $c.learning + $c.review) end) as $due
+| (if ($s.until_stop // null) != null then $s.until_stop elif ($s.ready // null) != null then $s.ready else ($c.new + $c.learning + $c.review) end) as $due
 | ($k.revealed // false) as $rev
 | (($s.last.undoable // false) and ($st == "front" or $st == "back" or $st == "done" or $st == "waiting")) as $undo
 | ($k.previews // {}) as $p
@@ -272,7 +272,7 @@ def act($on; $h): {enabled: $on} + (if $h == null then {} else {hint: $h} end);
    keep_going: ($s.keep_going // false),
    more_available: ($s.more_available // false),
    can_keep_going: ($s.can_keep_going // false),
-   phase: ($s.phase // null), ready: ($s.ready // null), later_today: ($s.later_today // null),
+   phase: ($s.phase // null), ready: ($s.ready // null), until_stop: ($s.until_stop // null), later_today: ($s.later_today // null),
    backlog: ($s.backlog // null), backlog_beyond_limit: ($s.backlog_beyond_limit // null),
    new_today: ($s.new_today // null), new_goal: ($s.new_goal // null),
    next_due_at: (if $st == "waiting" then $s.next_due_at else null end),
@@ -378,8 +378,8 @@ default_widget() {
 # tooltip[.STATE]  hover text (--json only).
 # class[.STATE]    CSS class (--json only). Default: {state}.
 # Templates: {field} or {field:N} (cut to N chars with …). `kby fields` lists the fields.
-# {counts_text} is the ready-now number (cards you can answer now; new cards and learning cards
-# due later are not in it); against a daemon older than ADR-037 it reads new/learning/review.
+# {counts_text} is the server's until_stop (ADR-054: learning + review + new doable now; learning
+# cards on their timers are not in it); older daemons: ready, then new/learning/review.
 text         = 語 {counts_text}
 text.front   = 語 {counts_text}  {new_badge}{kind_badge}{front:30}
 text.back    = 語 {front:20} 【{reading:15}】 {back:40}
@@ -554,7 +554,7 @@ def buttons($w; $s):
   | add // {};
 conf as $w | statename as $s | flat($s) as $f
 # Template-only fields: not part of the flat JSON, so older output stays byte-identical.
-| ($f + {counts_text: (if (.ready // null) != null then "\(.ready)" else "\(.counts.new // 0)/\(.counts.learning // 0)/\(.counts.review // 0)" end),
+| ($f + {counts_text: (if (.until_stop // null) != null then "\(.until_stop)" elif (.ready // null) != null then "\(.ready)" else "\(.counts.new // 0)/\(.counts.learning // 0)/\(.counts.review // 0)" end),
          loop_line: loop_line(.counts // {})}) as $t
 | $f + { text: (pick($w; "text"; $s; "{counts_text}") | fill($t) | sub("\\s+$"; "")),
     tooltip: (pick($w; "tooltip"; $s; "") | fill($t) | sub("\\s+$"; "")),

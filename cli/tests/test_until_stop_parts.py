@@ -61,13 +61,13 @@ def test_template_renders_the_later_field() -> None:
     assert "later" in watch.FIELD_NAMES
 
 
-def test_waybar_hides_zero_new_and_later() -> None:
+def test_waybar_hides_zero_new_and_never_shows_later() -> None:
     state: dict[str, Any] = {"conn": "ok", "pending": 0}
     state["until_stop_parts"] = {"new": 0, "learning": 9, "later": 0, "review": 3}
     assert json.loads(watch.renderer("waybar")(state))["text"] == "9 learning · 3 review"
     state["until_stop_parts"] = {"new": 2, "learning": 9, "later": 14, "review": 3}
     text = json.loads(watch.renderer("waybar")(state))["text"]
-    assert text == "2 new · 9 learning · 14 later · 3 review"
+    assert text == "2 new · 9 learning · 3 review"
 
 
 def test_waybar_falls_back_to_counts_on_old_server() -> None:

@@ -97,6 +97,8 @@ class Loop:
     new_available: bool
     # ADR-049: None when the server is older (no until_stop_parts sent); consumers fall back.
     until_stop_parts: UntilStopParts | None = None
+    # ADR-054: cards doable now (learning + review + new, never later); None from an older server.
+    until_stop: int | None = None
 
 
 @dataclass(frozen=True)
@@ -319,6 +321,8 @@ class Session:
             "phase": None if loop is None else loop.phase,
             "ready": None if loop is None else loop.ready_total,
             "later_today": None if loop is None else loop.later_count,
+            # ADR-054: the number widgets show ("語 N", {counts_text}); `ready` stays for compatibility.
+            "until_stop": None if loop is None else loop.until_stop,
             "backlog": None if loop is None else loop.backlog_reviews,
             "backlog_beyond_limit": None if loop is None else loop.backlog_beyond_limit,
             "reviews_today": None if loop is None else loop.reviews_today,

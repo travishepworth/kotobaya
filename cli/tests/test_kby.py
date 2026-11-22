@@ -474,3 +474,18 @@ def test_card_state_reaches_serve_and_the_default_widget(kenv: Env) -> None:
     out = kenv.run(KBY, "-f", "--text", FAKE_ONESHOT="1").stdout.splitlines()
     assert out[-3].endswith("[New] 猫")
     assert "[New]" not in out[-2] and "[New]" not in out[-1]
+
+
+@pytest.mark.parametrize("until_stop", [2, 12])
+def test_text_number_is_until_stop(kenv: Env, until_stop: int) -> None:
+    """ADR-054: ready 2, later 13, new 0 -> 2; ready 2, new 10 -> 12."""
+    front = json.loads(FRONT)
+    front.update(json.loads(loop_raw(ready=2, later_today=13, until_stop=until_stop)))
+    front["card"] = json.loads(FRONT)["card"]
+    s = kenv.serve()
+    s.next()
+    kenv.append(json.dumps(front, ensure_ascii=False))
+    line = s.next()
+    assert line["text"].endswith(f" {until_stop}") and line["ready"] == 2
+    assert line["until_stop"] == until_stop
+    assert s.stop() == 0

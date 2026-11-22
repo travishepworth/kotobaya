@@ -250,6 +250,7 @@ class HttpBackend:
                 new_today=wire.new.today,
                 new_goal=wire.new.goal,
                 new_available=wire.new.available,
+                until_stop=wire.until_stop,
                 until_stop_parts=None
                 if wire.until_stop_parts is None
                 else UntilStopParts(

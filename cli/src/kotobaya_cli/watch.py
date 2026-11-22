@@ -170,11 +170,9 @@ def _waybar(state: State) -> str:
     has_numbers = _four_parts(state) is not None or bool(_obj(state.get("counts")))
     if conn == "ok" and has_numbers:
         new, learning, later, review = _numbers(state)
-        # Like the web header (ADR-049): new and later appear only when above 0.
+        # ADR-054: later is never a chip (tooltip only); new appears only when above 0.
         segments = [f"{new} new"] if new > 0 else []
         segments.append(f"{learning} learning")
-        if later > 0:
-            segments.append(f"{later} later")
         segments.append(f"{review} review")
         text = " · ".join(segments)
         tooltip = (
