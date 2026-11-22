@@ -1519,3 +1519,5 @@
 - 2026-11-21: PERF-GATE dispatched (writer sonnet, attempt 1).
 - 2026-11-21: PERF-GATE MERGED 43d08609 (android check exit 0 after rebase). Phone run awaits user go.
 - 2026-11-21: test APK 0.1.43/143 (pin 84a64396, cert ok) installed users 0+10. perf-device: cold getReviewQueue compute 6446 ms (JIT) -> 1267 ms with --speed (AOT). Stats lane wait 1.2-2.8 s (compiled). gate 68 ms, encode <30 ms. Warm runs invalid (am start reuses the top instance; Home does not refetch); one 17-30 s burst in the first run, unexplained. Script fix: explicit component launch (Android 15 user 10).
+2026-11-22T00:00:00Z ADR-054 DECIDE (human) review total = cards doable now; later-today learning not counted
+2026-11-22T00:00:00Z C-34 DISPATCH architect attempt 1 (LOOP-34 follows on its branch; merge together)
