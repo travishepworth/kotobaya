@@ -918,4 +918,4 @@ Source of truth for these tickets is docs/CLI-DAEMON.md. Builds on T604 (cli/).
 - LF-A8b — Shell: confusables, grammar, media writes local (rest of LF-A8) · model: opus · risk: high · deps: LF-A8 · status: RUNNING (ticket: plan/tickets/LF-A8b.md)
 - C-34 — Contracts: review total = cards doable right now (ADR-054) · model: opus · risk: high · deps: none · status: MERGED 19926c8d (ticket: plan/tickets/C-34.md)
 - LOOP-34 — Review total counts only cards doable right now (ADR-054) · model: opus · risk: high · deps: C-34 · status: MERGED 4dd73830 (ticket: plan/tickets/LOOP-34.md)
-- CLI-34 — CLI/waybar number = until_stop (ADR-054) · model: sonnet · risk: low · deps: C-34, LOOP-34 · status: RUNNING (ticket: plan/tickets/CLI-34.md)
+- CLI-34 — CLI/waybar number = until_stop (ADR-054) · model: sonnet · risk: low · deps: C-34, LOOP-34 · status: MERGED (ticket: plan/tickets/CLI-34.md)

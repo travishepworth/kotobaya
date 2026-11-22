@@ -1537,3 +1537,4 @@
 2026-11-22T00:00:00Z RELEASE helm rev 47 api 0.1.32 web 0.1.37 (pin a87c815a); APK 0.1.44/144 installed users 0+10; perf gate pending (phone disconnected)
 2026-11-22T00:00:00Z RELEASE perf gate + screenshots WAIVED by user for 0.1.44
 2026-11-22T00:00:00Z CLI-34 DISPATCH writer (sonnet) attempt 1 (uncommitted CLI card-state work committed first, cli check green)
+2026-11-22T00:00:00Z CLI-34 CHECK_GREEN + MERGE (squashed); CLI reinstalled + daemon restarted
